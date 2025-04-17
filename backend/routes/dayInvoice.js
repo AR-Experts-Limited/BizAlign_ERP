@@ -1,0 +1,570 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const router = express.Router();
+const multer = require('multer'); // To handle file uploads
+const multerS3 = require('multer-s3');
+const s3 = require('./aws'); // Optional: To delete files from file system
+const { Expo } = require('expo-server-sdk');
+const { sendToClients } = require('../utils/sseService');
+const nodemailer = require('nodemailer');
+
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET_NAME,
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    contentDisposition: 'inline',
+    key: (req, file, cb) => {
+      const user_ID = req.body.user_ID;
+      const databaseName = req.db.db.databaseName
+      cb(null, `${databaseName}/${user_ID}/payslips/${file.originalname}`);
+    },
+  }),
+});
+
+// Helper function to get models from req.db
+const getModels = (req) => ({
+  DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
+  Installment: req.db.model('Installment', require('../models/installments').schema),
+  User: req.db.model('User', require('../models/User').schema),
+  Notification: req.db.model('Notification', require('../models/notifications').schema),
+});
+
+// Route for adding a new invoice
+router.post('/', async (req, res) => {
+  try {
+    const { DayInvoice } = getModels(req);
+    const newInvoice = new DayInvoice(req.body);
+    sendToClients(
+      req.db, {
+      type: 'rotaUpdated', // Custom event to signal data update
+    });
+    await newInvoice.save();
+    res.status(200).json(newInvoice);
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving invoice', error: error.message });
+  }
+});
+
+// Route for fetching invoices by driver, date range, and optional site
+router.get('/', async (req, res) => {
+  const { driverId, startdate, enddate, site } = req.query;
+
+  let query = {
+    driverId: { $in: driverId },
+    date: {
+      $gte: new Date(startdate),
+      $lte: new Date(enddate),
+    },
+  };
+
+  if (site) query.site = site;
+
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoices = await DayInvoice.find(query);
+    res.status(200).json(dayInvoices);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching invoice', error: error.message });
+  }
+});
+
+// Route for fetching invoices by site and service week
+router.get('/siteandweek', async (req, res) => {
+  const { site, serviceWeek, startDate, endDate } = req.query;
+  const query = {};
+
+  if (site) query.site = site;
+  if (serviceWeek) query.serviceWeek = serviceWeek;
+  if (startDate && endDate) {
+    query.date = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    }
+  }
+
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoices = await DayInvoice.find(query);
+    res.status(200).json(dayInvoices);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching day invoices for given site and week', error: error.message });
+  }
+});
+
+// Route for fetching invoices for Working Hours
+router.get('/workinghours', async (req, res) => {
+  const { sitesArray, serviceWeek, startDate, endDate, drivers } = req.query;
+  const query = { driverId: { $in: drivers } };
+
+  if (sitesArray) query.site = { $in: sitesArray };
+  if (serviceWeek) query.serviceWeek = serviceWeek;
+  if (startDate && endDate) {
+    query.date = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    }
+  }
+
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoices = await DayInvoice.find(query);
+    res.status(200).json(dayInvoices);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching day invoices for given site and week', error: error.message });
+  }
+});
+
+// Route for fetching invoices by driver ID
+router.get('/driver', async (req, res) => {
+  const { driverId } = req.query;
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoices = await DayInvoice.find({ driverId });
+    res.status(200).json(dayInvoices);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching day invoices for given driver ID', error: error.message });
+  }
+});
+
+// Route for checking if invoices exist for a given rate card
+router.get('/dayinvoicechecker', async (req, res) => {
+  const { serviceWeek, serviceTitle } = req.query.checkRateCard;
+
+  try {
+    const { DayInvoice } = getModels(req);
+
+    const invoicesForMain = await DayInvoice.find({
+      serviceWeek,
+      mainService: serviceTitle,
+    });
+
+    const invoicesForAdditional = await DayInvoice.find({
+      serviceWeek,
+      'additionalServiceDetails.service': serviceTitle,
+    });
+
+    if (invoicesForMain.length > 0 || invoicesForAdditional.length > 0) {
+      res.status(200).json({ check: true });
+    } else {
+      res.status(200).json({ check: false });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error checking invoices', error: error.message });
+  }
+});
+
+// Route for uploading an invoice document
+router.post('/uploadInvoice', upload.any(), async (req, res) => {
+  const { user_ID, invoices, serviceWeek, driverName, driverEmail } = req.body;
+  const parsedInvoices = invoices.map(invoice => JSON.parse(invoice));
+  const invoiceIDs = parsedInvoices.map(invoice => invoice._id);
+
+  try {
+    const { User, Notification, DayInvoice } = getModels(req);
+    const invoiceDoc = req.files[0]?.location || '';
+
+    const updateResults = await Promise.all(
+      invoiceIDs.map(async (invoiceId) => {
+        if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+          console.error(`Invalid ObjectId: ${invoiceId}`);
+          return null;
+        }
+
+        const result = await DayInvoice.updateOne(
+          { _id: invoiceId },
+          { $set: { invoicedoc: invoiceDoc } }
+        );
+        return result;
+      })
+    );
+
+    // Send push notification
+    const user = await User.findOne({ user_ID });
+    if (user?.expoPushTokens) {
+      const expo = new Expo();
+      const message = {
+        to: user.expoPushTokens,
+        title: 'New Invoice Added',
+        body: 'A new invoice has been added',
+        isRead: false,
+      };
+
+      try {
+        await expo.sendPushNotificationsAsync([message]);
+      } catch (notificationError) {
+        console.error('Error sending push notification:', notificationError.message);
+      }
+    }
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // or your chosen email service
+      auth: {
+        user: process.env.MAILER_EMAIL, // Your email address
+        pass: process.env.MAILER_APP_PASSWORD, // Your email password or app password
+      },
+    });
+
+    // Send OTP email
+    const mailOptions = {
+      from: process.env.MAILER_EMAIL, // Sender address
+      to: user.email, // Receiver address (user's email)
+      subject: 'A new payslip has been added',
+      html: `<div style="font-family: Arial, sans-serif; background-color: #f4f8ff; padding: 20px; border-radius: 10px; text-align: center;">
+      <h2 style="color: #2a73cc;">Your PaySlip is Ready, ${driverName} </h2>
+      <p style="font-size: 16px; color: #333;">Check out your earnings for service week <strong>${serviceWeek}</strong> below:</p>
+      
+      <div style="margin: 20px 0;">
+          <a href=${invoiceDoc} target="_blank" rel="noopener" 
+             style="background-color: #ff9900; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; display: inline-block;">
+             📄 Download Invoice
+          </a>
+      </div>
+      
+      <p style="color: #555;">Thank you for your hard work! </p>
+      <p style="font-weight: bold; color: #2a73cc;">Best wishes,<br>Raina Ltd.</p>
+  </div>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    // Save notification
+    const notification = {
+      title: 'New Invoice Added',
+      user_ID,
+      body: 'A new invoice has been added',
+      isRead: false,
+    };
+    await new Notification({ notification, targetDevice: 'app' }).save();
+
+    res.status(200).json({ url: invoiceDoc });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving invoice document', error: error.message });
+  }
+});
+
+// Route for updating a day invoice
+router.put('/', async (req, res) => {
+  const { driverId, date, ...updates } = req.body;
+
+  try {
+    const { DayInvoice, Installment } = getModels(req);
+
+    const dayInvoice = await DayInvoice.findOne({ driverId, date });
+
+    // Determine new and removed installments
+    const newInstallment = dayInvoice.installmentDetail.length === 0
+      ? updates.installmentDetail
+      : updates.installmentDetail.filter((update) =>
+        !dayInvoice.installmentDetail.some((existingData) => existingData._id == update._id)
+      );
+
+    const removedInstallment = updates.installmentDetail.length === 0
+      ? dayInvoice.installmentDetail
+      : dayInvoice.installmentDetail.filter((DIinsta) =>
+        !updates.installmentDetail.some((newInsta) => DIinsta._id == newInsta._id)
+      );
+
+    // Update installments
+    const installmentAdded = await Installment.find({
+      driverId: dayInvoice.driverId,
+      _id: { $in: newInstallment.map((insta) => insta._id) },
+    });
+
+    await Promise.all(installmentAdded.map(async (insta) => {
+      const newInstallmentData = newInstallment.find((newinsta) => newinsta._id == insta._id);
+      await Installment.updateOne(
+        { driverId: dayInvoice.driverId, _id: insta._id },
+        { $set: { installmentPending: insta.installmentPending - parseFloat(newInstallmentData.perDayInstallmentRate) } }
+      );
+    }));
+
+    const installmentRemoved = await Installment.find({
+      driverId: dayInvoice.driverId,
+      _id: { $in: removedInstallment.map((insta) => insta._id) },
+    });
+
+    await Promise.all(installmentRemoved.map(async (insta) => {
+      const removedInstallmentData = removedInstallment.find((removedinsta) => removedinsta._id == insta._id);
+      await Installment.updateOne(
+        { driverId: dayInvoice.driverId, _id: insta._id },
+        { $set: { installmentPending: insta.installmentPending + parseFloat(removedInstallmentData.perDayInstallmentRate) } }
+      );
+    }));
+
+    // Update the DayInvoice
+    const updatedDayInvoice = await DayInvoice.updateOne(
+      { driverId, date },
+      { $set: updates },
+    );
+
+    res.status(200).json(updatedDayInvoice);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating invoice', error: error.message });
+  }
+});
+
+// Route for updating approval status of an invoice
+router.put('/updateApprovalStatus', async (req, res) => {
+  const { Id, updates } = req.body;
+
+  try {
+    const { DayInvoice } = getModels(req);
+    const result = await DayInvoice.updateOne(
+      { _id: new mongoose.Types.ObjectId(Id) },
+      { $set: updates }
+    );
+    res.status(200).json(result);
+    sendToClients(
+      req.db, {
+      type: 'approvalStatusUpdated', // Custom event to signal data update
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating invoice', error: error.message });
+  }
+});
+
+// Route for batch updating approval status
+router.put('/updateApprovalStatusBatch', async (req, res) => {
+  const { updates } = req.body;
+
+  try {
+    const { DayInvoice } = getModels(req);
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ message: 'Invalid input: updates must be a non-empty array' });
+    }
+
+    const bulkOps = updates.map(({ id, updateData }) => ({
+      updateOne: {
+        filter: { _id: new mongoose.Types.ObjectId(id) },
+        update: { $set: updateData },
+      },
+    }));
+
+    const result = await DayInvoice.bulkWrite(bulkOps);
+    res.status(200).json({ message: 'Invoices updated successfully', result });
+    sendToClients(
+      req.db, {
+      type: 'approvalStatusUpdated', // Custom event to signal data update
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating invoices', error: error.message });
+  }
+});
+
+// Route for updating rate card details in invoices
+router.put('/ratecardupdate', async (req, res) => {
+  const { serviceWeek, serviceTitle, ...updatedRateCard } = req.body;
+
+  try {
+    const { DayInvoice } = getModels(req);
+
+    const invoicesForMain = await DayInvoice.find({
+      serviceWeek,
+      mainService: serviceTitle,
+    });
+
+    const invoicesForAdditional = await DayInvoice.find({
+      serviceWeek,
+      'additionalServiceDetails.service': serviceTitle,
+    });
+
+    const updateForMain = invoicesForMain.map((invoice) => ({
+      updateOne: {
+        filter: { _id: invoice._id },
+        update: {
+          $set: {
+            serviceRateforMain: updatedRateCard.serviceRate,
+            byodRate: updatedRateCard.byodRate,
+            mileage: updatedRateCard.mileage,
+            calculatedMileage: invoice.miles * updatedRateCard.mileage,
+            total: invoice.total - (parseFloat(invoice.serviceRateforMain) + parseFloat(updatedRateCard.serviceRate) + parseFloat(updatedRateCard.byodRate) + parseFloat(invoice.miles * updatedRateCard.mileage))
+          },
+        },
+      },
+    }));
+
+    const updateForAdditional = invoicesForAdditional.map((invoice) => ({
+      updateOne: {
+        filter: { _id: invoice._id },
+        update: {
+          $set: {
+            'additionalServiceDetails.serviceRate': updatedRateCard.serviceRate,
+            'additionalServiceDetails.byodRate': updatedRateCard.byodRate,
+            'additionalServiceDetails.mileage': updatedRateCard.mileage,
+            'additionalServiceDetails.calculatedMileage': invoice.additionalServiceDetails.miles * updatedRateCard.mileage,
+            total: invoice.total - parseFloat(invoice.serviceRateforAdditional) + parseFloat(updatedRateCard.serviceRate) + parseFloat(updatedRateCard.byodRate) + parseFloat(invoice.additionalServiceDetails.miles * updatedRateCard.mileage),
+          },
+        },
+      },
+    }));
+
+    await DayInvoice.bulkWrite(updateForMain);
+    await DayInvoice.bulkWrite(updateForAdditional);
+
+    res.status(200).json({ message: 'Rate card updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating rate card', error: error.message });
+  }
+});
+
+// Route for deleting invoices by rate card
+router.delete('/ratecarddelete', async (req, res) => {
+  const { serviceWeek, serviceTitle } = req.body.rateCardtoDelete;
+
+  try {
+    const { DayInvoice, Installment } = getModels(req);
+
+    const invoicesForMain = await DayInvoice.find({
+      serviceWeek,
+      mainService: serviceTitle,
+    });
+
+    const invoicesForAdditional = await DayInvoice.find({
+      serviceWeek,
+      'additionalServiceDetails.service': serviceTitle,
+    });
+
+    // Update installments for main service invoices
+    await Promise.all(
+      invoicesForMain.map(async (invoice) => {
+        const installment = await Installment.find({
+          driverId: invoice.driverId,
+          _id: { $in: invoice.installmentDetail.map((insta) => insta._id) },
+        });
+
+        await Promise.all(
+          installment.map(async (insta) => {
+            const dayInvoiceData = invoice.installmentDetail.find(
+              (DIinsta) => DIinsta._id == insta._id
+            );
+
+            if (dayInvoiceData) {
+              await Installment.updateOne(
+                { driverId: invoice.driverId, _id: insta._id },
+                {
+                  $inc: {
+                    installmentPending: parseFloat(dayInvoiceData.perDayInstallmentRate),
+                  },
+                }
+              );
+            }
+          })
+        );
+      })
+    );
+
+    // Delete main service invoices
+    const mainInvoiceIds = invoicesForMain.map((invoice) => invoice._id);
+    if (mainInvoiceIds.length > 0) {
+      await DayInvoice.deleteMany({ _id: { $in: mainInvoiceIds } });
+    }
+
+    // Update additional service invoices
+    const additionalInvoiceIds = invoicesForAdditional.map((invoice) => invoice._id);
+    if (invoicesForAdditional.length > 0) {
+      const updatesForAdditional = invoicesForAdditional.map((invoice) => ({
+        updateOne: {
+          filter: { _id: invoice._id },
+          update: {
+            $set: {
+              total: invoice.total - parseFloat(invoice.serviceRateforAdditional),
+              additionalServiceDetails: {},
+              serviceRateforAdditional: null,
+            },
+          },
+        },
+      }));
+
+      await DayInvoice.bulkWrite(updatesForAdditional);
+    }
+
+    sendToClients(
+      req.db, {
+      type: 'rotaUpdated', // Custom event to signal data update
+    });
+
+    res.status(200).json({
+      message: 'Invoices successfully deleted',
+      deletedMainInvoices: mainInvoiceIds,
+      deletedAdditionalInvoices: additionalInvoiceIds,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting invoices', error: error.message });
+  }
+});
+
+const installmentUpdatehandler = async (req, driverId, date) => {
+  const { DayInvoice, Installment } = getModels(req);
+  const dayInvoice = await DayInvoice.findOne({ driverId: driverId, date: date })
+  const installment = await Installment.find({ driverId: dayInvoice.driverId, _id: { $in: dayInvoice.installmentDetail.map((insta) => insta._id) } })
+  installment.map(async (insta) => {
+    const dayInvoiceData = dayInvoice.installmentDetail.find((DIinsta) => DIinsta._id == insta._id);
+    const updatedInstallment = await Installment.updateOne(
+
+      { driverId: dayInvoice.driverId, _id: insta._id },
+      {
+        $set: {
+          installmentPending: insta.installmentPending + parseFloat(dayInvoiceData.perDayInstallmentRate)
+        }
+      }
+    )
+
+  })
+}
+
+router.delete('/', async (req, res) => {
+  const { DayInvoice } = getModels(req);
+  const { driverId, date } = req.body
+  try {
+    await installmentUpdatehandler(req, driverId, date)
+    await DayInvoice.deleteOne({ driverId: driverId, date: date })
+    sendToClients(
+      req.db, {
+      type: 'rotaUpdated', // Custom event to signal data update
+    });
+
+    res.status(200).json({ message: 'Invoice Deleted' })
+  }
+  catch (error) {
+    res.status(500).json({ message: 'Error deleting invoice', error: error.message });
+  }
+})
+
+// Route for deleting an invoice by ID
+router.delete('/deleteInvoiceById/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { DayInvoice } = getModels(req);
+    await DayInvoice.deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+    res.status(200).json({ message: 'Invoice deleted' });
+    sendToClients(
+      req.db, {
+      type: 'approvalStatusUpdated', // Custom event to signal data update
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting invoice', error: error.message });
+  }
+});
+
+// Route for fetching an invoice by ID
+router.get('/dayInvoiceById/:id', async (req, res) => {
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoice = await DayInvoice.findById(req.params.id);
+
+    if (!dayInvoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    res.status(200).json(dayInvoice);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching invoice', error: error.message });
+  }
+});
+
+module.exports = router;

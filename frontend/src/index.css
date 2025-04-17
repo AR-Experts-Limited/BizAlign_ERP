@@ -1,0 +1,243 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+@import "tailwindcss";
+
+
+
+:root {
+  font-family: 'Outfit', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #d64545;
+  --primary: #7e0707;
+  --primary-50: oklch(0.979 0.021 166.113);
+  --primary-100: oklch(0.95 0.052 163.051);
+  --primary-200: oklch(0.905 0.093 164.15);
+  --primary-300: oklch(0.845 0.143 164.978);
+  --primary-400: oklch(0.765 0.177 163.223);
+  --primary-500: oklch(0.696 0.17 162.48);
+  --primary-600: oklch(0.596 0.145 163.225);
+  --primary-700: oklch(0.508 0.118 165.612);
+  --primary-800: oklch(0.432 0.095 166.913);
+  --primary-900: oklch(0.378 0.077 168.94);
+  --primary-950: oklch(0.262 0.051 172.552);
+  --secondary: #ffed4a;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  cursor: pointer;
+}
+
+.print-only {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+}
+
+@media print {
+  .print-only {
+    position: static;
+    left: auto;
+    top: auto;
+  }
+}
+
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected.inRange,
+.flatpickr-day.startRange.inRange,
+.flatpickr-day.endRange.inRange,
+.flatpickr-day.selected:focus,
+.flatpickr-day.startRange:focus,
+.flatpickr-day.endRange:focus,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover,
+.flatpickr-day.selected.prevMonthDay,
+.flatpickr-day.startRange.prevMonthDay,
+.flatpickr-day.endRange.prevMonthDay,
+.flatpickr-day.selected.nextMonthDay,
+.flatpickr-day.startRange.nextMonthDay,
+.flatpickr-day.endRange.nextMonthDay {
+  background: var(--color-primary-500) !important;
+  border-color: var(--color-primary-500) !important;
+}
+
+/* tailwind config css */
+.react-tel-input .selected-flag:hover,
+.react-tel-input .selected-flag:focus,
+.react-tel-input .selected-flag.open {
+  background-color: transparent !important;
+}
+
+@theme {
+  --font-outfit: 'Outfit';
+
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-950: var(--primary-950);
+  --color-secondary: var(--secondary);
+  --color-stroke: #E6EBF1;
+  --color-stroke-dark: #27303E;
+  --color-dark: #111928;
+  --color-dark-2: #1F2A37;
+  --color-dark-3: #374151;
+  --color-dark-4: #4B5563;
+  --color-dark-5: #6B7280;
+  --color-dark-6: #9CA3AF;
+  --color-dark-7: #D1D5DB;
+  --color-dark-8: #E5E7EB;
+  --color-gray: #EFF4FB;
+  --color-gray-dark: #122031;
+  --color-gray-1: #F9FAFB;
+  --color-gray-2: #F3F4F6;
+  --color-gray-3: #E5E7EB;
+  --color-gray-4: #D1D5DB;
+  --color-gray-5: #9CA3AF;
+  --color-gray-6: #6B7280;
+  --color-gray-7: #374151;
+  --color-green: #22AD5C;
+  --color-green-dark: #1A8245;
+  --color-green-light: #2CD673;
+  --color-red: #F23030;
+  --color-red-dark: #E10E0E;
+  --color-red-light: #F56060;
+  --color-blue: #3C50E0;
+  --color-blue-dark: #1C3FB7;
+  --color-blue-light: #5475E5;
+  --color-orange-light: #F59460;
+
+  /* Font Sizes */
+  --text-heading-1: 60px;
+  --text-heading-2: 48px;
+  --text-heading-3: 40px;
+  --text-heading-4: 35px;
+  --text-heading-5: 28px;
+  --text-heading-6: 24px;
+  --text-body-2xlg: 22px;
+  --text-body-sm: 14px;
+  --text-body-xs: 12px;
+
+  --border-1.5: 3px;
+
+  /* Spacing */
+  --spacing-4-5: 1.125rem;
+  --spacing-5-5: 1.375rem;
+  --spacing-6-5: 1.625rem;
+  --spacing-7-5: 1.875rem;
+  --spacing-8-5: 2.125rem;
+  --spacing-9-5: 2.375rem;
+  --spacing-10-5: 2.625rem;
+  --spacing-11-5: 2.875rem;
+  --spacing-12-5: 3.125rem;
+  --spacing-13-5: 3.375rem;
+  --spacing-14-5: 3.625rem;
+  --spacing-15-5: 3.875rem;
+
+  /* Max Widths */
+  --max-w-2-5: 0.625rem;
+  --max-w-3: 0.75rem;
+  --max-w-4: 1rem;
+  --max-w-9: 2.25rem;
+  --max-w-10-5: 2.625rem;
+  --max-w-13: 3.25rem;
+  --max-w-14: 3.5rem;
+  --max-w-35: 8.75rem;
+  --max-w-60: 15rem;
+  --max-w-70: 17.5rem;
+  --max-w-90: 22.5rem;
+
+  /* Z-Index */
+  --z-999999: 999999;
+  --z-99999: 99999;
+  --z-9999: 9999;
+
+  /* Opacity */
+  --opacity-65: 0.65;
+
+  /* Box Shadows */
+  --shadow-default: 0px 4px 7px 0px rgba(0, 0, 0, 0.14);
+  --shadow-error: 0px 12px 34px 0px rgba(13, 10, 44, 0.05);
+  --shadow-card: 0px 1px 2px 0px rgba(0, 0, 0, 0.12);
+  --inset-shadow-md: inset 0 1px 4px 1px rgba(0, 0, 0, 0.15);
+
+  --animate-wiggle: wiggle 0.5s ease-in-out;
+
+
+  --animate-scale-up: scale-up 0.3s ease-in-out;
+
+
+  --animate-rotate: rotate 0.5s ease-in-out;
+
+
+  @keyframes wiggle {
+
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+
+    25% {
+      rotate: 30deg;
+    }
+
+    50% {
+      rotate: -30deg;
+    }
+
+    75% {
+      rotate: 30deg;
+    }
+  }
+
+  @keyframes scale-up {
+
+    0%,
+    100% {
+      scale: 1;
+    }
+
+    50% {
+      scale: 1.6;
+    }
+  }
+
+  @keyframes rotate {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+
+}

@@ -1,0 +1,13 @@
+const mongoose = require('mongoose');
+
+const ProfitLossSchema = new mongoose.Schema({
+    serviceName: String,
+    week: String,
+    site: String,
+    profitLoss: Number,
+    addedBy: Object,
+  });
+  
+  const ProfitLoss = mongoose.model('ProfitLoss', ProfitLossSchema);
+
+module.exports = ProfitLoss;
