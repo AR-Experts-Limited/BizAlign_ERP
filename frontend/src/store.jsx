@@ -4,6 +4,7 @@ import siteReducer from './features/sites/siteSlice'
 import ratecardReducer from './features/ratecards/ratecardSlice'
 import serviceReducer from './features/services/serviceSlice'
 import scheduleReducer from './features/schedules/scheduleSlice'
+import standbydriverReducer from './features/standbydrivers/standbydriverSlice';
 
 export const store = configureStore({
     reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
         ratecards: ratecardReducer,
         services: serviceReducer,
         schedules: scheduleReducer,
+        standbydrivers: standbydriverReducer,
     },
 });

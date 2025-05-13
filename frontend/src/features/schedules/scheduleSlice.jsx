@@ -10,7 +10,7 @@ export const fetchSchedules = createAsyncThunk('Schedules/fetchSchedules', async
 });
 
 export const addSchedule = createAsyncThunk('Schedules/addSchedule', async (Schedule) => {
-    const response = await axios.post(`${API_BASE_URL}`, Schedule);
+    const response = await axios.post(`${API_BASE_URL}/api/schedule/`, Schedule);
     return response.data;
 });
 
@@ -20,7 +20,7 @@ export const updateSchedule = createAsyncThunk('Schedules/updateSchedule', async
 });
 
 export const deleteSchedule = createAsyncThunk('Schedules/deleteSchedule', async (id) => {
-    await axios.delete(`${API_BASE_URL}/api/Schedules/${id}`);
+    await axios.delete(`${API_BASE_URL}/api/schedule/${id}`);
     return id;
 });
 
@@ -39,14 +39,14 @@ const ScheduleSlice = createSlice({
         builder
             // Fetch Schedules
             .addCase(fetchSchedules.pending, (state) => {
-                state.status = 'loading';
+                state.scheduleStatus = 'loading';
             })
             .addCase(fetchSchedules.fulfilled, (state, action) => {
-                state.status = 'succeeded';
+                state.scheduleStatus = 'succeeded';
                 state.list = action.payload;
             })
             .addCase(fetchSchedules.rejected, (state, action) => {
-                state.status = 'failed';
+                state.scheduleStatus = 'failed';
                 state.error = action.error.message;
             })
 

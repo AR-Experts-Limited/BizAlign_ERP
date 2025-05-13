@@ -22,14 +22,14 @@ const ServiceSlice = createSlice({
         builder
             // Fetch Services
             .addCase(fetchServices.pending, (state) => {
-                state.status = 'loading';
+                state.serviceStatus = 'loading';
             })
             .addCase(fetchServices.fulfilled, (state, action) => {
-                state.status = 'succeeded';
+                state.serviceStatus = 'succeeded';
                 state.list = action.payload;
             })
             .addCase(fetchServices.rejected, (state, action) => {
-                state.status = 'failed';
+                state.serviceStatus = 'failed';
                 state.error = action.error.message;
             })
     },

@@ -39,14 +39,14 @@ const RatecardSlice = createSlice({
         builder
             // Fetch Ratecards
             .addCase(fetchRatecards.pending, (state) => {
-                state.status = 'loading';
+                state.ratecardStatus = 'loading';
             })
             .addCase(fetchRatecards.fulfilled, (state, action) => {
-                state.status = 'succeeded';
+                state.ratecardStatus = 'succeeded';
                 state.list = action.payload;
             })
             .addCase(fetchRatecards.rejected, (state, action) => {
-                state.status = 'failed';
+                state.ratecardStatus = 'failed';
                 state.error = action.error.message;
             })
 

@@ -22,14 +22,14 @@ const siteSlice = createSlice({
         builder
             // Fetch Sites
             .addCase(fetchSites.pending, (state) => {
-                state.status = 'loading';
+                state.siteStatus = 'loading';
             })
             .addCase(fetchSites.fulfilled, (state, action) => {
-                state.status = 'succeeded';
+                state.siteStatus = 'succeeded';
                 state.list = action.payload;
             })
             .addCase(fetchSites.rejected, (state, action) => {
-                state.status = 'failed';
+                state.siteStatus = 'failed';
                 state.error = action.error.message;
             })
     },

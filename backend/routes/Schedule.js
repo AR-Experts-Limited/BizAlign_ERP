@@ -132,16 +132,28 @@ router.get('/filter1', async (req, res) => {
   }
 });
 
-// Route to delete schedules by driver and date range
-router.delete('/', async (req, res) => {
-  const { driverId, daysArray } = req.body;
+// // Route to delete schedules by driver and date range
+// router.delete('/', async (req, res) => {
+//   const { driverId, daysArray } = req.body;
+
+//   try {
+//     const { Schedule } = getModels(req);
+//     await Schedule.deleteMany({ driverId, day: { $in: daysArray.map(day => new Date(day)) } });
+//     sendToClients(req.db, {
+//       type: 'scheduleUpdated', // Custom event to signal data update
+//     });
+//     res.json({ message: 'Schedule deleted' });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Error deleting schedule', error: error.message });
+//   }
+// });
+
+router.delete('/:id', async (req, res) => {
 
   try {
     const { Schedule } = getModels(req);
-    await Schedule.deleteMany({ driverId, day: { $in: daysArray.map(day => new Date(day)) } });
-    sendToClients(req.db, {
-      type: 'scheduleUpdated', // Custom event to signal data update
-    });
+    await Schedule.deleteOne({ _id: req.params.id })
+
     res.json({ message: 'Schedule deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting schedule', error: error.message });

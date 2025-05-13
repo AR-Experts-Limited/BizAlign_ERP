@@ -39,14 +39,14 @@ const driverSlice = createSlice({
         builder
             // Fetch Drivers
             .addCase(fetchDrivers.pending, (state) => {
-                state.status = 'loading';
+                state.driverStatus = 'loading';
             })
             .addCase(fetchDrivers.fulfilled, (state, action) => {
-                state.status = 'succeeded';
+                state.driverStatus = 'succeeded';
                 state.list = action.payload;
             })
             .addCase(fetchDrivers.rejected, (state, action) => {
-                state.status = 'failed';
+                state.driverStatus = 'failed';
                 state.error = action.error.message;
             })
 
