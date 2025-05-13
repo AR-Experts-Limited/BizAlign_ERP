@@ -36,7 +36,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
     ];
 
     return (
-        <div className={`h-full bg-neutral-200/60 overflow-auto w-60  border-r-2 border-primary-100/30  dark:bg-dark-3 dark:border-dark-4 transition duration-300 origin-left ${sidebarIsOpen ? '' : '-translate-x-60'} `}>
+        <div className={`h-full bg-neutral-200 inset-shadow-md inset-shadow-stone-700/30 overflow-auto w-60  transition duration-300 origin-left ${sidebarIsOpen ? '' : '-translate-x-60'} `}>
             <div className='mb-12'>
                 <div className="flex flex-col h-full flex-nowrap gap-5 m-4 justify-around  dark:bg-dark-3 dark:border-dark-4 ">
                     {menuItems.map((item) => (

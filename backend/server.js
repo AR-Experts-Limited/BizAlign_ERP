@@ -86,7 +86,7 @@ const upload = multer({
 app.use(dbMiddleware);
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://10.122.205.136:5173', 'https://erp-rainaltd.bizalign.co.uk', 'https://app.bizalign.co.uk'],  // Change this to allow requests from your frontend
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://10.122.205.136:5173', 'https://erp-rainaltd.bizalign.co.uk', 'https://app.bizalign.co.uk'],  // Change this to allow requests from your frontend
   credentials: true,
 }));
 

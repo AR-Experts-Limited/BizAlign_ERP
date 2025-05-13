@@ -1,0 +1,26 @@
+#root {
+  height: 100vh;
+  position: relative;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+.calendar-table {
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+
+
+  th {
+    padding: 1rem;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 1rem;
+    border: 1px solid rgba(193, 193, 193, 0.527);
+  }
+}
