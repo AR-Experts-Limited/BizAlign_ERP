@@ -15,13 +15,13 @@ export const addStandbyDriver = createAsyncThunk('StandbyDrivers/addStandbyDrive
 });
 
 export const updateStandbyDriver = createAsyncThunk('StandbyDrivers/updateStandbyDriver', async (standbyDriver) => {
-    const response = await axios.put(`${API_BASE_URL}//api/standbydriver/`, standbyDriver);
+    const response = await axios.put(`${API_BASE_URL}/api/standbydriver/`, standbyDriver);
     return response.data;
 });
 
 export const deleteStandbyDriver = createAsyncThunk('StandbyDrivers/deleteStandbyDriver', async (standbyDriver) => {
-    const response = await axios.put(`${API_BASE_URL}//api/standbydriver/`, standbyDriver);
-    return response.data._id;
+    await axios.delete(`${API_BASE_URL}/api/standbydriver/`, { data: { ...standbyDriver } });
+    return standbyDriver._id;
 });
 
 const StandbyDriverSlice = createSlice({
@@ -75,7 +75,11 @@ const StandbyDriverSlice = createSlice({
             })
             .addCase(deleteStandbyDriver.fulfilled, (state, action) => {
                 state.deleteStatus = 'succeeded';
-                state.list = state.list.filter((d) => d._id !== action.payload);
+                console.log(action.payload)
+                console.log("Before:", JSON.stringify(state.list, null, 2));
+                state.list = state.list.filter((d) => d._id != action.payload);
+                console.log("After:", JSON.stringify(state.list, null, 2));
+
             })
             .addCase(deleteStandbyDriver.rejected, (state, action) => {
                 state.deleteStatus = 'failed';

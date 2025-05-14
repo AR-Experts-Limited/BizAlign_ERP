@@ -1,8 +1,6 @@
 const checkContinuousSchedule = (driverId, newScheduleDate, allSchedules) => {
     const newDate = new Date(newScheduleDate);
-    console.log("allSchedules:", allSchedules)
 
-    //console.log("newDate", newDate)
     // Filter schedules for this driver within ±6 days of the new schedule
     const schedules = allSchedules
         .filter(schedule => schedule.driverId === driverId)
@@ -17,7 +15,6 @@ const checkContinuousSchedule = (driverId, newScheduleDate, allSchedules) => {
     // Sort schedules by date
     schedules.sort((a, b) => a.day - b.day);
 
-    console.log("schedules:", schedules)
     // Check for 7 consecutive working days
     let consecutiveDays = 1;
 
