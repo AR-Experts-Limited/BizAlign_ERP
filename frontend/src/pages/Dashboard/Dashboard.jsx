@@ -36,7 +36,7 @@ const Dashboard = () => {
             {/* Info cards */}
             <div className='flex flex-wrap gap-2 m-1 md:m-8  justify-center md:justify-between'>
                 {informationCardDetails.map((infoCard) => (
-                    <div className='flex gap-3 w-full md:w-60 p-4 overflow-auto bg-primary-200/30 backdrop-blur-sm border-[1.5px] border-primary-500/30 text-primary-500 rounded-xl shadow-xl md:shadow-2xl'>
+                    <div className='flex gap-3 w-full md:w-60 p-4 overflow-auto bg-primary-200/30 backdrop-blur-sm border-[1.5px] border-primary-500/30 text-primary-500 rounded-xl shadow-lg md:shadow-xl'>
                         <div className='flex items-center justify-center p-4 bg-white inset-shadow-sm/30 border-[1.5px] border-primary-500/40 rounded-lg'>{infoCard.icon}</div>
                         <div className='flex flex-col gap-2 '>
                             <p className='text-center font-bold'>{infoCard.title}</p>
@@ -48,7 +48,7 @@ const Dashboard = () => {
             {/* Site cards */}
             <div className='flex flex-wrap m-1 mt-4 md:m-8 gap-2 justify-center md:justify-between text-sm'>
                 {sites.map((site, index) => (
-                    <div className='flex flex-col shadow-xl md:shadow-2xl items-center gap-3 w-full md:w-60 p-4 bg-white/20 backdrop-blur-sm border-[1.5px] border-neutral-200 rounded-xl'>
+                    <div className='flex flex-col shadow-lg md:shadow-xl items-center gap-3 w-full md:w-60 p-4 bg-white/20 backdrop-blur-sm border-[1.5px] border-neutral-200 rounded-xl'>
                         <div className='flex items-center gap-2 '>
                             <div><FiMapPin size={17} /></div>
                             <p className='text-center font-bold'>{site.siteName}</p>

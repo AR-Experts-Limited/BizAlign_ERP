@@ -3,10 +3,10 @@ import { useSelector, useDispatch } from 'react-redux';
 import moment from 'moment';
 import { FaTrashAlt } from "react-icons/fa";
 import { IoIosAddCircle, IoIosAddCircleOutline } from "react-icons/io";
-
+import { RiCheckDoubleLine } from "react-icons/ri";
 import { IoMoon, IoMoonOutline } from "react-icons/io5";
-import { cn } from "../../lib/utils";
 
+import { cn } from "../../lib/utils";
 import InputGroup from '../../components/InputGroup/InputGroup'
 import { fetchDrivers, } from '../../features/drivers/driverSlice';
 import { fetchSites } from '../../features/sites/siteSlice';
@@ -17,7 +17,6 @@ import checkContinuousSchedule from './checkContinuousSchedule';
 import calculateWorkStreak from './calculateWorkStreak';
 import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
 import { addStandbyDriver, deleteStandbyDriver, fetchStandbyDrivers } from '../../features/standbydrivers/standbydriverSlice';
-import { BsDistributeVertical } from 'react-icons/bs';
 
 const SchedulePlanner = () => {
     const dispatch = useDispatch();
@@ -208,7 +207,7 @@ const SchedulePlanner = () => {
                     </div>
                 </div>
 
-                <div className='mt-6 rounded-xl overflow-y-scroll max-h-[25rem]'>
+                <div className='mt-6 rounded-t-xl overflow-y-scroll max-h-[25rem]'>
                     <table className='calendar-table text-xs md:text-base w-full border border-neutral-200'>
                         <thead>
                             <tr className='text-primary-500'>
@@ -228,7 +227,7 @@ const SchedulePlanner = () => {
                                 const standbydriver = standbydriversList.some((sdriver) => sdriver._id === driver._id)
                                 return (
                                     <tr>
-                                        <td className='z-2 sticky left-0 bg-linear-to-r from-white  to-white/10 backdrop-blur-md'>
+                                        <td className='z-10 sticky left-0 bg-linear-to-r from-white  to-white/10 backdrop-blur-md'>
                                             <div className='flex flex-col gap-3'>
                                                 <p>{driver.firstName + ' ' + driver.lastName}</p>
                                                 {disableDriver && <div className='text-sm text-center text-white bg-stone-400 p-0.5 rounded-md'>{disableDriver}</div>}
@@ -263,12 +262,13 @@ const SchedulePlanner = () => {
                                             }
                                             else if (schedule) {
                                                 tabledata =
-                                                    <div className="relative group">
-                                                        <div className={`z-10 flex items-center justify-center text-center ${streak < 3 ? 'bg-green-300/60' : streak < 5 ? 'bg-amber-200/60' : 'bg-red-300/70'} rounded-md text-sm p-2 group-hover:pr-9 group-hover:text-xs transition-all duration-300`}>
-                                                            {schedule.service}
+                                                    <div className="relative group h-18 w-35">
+                                                        <div className={`relative z-6 h-full w-full shadow-sm flex gap-1 items-center justify-center text-center ${streak < 3 ? 'bg-green-200' : streak < 5 ? 'bg-yellow-100' : 'bg-red-200'} rounded-md text-sm p-2 group-hover:w-28 group-hover:text-xs group-hover:rounded-r-none group-hover:rounded-l-md transition-all duration-300`}>
+                                                            <div>{schedule.service}</div>
+                                                            <div className='p-1 shadow-md rounded-full h-6 w-6 flex justify-center items-center bg-white/80'><RiCheckDoubleLine className={`${schedule.acknowledged ? 'text-green-400' : ''}`} size={20} /></div>
                                                         </div>
-                                                        <div className="absolute top-0 right-0 h-full w-0 group-hover:w-8 opacity-0 group-hover:opacity-100 z-20 overflow-hidden transition-all duration-300 origin-left">
-                                                            <div onClick={() => handleDeleteSchedule(schedule._id)} className="cursor-pointer h-full flex items-center justify-center bg-red-500 text-white p-2 rounded-r-md inset-shadow-md hover:bg-red-400">
+                                                        <div className="absolute top-0 right-[1px] h-full z-5 overflow-hidden transition-all duration-300 origin-left">
+                                                            <div onClick={() => handleDeleteSchedule(schedule._id)} className="cursor-pointer h-full flex items-center justify-center bg-red-500 text-white p-2 pl-2.5 rounded-r-md inset-shadow-md hover:bg-red-400">
                                                                 <FaTrashAlt size={14} />
                                                             </div>
                                                         </div>
@@ -299,7 +299,7 @@ const SchedulePlanner = () => {
                                                     </div>
                                             }
                                             return (
-                                                <td key={day.date} >
+                                                <td className='h-22 w-41' key={day.date} >
                                                     {tabledata}
                                                 </td>
                                             )
