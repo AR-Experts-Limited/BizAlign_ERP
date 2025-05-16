@@ -39,7 +39,6 @@ const SchedulePlanner = () => {
     const [searchDriver, setSearchDriver] = useState('')
 
     const [addScheduleData, setAddScheduleData] = useState(null)
-    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
         if (sites.length > 0) {
@@ -252,16 +251,17 @@ const SchedulePlanner = () => {
     }, [driversList, days, schedules]);
 
     return (
-        <div className='w-full h-full flex items-center justify-center p-1.5 md:p-4 overflow-hidden '>
-            <div className='relative flex flex-col w-full h-full bg-white rounded-xl p-2 md:p-4 shadow overflow-hidden'>
-                <div className='flex justify-around items-center p-3 gap-4  bg-neutral-100/90 shadow border-[1.5px] border-neutral-300/80 rounded-lg overflow-auto' >
+        <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden '>
+            <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>Schedule Planner</h2>
+            <div className='relative flex flex-col w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-4 shadow overflow-hidden'>
+                <div className='flex justify-around items-center p-3 gap-4  bg-neutral-100/90 dark:bg-dark-4/90 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-auto dark:!text-white' >
                     <div className='flex flex-col gap-1'>
                         <label className='text-xs font-semibold'>Search Personnel Name:</label>
-                        <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
+                        <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
                     </div>
                     <div className='flex flex-col gap-1'>
                         <label className='text-xs font-semibold'>Select Site:</label>
-                        <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-10 outline-none focus:border-primary-200" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
+                        <select className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-10 outline-none focus:border-primary-200 dark:border-dark-5" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
                             {sites.map((site) => (
                                 <option value={site.siteKeyword}>{site.siteName}</option>
                             ))}
@@ -270,12 +270,12 @@ const SchedulePlanner = () => {
                     <div className='flex flex-col items-center justify-center gap-1'>
                         <label className='text-xs font-semibold'>Select {rangeType}: </label>
                         <div className='flex items-center justify-center w-full h-full gap-2'>
-                            <button name="previous" onClick={() => handleForwardOrBackward('previous')} className='flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200'><FaChevronLeft size={13} /></button>
+                            <button name="previous" onClick={() => handleForwardOrBackward('previous')} className='dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5'><FaChevronLeft size={13} /></button>
                             {rangeType === 'daily' && <WeekFilter value={selectedRangeIndex} type={rangeType} display={rangeOptions[selectedRangeIndex]?.display} onChange={(e) => setSelectedRangeIndex(e)} />}
                             {rangeType === 'weekly' && <WeekFilter value={selectedRangeIndex} type={rangeType} display={rangeOptions[selectedRangeIndex]?.display} onChange={(e) => setSelectedRangeIndex(e)} />}
                             {rangeType === 'biweekly' && <WeekFilter value={selectedRangeIndex} type={rangeType} display={rangeOptions[selectedRangeIndex]?.display} onChange={(e) => setSelectedRangeIndex(e)} />}
                             {rangeType === 'monthly' && <WeekFilter value={selectedRangeIndex} type={rangeType} onChange={(e) => setSelectedRangeIndex(e)} />}
-                            <button name="next" onClick={() => handleForwardOrBackward('next')} className='flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200'><FaChevronRight size={14} /></button>
+                            <button name="next" onClick={() => handleForwardOrBackward('next')} className='dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5'><FaChevronRight size={14} /></button>
                         </div>
                     </div>
                     <div className='flex flex-col gap-1'>
@@ -316,7 +316,7 @@ const SchedulePlanner = () => {
                                 return (
                                     <tr>
                                         <td className='z-10 sticky left-0 bg-white'>
-                                            <div className='flex flex-col gap-3'>
+                                            <div className='flex flex-col gap-3 '>
                                                 <p>{driver.firstName + ' ' + driver.lastName}</p>
                                                 {disableDriver && <div className='text-sm text-center text-white bg-stone-400 p-0.5 rounded-md'>{disableDriver}</div>}
                                                 {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs'>Stand by driver from {driver.siteSelection}</div>}
@@ -366,7 +366,7 @@ const SchedulePlanner = () => {
                                                 tabledata =
                                                     <div className={`relative flex justify-center h-full w-full group`}>
                                                         <div className='relative max-w-40'>
-                                                            <div className={`relative z-6 w-full h-full shadow-md flex gap-1 items-center justify-center overflow-auto bg-gray-100 border border-gray-200 ${streak < 3 ? ' border-l-4 border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
+                                                            <div className={`relative z-6 w-full h-full shadow-md flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                                                 <div className='overflow-auto max-h-[4rem]'>{schedule.service}</div>
                                                                 <div className='p-1 shadow-md rounded-full h-6 w-6 flex justify-center items-center bg-white/80'>
                                                                     <RiCheckDoubleLine className={`${schedule.acknowledged ? 'text-green-400' : ''}`} size={20} />
@@ -417,7 +417,7 @@ const SchedulePlanner = () => {
                                                     </div>
                                             }
                                             return (
-                                                <td key={day.date} >
+                                                <td key={day.date} className={`${new Date(day.date).toDateString() === new Date().toDateString() ? 'bg-amber-100/30' : ''}`} >
                                                     {!day.default && tabledata}
                                                 </td>
                                             )
