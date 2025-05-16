@@ -10,6 +10,8 @@ import {
     updateDriver,
     deleteDriver,
 } from '../../features/drivers/driverSlice';
+import { fetchSchedules } from '../../features/schedules/scheduleSlice';
+
 import { fetchSites } from '../../features/sites/siteSlice';
 import Location from '../../components/Location/Location'
 
@@ -17,10 +19,13 @@ const Dashboard = () => {
     const dispatch = useDispatch();
     const { list: drivers, driverStatus, addStatus, deleteStatus, error } = useSelector((state) => state.drivers);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
+    const { list: schedules, scheduleStatus } = useSelector((state) => state.schedules)
+
 
     useEffect(() => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
         if (siteStatus === 'idle') dispatch(fetchSites())
+        if (scheduleStatus === 'idle') dispatch(fetchSchedules())
     }, [driverStatus, siteStatus, dispatch]);
 
     const informationCardDetails = [
@@ -33,10 +38,11 @@ const Dashboard = () => {
     return (
         <div className='w-full p-4 overflow-auto'>
             <h2 className='text-xl font-bold dark:text-white'>Dashboard</h2>
+
             {/* Info cards */}
             <div className='flex flex-wrap gap-2 m-1 md:m-8  justify-center md:justify-between'>
                 {informationCardDetails.map((infoCard) => (
-                    <div className='flex gap-3 w-full md:w-60 p-4 overflow-auto bg-primary-200/30 backdrop-blur-sm border-[1.5px] border-primary-500/30 text-primary-500 rounded-xl shadow-lg md:shadow-xl'>
+                    <div className='flex gap-3 w-full md:w-60 p-4 overflow-auto bg-primary-200/30 border-[1.5px] border-primary-500/30 text-primary-500 rounded-xl shadow-lg md:shadow-xl'>
                         <div className='flex items-center justify-center p-4 bg-white inset-shadow-sm/30 border-[1.5px] border-primary-500/40 rounded-lg'>{infoCard.icon}</div>
                         <div className='flex flex-col gap-2 '>
                             <p className='text-center font-bold'>{infoCard.title}</p>
@@ -45,10 +51,11 @@ const Dashboard = () => {
                     </div>
                 ))}
             </div>
+
             {/* Site cards */}
             <div className='flex flex-wrap m-1 mt-4 md:m-8 gap-2 justify-center md:justify-between text-sm'>
                 {sites.map((site, index) => (
-                    <div className='flex flex-col shadow-lg md:shadow-xl items-center gap-3 w-full md:w-60 p-4 bg-white/20 backdrop-blur-sm border-[1.5px] border-neutral-200 rounded-xl'>
+                    <div className='flex flex-col shadow-lg md:shadow-xl items-center gap-3 w-full md:w-60 p-4 bg-white/30 border-[1.5px] border-neutral-200 rounded-xl'>
                         <div className='flex items-center gap-2 '>
                             <div><FiMapPin size={17} /></div>
                             <p className='text-center font-bold'>{site.siteName}</p>

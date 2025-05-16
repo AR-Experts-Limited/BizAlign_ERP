@@ -51,23 +51,23 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
     const { userDetails } = useSelector((state) => state.auth);
 
     return (
-        <div className="navbar z-20 p-2 md:p-5 flex items-center justify-between h-18 bg-neutral-50 w-screen border-b-3 border-primary-400/30 dark:bg-dark dark:text-white">
-            <div><button className={`rounded-lg p-2 hover:bg-neutral-200 hover:text-white`} onClick={() => setSidebarIsOpen(prev => !prev)} ><IoChevronForward
+        <div className="navbar z-20 p-2 md:p-5 flex items-center justify-between h-18 bg-white w-screen border-b border-primary-300/60 dark:bg-dark dark:text-white">
+            <div className="flex-1 "><button className={`rounded-lg p-2 hover:bg-neutral-200 hover:text-white`} onClick={() => setSidebarIsOpen(prev => !prev)} ><IoChevronForward
                 className={`transform transition duration-500 ${sidebarIsOpen ? 'rotate-180' : ''}`}
                 size={20}
             /></button></div>
             <div>
-                <img className="h-5 w-40 md:h-8 md:w-60" src="/Asset_8.png" />
+                <img className="h-5 w-10 md:h-9 md:w-18" src="/Asset_4.png" />
             </div>
 
-            <div className="relative flex gap-3 items-center">
-                <div className="text-xs md:text-lg h-8 w-8 md:h-12 md:w-12 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
-                    <FaCalendarDays size={17} />
+            <div className="relative flex-1 flex gap-3 items-center justify-end">
+                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
+                    <FaCalendarDays size={15} />
                 </div>
-                <div className="text-xs md:text-lg h-8 w-8 md:h-12 md:w-12 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
-                    <PiBell size={18} />
+                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
+                    <PiBell size={16} />
                 </div>
-                <div className="text-xs md:text-lg h-8 w-8 md:h-12 md:w-12 flex justify-center items-center rounded-full bg-black text-white">
+                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center rounded-full bg-black text-white">
                     SR
                 </div>
 

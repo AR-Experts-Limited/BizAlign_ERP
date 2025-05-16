@@ -43,7 +43,7 @@ function App() {
   ];
 
   return (
-    <div className="app fixed bg-white dark:bg-dark-4 w-screen h-screen flex flex-col">
+    <div className="app fixed bg-stone-100 dark:bg-dark-4 w-screen h-screen flex flex-col">
 
       {!hideLayout && <Navbar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} />}
 

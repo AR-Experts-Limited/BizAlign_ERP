@@ -17,20 +17,6 @@ function RateCardWeek({ value, onChange }) {
 
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-    // Update selected weeks when external value changes (but not override every time)
-    // useEffect(() => {
-    //     if (Array.isArray(value)) {
-    //         const updated = value.map((isoWeekStr) => {
-    //             const [year, weekStr] = isoWeekStr.split('-W');
-    //             const week = parseInt(weekStr, 10);
-    //             const date = new Date(year, 0, (week - 1) * 7);
-    //             const { startOfWeek, endOfWeek } = getWeekRange(date);
-    //             return { startOfWeek, endOfWeek };
-    //         });
-    //         setSelectedWeeks(updated);
-    //     }
-    // }, [value?.length]);
-
     const getWeekRange = (date) => {
         const startOfWeek = new Date(date);
         const day = startOfWeek.getDay();

@@ -9,18 +9,26 @@ body {
 }
 
 .calendar-table {
-  table-layout: auto;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 
 
   th {
-    padding: 1rem;
+    padding: 0.5rem;
+    height: 4rem;
+    width: 12rem;
+    max-height: 4rem;
+    max-width: 12rem;
     white-space: nowrap;
   }
 
   td {
     padding: 1rem;
-    border: 1px solid rgba(193, 193, 193, 0.527);
+    height: 7rem;
+    max-width: 9rem;
+    max-height: 7rem;
+    width: 9rem;
+    border: 0.1px solid rgba(189, 189, 189, 0.327);
   }
 }

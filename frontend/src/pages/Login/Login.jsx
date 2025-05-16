@@ -177,7 +177,7 @@ const Login = () => {
                 {/* bg-linear-133 from-[#047ba4]/80 to-[#498b15fc]/80 
                 bg-[radial-gradient(#006173_5%,transparent_11%)] [background-size:20px_20px] dark:bg-[radial-gradient(#89CA38_10%,transparent_11%)] dark:[background-size:30px_30px]*/}
 
-                <div className='py-5 px-14 flex flex-col  items-center dark:bg-dark-5  bg-linear-133 from-[#047ba4]/80 to-[#498b15fc]/80  shadow-[8px_5px_30px_8px_rgba(0,0,0,0.25)] dark:border-dark-3/70 border-2 border-stone-600/30 rounded-xl backdrop-blur-sm'>
+                <div className='py-5 px-14 flex flex-col  items-center dark:bg-dark-5  bg-linear-133 from-[#047ba4]/80 to-[#498b15fc]/80  shadow-[8px_5px_30px_8px_rgba(0,0,0,0.25)] dark:border-dark-3/70 border-2 border-stone-600/30 rounded-xl '>
                     <div className='flex flex-col gap-2 justify-center items-center'>
                         <img className='h-45 w-45' src="/Asset_3.png" />
                     </div>
