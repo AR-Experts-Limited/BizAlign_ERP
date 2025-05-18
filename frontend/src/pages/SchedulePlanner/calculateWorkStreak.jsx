@@ -24,9 +24,7 @@ const calculateWorkStreak = (driverId, scheduleDate, allSchedules) => {
 
         const dayDifference = (currDate - prevDate) / (1000 * 60 * 60 * 24);
 
-        if (dayDifference === 1 && !schedules[i - 1].service.startsWith("dayoff") &&
-            !schedules[i - 1].service.startsWith("unavailable") &&
-            !schedules[i - 1].service.startsWith("Voluntary Day-Off")) {
+        if (dayDifference === 1) {
             currStreak += 1;
         } else {
             break;

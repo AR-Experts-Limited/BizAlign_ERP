@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from "react-router-dom";
 import { FcSurvey } from "react-icons/fc";
 import { FcBusinessman } from "react-icons/fc";
@@ -9,8 +9,6 @@ import { FcPrint } from "react-icons/fc";
 import { FcRules } from "react-icons/fc";
 import { FcSalesPerformance } from "react-icons/fc";
 import { FcLineChart } from "react-icons/fc";
-
-
 
 import { IoIosNotificationsOutline } from "react-icons/io";
 import { TbLayoutDashboard } from "react-icons/tb";
@@ -29,10 +27,25 @@ import { BiStation } from "react-icons/bi";
 
 const Sidebar = ({ sidebarIsOpen }) => {
 
+    const [delayedPointerEnabled, setDelayedPointerEnabled] = useState(false);
+
+    useEffect(() => {
+        let timeout;
+        if (!sidebarIsOpen) {
+            timeout = setTimeout(() => {
+                setDelayedPointerEnabled(false);
+            }, 300);
+        } else {
+            setDelayedPointerEnabled(true);
+        }
+
+        return () => clearTimeout(timeout);
+    }, [sidebarIsOpen]);
+
     const menuItems = [
-        { path: "/dashboard", name: "Dashboard", icon: <FcSurvey size={20} /> },
-        { path: "/manage-drivers", name: "Manage Drivers", icon: <FcBusinessman size={20} /> },
-        { path: "/rate-card", name: "Rate Cards", icon: <FcCalculator size={20} /> },
+        { path: "/dashboard", name: "Dashboard", icon: <FcSurvey size={22} /> },
+        { path: "/manage-personnels", name: "Manage Personnels", icon: <FcBusinessman size={20} /> },
+        { path: "/rate-card", name: "Rate Cards", icon: <FcCalculator size={22} /> },
         { path: "/notifications", name: "Notifications", icon: <FcSms size={20} /> },
         { path: "/planner", name: "Schedule Planner", icon: <img src='/sidebar_icons/schedule.png' className='h-5 w-5' /> },
         { path: "/live-operations", name: "Live Operations", icon: <BiStation className='text-blue-500' size={20} /> },
@@ -48,22 +61,33 @@ const Sidebar = ({ sidebarIsOpen }) => {
     ];
 
     return (
-        <div className={`h-full bg-neutral-300/80 dark:bg-dark-3 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.1)]  overflow-auto w-60  transition duration-300 origin-left ${sidebarIsOpen ? '' : '-translate-x-60'} `}>
+        <div
+            className={`h-full bg-neutral-300/80 dark:bg-dark-3 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.1)]  overflow-auto transition-all duration-300 origin-left
+                        ${sidebarIsOpen ? 'w-40 md:w-60' : 'w-0 md:w-17'}
+                    `}>
             <div className='mb-12'>
-                <div className="flex flex-col h-full flex-nowrap gap-3 m-4 justify-around  dark:bg-dark-3 dark:border-dark-4 ">
+                <div className="flex flex-col h-full flex-nowrap gap-5 md:gap-3 m-2 justify-around  dark:bg-dark-3 dark:border-dark-4 ">
                     {menuItems.map((item) => (
+
                         <NavLink
                             key={item.path}
                             to={item.path}
                             className={({ isActive }) =>
-                                `p-1 px-2 text-sm md:p-3 md:px-4 flex items-center  gap-3 rounded-md 
-                    text-black dark:hover:bg-dark-5  hover:text-primary-500 hover:bg-primary-300/30 hover:shadow-md dark:text-white whitespace-nowrap
-                    ${isActive ? "bg-primary-700 border border-primary-500  text-white shadow-lg" : ""}`
+                                `relative p-1 px-2 text-sm md:p-3 md:px-4 flex items-center gap-1 rounded-md overflow-hidden
+                    text-black dark:hover:bg-dark-5  hover:text-primary-500 hover:bg-primary-300/30 hover:shadow-md dark:text-white whitespace-nowrap group
+                    ${isActive ? "bg-primary-700 border border-primary-500  text-white shadow-lg" : ""}
+                    ${delayedPointerEnabled ? '' : 'justify-center'}`
                             }
                         >
-                            {item.icon} {item.name}
+                            <div className='flex gap-1 md:gap-4' >
+                                <div className='w-5 h-5'>{item.icon}</div>
+                                <div className={`${delayedPointerEnabled ? 'block' : 'hidden'}`}>{item.name}</div>
+                            </div>
+
                         </NavLink>
+
                     ))}
+
                 </div>
             </div>
         </div>

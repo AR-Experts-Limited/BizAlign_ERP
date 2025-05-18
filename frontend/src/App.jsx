@@ -14,6 +14,8 @@ import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard';
 import Ratecard from './pages/Ratecard/Ratecard';
 import SchedulePlanner from './pages/SchedulePlanner/SchedulePlanner';
+import Rota from './pages/Rota/Rota';
+import LiveOperations from './pages/LiveOperations/LiveOperations';
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
@@ -27,8 +29,8 @@ function App() {
     // { path: "/manage-personnels", name: "Manage Personnels", component: ManageDrivers },
     // { path: "/manage-fleet", name: "Manage Fleet", component: ManageFleet },
     //{ path: "/notifications", name: "Notifications", component: Notifications },
-    // { path: "/live-operations", name: "Live Operations", component: LiveOperations },
-    // { path: "/rota", name: "Rota", component: Rota },
+    { path: "/live-operations", name: "Live Operations", component: LiveOperations },
+    { path: "/rota", name: "Rota", component: Rota },
     // { path: "/deductions", name: "Deductions", component: DriverDeduction },
     // { path: "/working-hours", name: "Working Hours", component: WorkingHours },
     // { path: "/installments", name: "Installments", component: Installments },
@@ -49,7 +51,7 @@ function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {!hideLayout &&
-          <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-60' : 'w-0'}`}>
+          <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-60' : 'w-0 md:w-18'}`}>
             <Sidebar sidebarIsOpen={sidebarIsOpen} />
           </div>}
 

@@ -165,10 +165,10 @@ const Login = () => {
 
     return (
         <div >
-            <div className='dark:bg-dark-1 h-screen w-screen relative flex justify-center items-center '>
+            <div className='dark:bg-dark-1 p-5 h-screen w-screen relative flex justify-center items-center '>
 
-                <div className='dark:hidden absolute -top-25 -right-30 bg-[#006173]/30 h-160 w-160 blur-[90rem] rounded-full'></div>
-                <div className='dark:hidden absolute -bottom-55 -left-55 bg-[#89CA38]/30 h-180 w-180 blur-[90rem] rounded-full'></div>
+                <div className='z-0 dark:hidden absolute -top-25 -right-30 bg-[#006173]/30 h-160 w-160 blur-[90rem] rounded-full'></div>
+                <div className='z-0 dark:hidden absolute -bottom-55 -left-55 bg-[#89CA38]/30 h-180 w-180 blur-[90rem] rounded-full'></div>
 
                 {/* <div className='dark:hidden absolute -top-10 left-15 bg-[#89CA38]/80 h-90 w-90 blur-[190px] rounded-full'></div>
                 <div className='dark:hidden absolute top-0 right-[40%] bg-[#006173] h-60 w-60 blur-[190px] rounded-full'></div> */}
@@ -177,7 +177,7 @@ const Login = () => {
                 {/* bg-linear-133 from-[#047ba4]/80 to-[#498b15fc]/80 
                 bg-[radial-gradient(#006173_5%,transparent_11%)] [background-size:20px_20px] dark:bg-[radial-gradient(#89CA38_10%,transparent_11%)] dark:[background-size:30px_30px]*/}
 
-                <div className='py-5 px-14 flex flex-col  items-center dark:bg-dark-5  bg-linear-133 from-[#047ba4]/80 to-[#498b15fc]/80  shadow-[8px_5px_30px_8px_rgba(0,0,0,0.25)] dark:border-dark-3/70 border-2 border-stone-600/30 rounded-xl '>
+                <div className='z-1 py-2 md:py-5 px-5 md:px-14 flex flex-col  items-center dark:bg-dark-5  bg-linear-133 from-[#047ba4]/80 to-[#498b15fc]/80  shadow-[8px_5px_30px_8px_rgba(0,0,0,0.25)] dark:border-dark-3/70 border-2 border-stone-600/30 rounded-xl '>
                     <div className='flex flex-col gap-2 justify-center items-center'>
                         <img className='h-45 w-45' src="/Asset_3.png" />
                     </div>

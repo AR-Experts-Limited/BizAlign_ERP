@@ -358,7 +358,7 @@ const SchedulePlanner = () => {
                                             }
                                             else if (disableDriver) {
                                                 tabledata = <div className='w-full h-full flex items-center justify-center text-stone-400'>
-                                                    <div class="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+                                                    <div className="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
                                                     </div>
                                                 </div>
                                             }
@@ -366,9 +366,9 @@ const SchedulePlanner = () => {
                                                 tabledata =
                                                     <div className={`relative flex justify-center h-full w-full group`}>
                                                         <div className='relative max-w-40'>
-                                                            <div className={`relative z-6 w-full h-full shadow-md flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
+                                                            <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                                                 <div className='overflow-auto max-h-[4rem]'>{schedule.service}</div>
-                                                                <div className='p-1 shadow-md rounded-full h-6 w-6 flex justify-center items-center bg-white/80'>
+                                                                <div className='p-1 rounded-full h-6 w-6 flex justify-center items-center bg-white'>
                                                                     <RiCheckDoubleLine className={`${schedule.acknowledged ? 'text-green-400' : ''}`} size={20} />
                                                                 </div>
                                                             </div>
