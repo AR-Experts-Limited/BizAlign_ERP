@@ -2,7 +2,7 @@ import { FaTrashAlt } from "react-icons/fa";
 
 export const UsersTable = ({ allUsers, handleEditUser, handleDeleteUser, canEditUser }) => {
     return (
-        <div className='self-start justify-self-start overflow-auto'>
+        <div className='overflow-auto'>
             <table className='table-general'>
                 <thead>
                     <th>#</th>
