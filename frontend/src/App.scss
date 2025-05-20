@@ -32,3 +32,23 @@ body {
     border: 0.1px solid rgba(189, 189, 189, 0.327);
   }
 }
+
+.table-general {
+  table-layout: fixed;
+  width: 100%;
+
+  td {
+    padding: 0.8rem;
+    margin: 1rem;
+    font-size: small;
+    text-align: center;
+    border-bottom: 1px solid rgb(212, 212, 212);
+  }
+
+  th {
+    font-weight: 300;
+    padding: 0.5rem 0;
+    width: 5rem;
+
+  }
+}

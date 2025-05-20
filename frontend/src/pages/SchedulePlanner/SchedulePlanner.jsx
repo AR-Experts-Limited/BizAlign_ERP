@@ -368,8 +368,8 @@ const SchedulePlanner = () => {
                                                         <div className='relative max-w-40'>
                                                             <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                                                 <div className='overflow-auto max-h-[4rem]'>{schedule.service}</div>
-                                                                <div className='p-1 rounded-full h-6 w-6 flex justify-center items-center bg-white'>
-                                                                    <RiCheckDoubleLine className={`${schedule.acknowledged ? 'text-green-400' : ''}`} size={20} />
+                                                                <div className='h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1 '>
+                                                                    <RiCheckDoubleLine className={`${schedule.acknowledged ? 'text-green-400' : ''}`} size={18} />
                                                                 </div>
                                                             </div>
                                                             {/* Delete button - always present but hidden until hover or mobile tap */}

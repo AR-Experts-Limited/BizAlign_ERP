@@ -172,6 +172,7 @@ const Ratecard = () => {
                                             <div className="relative flex justify-center cursor-pointer group">
                                                 <div className="z-4 absolute -left-5 -top-18 text-white -translate-x-1/2 whitespace-normal break-words rounded-sm bg-black/40 mt-1 backdrop-blur-md p-2 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity dark:bg-dark-4">
                                                     Added By: {ratecard.addedBy?.name} on {new Date(ratecard.dateAdded).toLocaleDateString()}
+                                                    <div className="absolute right-[-5.5px] bottom-0 -translate-y-1/2 w-0 h-0 border-x-7 border-x-transparent border-t-10 border-t-gray-800/50 backdrop-blur-md" />
                                                 </div>
                                                 <FcInfo size={18} />
                                             </div></td>

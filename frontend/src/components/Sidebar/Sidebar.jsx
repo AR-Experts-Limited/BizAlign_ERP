@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from "react-router-dom";
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { FcSurvey, FcBusinessman, FcCalculator, FcSms, FcClock, FcPrint, FcRules, FcSalesPerformance, FcLineChart } from "react-icons/fc";
+import { FcSurvey, FcBusinessman, FcCalculator, FcSms, FcClock, FcPrint, FcRules, FcSalesPerformance, FcLineChart, FcBusinessContact } from "react-icons/fc";
 import { BiStation } from "react-icons/bi";
 
 const Sidebar = ({ sidebarIsOpen }) => {
@@ -32,6 +32,8 @@ const Sidebar = ({ sidebarIsOpen }) => {
         { path: "/manage-payments", name: "Manage Payments", icon: <FcSalesPerformance size={20} /> },
         { path: "/print-invoices", name: "Print Invoices", icon: <FcPrint size={20} /> },
         { path: "/profit-loss", name: "Profit / Loss", icon: <FcLineChart size={20} /> },
+        { path: "/manage-users", name: "Manage users", icon: <FcBusinessContact size={20} /> },
+
     ];
 
     return (

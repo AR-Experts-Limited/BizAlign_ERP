@@ -16,6 +16,10 @@ import Ratecard from './pages/Ratecard/Ratecard';
 import SchedulePlanner from './pages/SchedulePlanner/SchedulePlanner';
 import Rota from './pages/Rota/Rota';
 import LiveOperations from './pages/LiveOperations/LiveOperations';
+import Instalments from './pages/Instalments/Instalments';
+import Deductions from './pages/Deductions/Deductions';
+import Incentives from './pages/Incentives/Incentives';
+import ManageUsers from './pages/ManageUsers/ManageUsers';
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
@@ -31,10 +35,10 @@ function App() {
     //{ path: "/notifications", name: "Notifications", component: Notifications },
     { path: "/live-operations", name: "Live Operations", component: LiveOperations },
     { path: "/rota", name: "Rota", component: Rota },
-    // { path: "/deductions", name: "Deductions", component: DriverDeduction },
+    { path: "/deductions", name: "Deductions", component: Deductions },
     // { path: "/working-hours", name: "Working Hours", component: WorkingHours },
-    // { path: "/installments", name: "Installments", component: Installments },
-    // { path: "/incentives", name: "Incentives", component: Incentives },
+    { path: "/installments", name: "Installments", component: Instalments },
+    { path: "/incentives", name: "Incentives", component: Incentives },
     // { path: "/approvals", name: "Approvals", component: Approvals },
     // { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     // { path: "/manage-payments", name: "Manage Payments", component: ManagePayments },
@@ -42,6 +46,8 @@ function App() {
     // { path: "/print-invoices", name: "Print Invoices", component: PrintInvoices },
     // { path: "/profit-loss", name: "Profit / Loss", component: ProfitLoss },
     // { path: "/application-settings", name: "Application Settings", component: ApplicationSettings },
+    { path: "/manage-users", name: "Manage Users", component: ManageUsers },
+
   ];
 
   return (

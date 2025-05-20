@@ -87,6 +87,13 @@ const LiveOperations = () => {
                         <div className='relative max-w-40'>
                             <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                 <div className='overflow-auto max-h-[4rem]'>{schedule?.service}</div>
+                                <div className='flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px] '>
+                                    <svg className='w-4 h-4' viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                                        <polyline points="0,25 20,25 30,05 40,40 50,10 60,25 100,25"
+                                            stroke="orange" stroke-width="7" fill="none"
+                                            class="ecg-path" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
                     </div>}

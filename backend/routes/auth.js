@@ -252,7 +252,7 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '1d' }
     );
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: 'None', secure: false, maxAge: 24 * 60 * 60 * 1000 });
-    res.status(201).json({ message: 'User created successfully', token, role: newUser.role });
+    res.status(201).json({ message: 'User created successfully', user: newUser });
   } catch (error) {
     console.error('Error during signup:', error);
     res.status(500).json({ message: 'Internal server error' });

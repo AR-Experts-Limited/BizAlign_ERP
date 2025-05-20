@@ -39,7 +39,7 @@ const TableStructure = ({ title, state, setters, tableData }) => {
     return (
         <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden '>
             <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>{title}</h2>
-            <div className='relative flex flex-col w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-4 shadow overflow-hidden'>
+            <div className='flex flex-col w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-4 shadow overflow-hidden'>
                 <TableFilters state={state} setters={setters} />
                 <div className="my-3 relative rounded-t-lg flex-1 overflow-auto">
                     <table className='calendar-table text-xs md:text-base w-full border border-neutral-200'>

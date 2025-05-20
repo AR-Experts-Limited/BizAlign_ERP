@@ -2,6 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../features/sites/siteSlice';
 import moment from 'moment';
+moment.updateLocale('en', {
+    week: {
+        dow: 0, // Sunday is day 0
+    },
+});
 import WeekFilter from '../Calendar/WeekFilter';
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
@@ -32,6 +37,7 @@ const TableFilters = ({ state, setters }) => {
                 : rangeType === 'daily'
                     ? moment().format('YYYY-MM-DD')
                     : moment().format('GGGG-[W]WW');
+
         setSelectedRangeIndex(defaultIndex);
     }, [rangeType]);
 
@@ -126,6 +132,7 @@ const TableFilters = ({ state, setters }) => {
         }
         else if (rangeType === 'weekly') {
             defaultValue = { start: moment().startOf('week'), end: moment().endOf('week'), default: true }
+            console.log('DefaultValue:::::', defaultValue)
         }
         else {
             defaultValue = { start: moment().startOf('week'), end: moment().add(2, 'week').endOf('week'), default: true }
@@ -153,22 +160,22 @@ const TableFilters = ({ state, setters }) => {
 
 
     return (
-        <div className='flex justify-around items-center p-3 gap-4  bg-neutral-100/90 dark:bg-dark-4/90 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-auto dark:!text-white' >
+        <div className='grid grid-cols-2 md:grid-cols-4 md:flex-row justify-around items-center p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-4/90 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white' >
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Search Personnel Name:</label>
-                <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
+                <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
             </div>
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Select Site:</label>
-                <select className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-10 outline-none focus:border-primary-200 dark:border-dark-5" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
+                <select className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
                     {sites.map((site) => (
                         <option value={site.siteKeyword}>{site.siteName}</option>
                     ))}
                 </select>
             </div>
-            <div className='flex flex-col items-center justify-center gap-1'>
+            <div className=' flex flex-col items-center justify-center gap-1'>
                 <label className='text-xs font-semibold'>Select {rangeType}: </label>
-                <div className='flex items-center justify-center w-full h-full gap-2'>
+                <div className='relative flex items-center justify-center w-full h-full gap-2'>
                     <button name="previous" onClick={() => handleForwardOrBackward('previous')} className='dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5'><FaChevronLeft size={13} /></button>
                     {rangeType === 'daily' && <WeekFilter value={selectedRangeIndex} type={rangeType} display={rangeOptions[selectedRangeIndex]?.display} onChange={(e) => setSelectedRangeIndex(e)} />}
                     {rangeType === 'weekly' && <WeekFilter value={selectedRangeIndex} type={rangeType} display={rangeOptions[selectedRangeIndex]?.display} onChange={(e) => setSelectedRangeIndex(e)} />}
@@ -179,7 +186,7 @@ const TableFilters = ({ state, setters }) => {
             </div>
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Timeframe: </label>
-                <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1  h-10 outline-none focus:border-primary-200" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
+                <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="biweekly">Bi-weekly</option>
