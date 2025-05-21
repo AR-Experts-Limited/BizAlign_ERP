@@ -171,24 +171,24 @@ function WeekFilter({ type, value, display, onChange }) {
 
   else if (type === 'weekly' || type === 'biweekly') {
     return (
-      <div
-        ref={containerRef}
-        className={`cursor-pointer w-full rounded-lg border-[1.5px] p-1 md:px-2 md:py-2 h-10 flex items-center gap-1 border-neutral-300 bg-white outline-none transition ${isCalendarOpen && 'border-primary-200'} dark:border-dark-3 dark:bg-dark-2`}
-        onClick={() => setIsCalendarOpen(prev => !prev)}
-      >
-        {selectedWeek ? (
-          <span
-            className=" w-full ext-xs md:text-base inline-flex items-center  text-sm overflow-auto"
-          >
-            {display}
-          </span>
-        ) : (
-          <span className="text-gray-400">Select a week</span>
-        )}
-        <div className="ml-1 md:ml-auto">
-          <BiChevronDown size={18} />
+      <div className='w-full' ref={containerRef}>
+        <div
+          className={`cursor-pointer w-full rounded-lg border-[1.5px] p-1 md:px-2 md:py-2 h-10 flex items-center gap-1 border-neutral-300 bg-white outline-none transition ${isCalendarOpen && 'border-primary-200'} dark:border-dark-3 dark:bg-dark-2`}
+          onClick={() => setIsCalendarOpen(prev => !prev)}
+        >
+          {selectedWeek ? (
+            <span
+              className=" w-full ext-xs md:text-base inline-flex items-center  text-sm overflow-auto"
+            >
+              {display}
+            </span>
+          ) : (
+            <span className="text-gray-400">Select a week</span>
+          )}
+          <div className="ml-1 md:ml-auto">
+            <BiChevronDown size={18} />
+          </div>
         </div>
-
         {
           isCalendarOpen && (
             <div className="absolute top-9 left-0 md:right-0 z-30 mt-1 shadow-lg">

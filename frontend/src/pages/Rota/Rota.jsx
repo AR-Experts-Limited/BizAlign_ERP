@@ -54,7 +54,7 @@ const Rota = () => {
                 fetchSchedules()
                 setCacheRangeOption(rangeOptions)
             }
-            else if (Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
+            else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
                 fetchSchedules()
                 setCacheRangeOption(rangeOptions)
             }

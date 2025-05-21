@@ -44,9 +44,11 @@ const TableFilters = ({ state, setters }) => {
 
     useEffect(() => {
         generateRangeOptions();
-        generateDatesInRange();
     }, [rangeType, selectedRangeIndex]);
 
+    useEffect(() => {
+        generateDatesInRange();
+    }, [rangeOptions])
 
     const generateRangeOptions = () => {
         const options = {};
@@ -54,7 +56,6 @@ const TableFilters = ({ state, setters }) => {
         const end = moment().endOf('year');
 
         if (rangeType === 'daily') {
-            console.log('selectedRangeIndex', selectedRangeIndex)
             const date = moment(selectedRangeIndex, 'YYYY-MM-DD');
             let now = date.clone().subtract(2, 'days');
             let end = date.clone().add(2, 'days');
@@ -71,11 +72,9 @@ const TableFilters = ({ state, setters }) => {
 
 
         else if (rangeType === 'weekly') {
-            console.log('selectedRangeIndex', selectedRangeIndex)
             const date = moment(selectedRangeIndex, 'GGGG-[W]WW');
             let now = date.clone().subtract(2, 'weeks').startOf('week');
             const end = date.clone().add(2, 'weeks').endOf('week');
-            console.log(end)
             while (now.isBefore(end) || now.isSame(end, 'day')) {
                 const start = now.clone().startOf('week');
                 const endOfWeek = start.clone().endOf('week');
@@ -132,7 +131,6 @@ const TableFilters = ({ state, setters }) => {
         }
         else if (rangeType === 'weekly') {
             defaultValue = { start: moment().startOf('week'), end: moment().endOf('week'), default: true }
-            console.log('DefaultValue:::::', defaultValue)
         }
         else {
             defaultValue = { start: moment().startOf('week'), end: moment().add(2, 'week').endOf('week'), default: true }

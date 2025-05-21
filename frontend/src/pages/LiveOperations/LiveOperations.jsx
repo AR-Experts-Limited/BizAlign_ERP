@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const LiveOperations = () => {
     const [rangeType, setRangeType] = useState('weekly');
     const [rangeOptions, setRangeOptions] = useState({});
-    const [selectedRangeIndex, setSelectedRangeIndex] = useState(moment().format('GGGG-[W]WW'));
+    const [selectedRangeIndex, setSelectedRangeIndex] = useState();
 
     const [selectedSite, setSelectedSite] = useState('')
     const [driversList, setDriversList] = useState([])
@@ -27,9 +27,9 @@ const LiveOperations = () => {
 
 
     useEffect(() => {
-        console.log('rangeOption:', rangeOptions)
-        console.log('selectedRangeIndexFromLiveOps', selectedRangeIndex)
-        console.log('cacheOption', cacheRangeOption)
+        // console.log('rangeOption:', rangeOptions)
+        // console.log('selectedRangeIndexFromLiveOps', selectedRangeIndex)
+        // console.log('cacheOption', cacheRangeOption)
         if (driversList.length > 0 && rangeOptions) {
             const rangeOptionsVal = Object.values(rangeOptions)
             const fetchSchedules = async () => {
@@ -47,7 +47,7 @@ const LiveOperations = () => {
                 fetchSchedules()
                 setCacheRangeOption(rangeOptions)
             }
-            else if (Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
+            else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
                 fetchSchedules()
                 setCacheRangeOption(rangeOptions)
             }
@@ -62,6 +62,9 @@ const LiveOperations = () => {
             setPrevRangeType(rangeType)
         }
     }, [rangeOptions])
+
+    console.log('render')
+
 
     const streaks = useMemo(() => {
         const result = {};
@@ -103,7 +106,8 @@ const LiveOperations = () => {
     }
 
     return (
-        <TableStructure title={'Live Operations'} state={state} setters={setters} tableData={tableData} />
+
+        < TableStructure title={'Live Operations'} state={state} setters={setters} tableData={tableData} />
     );
 };
 
