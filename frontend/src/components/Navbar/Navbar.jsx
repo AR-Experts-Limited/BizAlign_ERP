@@ -56,11 +56,11 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                 className={`transform transition duration-500 ${sidebarIsOpen ? 'rotate-180' : ''}`}
                 size={20}
             /></button></div>
-            <div>
+            <div className="justify-self-start">
                 <img className="h-5 w-10 md:h-9 md:w-18" src="/Asset_4.png" />
             </div>
 
-            <div className="relative flex-1 flex gap-3 items-center justify-end">
+            <div className="relative flex-1 flex gap-1 md:gap-3 items-center justify-end">
                 <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
                     <FaCalendarDays size={15} />
                 </div>
@@ -71,7 +71,7 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                     SR
                 </div>
 
-                <div className="flex flex-col gap-1 group">
+                <div className="flex flex-col md:gap-1 group">
                     <p className="text-xs hidden md:block">{userDetails?.userName}</p>
                     <div className="flex gap-1 items-center justify-between">
                         <span className="hidden md:block text-xs bg-primary-300 text-white rounded-md px-1.5 py-0.5">{userDetails?.role}</span>

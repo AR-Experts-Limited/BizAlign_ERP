@@ -20,6 +20,7 @@ import Instalments from './pages/Instalments/Instalments';
 import Deductions from './pages/Deductions/Deductions';
 import Incentives from './pages/Incentives/Incentives';
 import ManageUsers from './pages/ManageUsers/ManageUsers';
+import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels';
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
@@ -30,7 +31,7 @@ function App() {
     { path: "/dashboard", name: "Dashboard", component: Dashboard },
     { path: "/rate-card", name: "Rate Cards", component: Ratecard },
     { path: "/planner", name: "Schedule Planner", component: SchedulePlanner },
-    // { path: "/manage-personnels", name: "Manage Personnels", component: ManageDrivers },
+    { path: "/manage-personnels", name: "Manage Personnels", component: ManagePersonnels },
     // { path: "/manage-fleet", name: "Manage Fleet", component: ManageFleet },
     //{ path: "/notifications", name: "Notifications", component: Notifications },
     { path: "/live-operations", name: "Live Operations", component: LiveOperations },
