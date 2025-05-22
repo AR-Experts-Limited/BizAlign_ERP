@@ -54,7 +54,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
                                             className={({ isActive }) =>
                                                 `relative p-1 text-sm md:p-3 md:px-4 flex items-center gap-1 rounded-md overflow-hidden
                        text-black dark:hover:bg-dark-5 hover:text-primary-500 hover:bg-primary-300/30 hover:shadow-md dark:text-white whitespace-nowrap group
-                       ${isActive ? "bg-primary-700 border border-primary-500 text-white shadow-lg" : ""}`
+                       ${isActive ? "bg-primary-200/50 border border-primary-500 text-white shadow-lg" : ""}`
                                             }
                                         >
                                             <div className='flex gap-1 md:gap-4 items-center'>
