@@ -10,7 +10,11 @@ export const fetchDrivers = createAsyncThunk('drivers/fetchDrivers', async () =>
 });
 
 export const addDriver = createAsyncThunk('drivers/addDriver', async (driver) => {
-    const response = await axios.post(`${API_BASE_URL}`, driver);
+    const response = await axios.post(`${API_BASE_URL}/api/drivers`, driver, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
     return response.data;
 });
 

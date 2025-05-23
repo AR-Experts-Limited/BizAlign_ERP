@@ -188,8 +188,9 @@ router.post('/', upload.any(), async (req, res) => {
     //}
 
     const driverData = req.body;
-    driverData.addedBy = JSON.parse(driverData.addedBy);
-
+    if (driverData.addedBy) {
+      driverData.addedBy = JSON.parse(driverData.addedBy);
+    }
     if (driverData.vatDetails) {
       driverData.vatDetails = JSON.parse(driverData.vatDetails);
     }
@@ -345,7 +346,7 @@ router.put('/:id', async (req, res) => {
         email: updatedDriver.Email
       },
       { new: true }
-    );    
+    );
 
     const updatedFields = {};
 
