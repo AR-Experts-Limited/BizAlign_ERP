@@ -37,7 +37,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
 
     return (
         <div
-            className={`h-full bg-neutral-300/60 dark:bg-dark-3 border-r border-white overflow-auto transition-all duration-300 origin-left
+            className={`h-full bg-neutral-300/60 dark:bg-dark-3 border-r border-stone-400/40 overflow-auto transition-all duration-300 origin-left
         ${sidebarIsOpen ? 'w-40 md:w-60' : 'w-0 md:w-18'}
       ${delayedPointerEnabled ? 'pointer-events-none' : ''}`}
         >
@@ -51,9 +51,9 @@ const Sidebar = ({ sidebarIsOpen }) => {
                                         <NavLink
                                             to={item.path}
                                             className={({ isActive }) =>
-                                                `relative p-1 text-base md:p-2 md:px-4 flex items-center gap-1 rounded-md overflow-hidden
+                                                `relative p-1 text-base md:p-2 md:px-4 flex items-center gap-1 rounded-lg overflow-hidden
                        text-black dark:hover:bg-dark-5 hover:text-primary-500 hover:bg-primary-300/30 hover:shadow-md dark:text-white whitespace-nowrap group
-                       ${isActive ? "bg-primary-300/30   border-l-3 border-primary-400 text-primary-800 rounded-l-none" : ""}`
+                       ${isActive ? "bg-primary-300/30  text-primary-800 shadow-md " : ""}`
                                             }
                                         >
                                             <div className='flex gap-1 md:gap-4 items-center'>

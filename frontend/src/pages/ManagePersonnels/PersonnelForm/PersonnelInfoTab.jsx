@@ -164,8 +164,7 @@ const PersonnelInfoTab = ({ sites, newDriver, onInputChange, errors, age, setAge
                         value={newDriver.PhoneNo}
                         onChange={(value) => onInputChange(null, value, "PhoneNo")}
                         error={errors.PhoneNo}
-                        iconPosition="left"
-                        icon={<FaPhone className='text-neutral-300' />}
+
                     />
                     <p className={`${errors.PhoneNo ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid phone number</p>
                 </div>

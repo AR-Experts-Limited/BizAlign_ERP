@@ -28,6 +28,10 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         dateOfBirth: '',
         nationality: '',
         dateOfJoining: '',
+        vatDetails: {
+            vatNo: '',
+            vatEffectiveDate: ''
+        },
         transportId: '',
         transporterName: '',
         utrNo: '',

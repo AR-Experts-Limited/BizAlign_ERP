@@ -51,13 +51,13 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
     const { userDetails } = useSelector((state) => state.auth);
 
     return (
-        <div className="navbar z-20 p-2 md:p-5 flex items-center justify-between h-18 bg-neutral-50 w-screen border-b border-neutral-300 dark:bg-dark dark:text-white">
+        <div className="navbar z-20 p-2 md:p-5 flex items-center justify-between h-18 bg-neutral-50 w-screen border-b border-stone-400/40 dark:bg-dark dark:text-white">
             <div className="flex-1 "><button className={`rounded-lg p-2 hover:bg-neutral-200 hover:text-white`} onClick={() => setSidebarIsOpen(prev => !prev)} ><IoChevronForward
                 className={`transform transition duration-500 ${sidebarIsOpen ? 'rotate-180' : ''}`}
                 size={20}
             /></button></div>
             <div className="justify-self-start">
-                <img className="h-5 w-10 md:h-9 md:w-18" src="/Asset_4.png" />
+                <img className="h-45 w-45 md:h-65 md:w-65" src="/bizalign.png" />
             </div>
 
             <div className="relative flex-1 flex gap-1 md:gap-3 items-center justify-end">
