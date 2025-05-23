@@ -7,6 +7,7 @@ const s3 = require('./aws'); // Optional: To delete files from file system
 const { Expo } = require('expo-server-sdk');
 const { sendToClients } = require('../utils/sseService');
 const nodemailer = require('nodemailer');
+const DayInvoice = require('../models/DayInvoice');
 
 const upload = multer({
   storage: multerS3({
@@ -30,13 +31,32 @@ const getModels = (req) => ({
   Installment: req.db.model('Installment', require('../models/installments').schema),
   User: req.db.model('User', require('../models/User').schema),
   Notification: req.db.model('Notification', require('../models/notifications').schema),
+  IdCounter: req.db.model('IdCounter', require('../models/IdCounter').schema)
 });
 
 // Route for adding a new invoice
 router.post('/', async (req, res) => {
   try {
-    const { DayInvoice } = getModels(req);
-    const newInvoice = new DayInvoice(req.body);
+    const { DayInvoice, IdCounter } = getModels(req);
+    const { driverId, serviceWeek, site } = req.body
+    const invoiceInSameWeek = await DayInvoice.find({ driverId, serviceWeek, site })
+    const invoiceCounter = await IdCounter.findOneAndUpdate(
+      { idType: "InvoiceNumber" },
+      { $inc: { counterValue: 1 } },
+      { new: true, upsert: true }
+    );
+    let newInvoice;
+    if (invoiceInSameWeek.length > 0) {
+      newInvoice = new DayInvoice({ ...req.body, invoiceNumber: invoiceCounter.counterValue, referenceNumber: invoiceInSameWeek[0]?.referenceNumber || 0 });
+    }
+    else {
+      const referenceCounter = await IdCounter.findOneAndUpdate(
+        { idType: "ReferenceNumber" },
+        { $inc: { counterValue: 1 } },
+        { new: true, upsert: true }
+      );
+      newInvoice = new DayInvoice({ ...req.body, invoiceNumber: invoiceCounter.counterValue, referenceNumber: referenceCounter.counterValue });
+    }
     sendToClients(
       req.db, {
       type: 'rotaUpdated', // Custom event to signal data update
@@ -94,9 +114,44 @@ router.get('/siteandweek', async (req, res) => {
   }
 });
 
+router.get('/siteandweek-multi', async (req, res) => {
+  const { sitesArray, serviceWeek, startDate, endDate } = req.query;
+  const query = {};
+
+  // Handle multiple sites
+  if (Array.isArray(sitesArray) && sitesArray.length > 0) {
+    query.site = { $in: sitesArray };
+  }
+
+  // Handle week filter
+  if (serviceWeek) {
+    query.serviceWeek = serviceWeek;
+  }
+
+  // Handle date range
+  if (startDate && endDate) {
+    query.date = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    };
+  }
+
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoices = await DayInvoice.find(query);
+    res.status(200).json(dayInvoices);
+  } catch (error) {
+    console.error("Error fetching multi-site day invoices:", error);
+    res.status(500).json({
+      message: 'Error fetching day invoices for given sites and week',
+      error: error.message,
+    });
+  }
+});
+
 // Route for fetching invoices for Working Hours
-router.get('/workinghours', async (req, res) => {
-  const { sitesArray, serviceWeek, startDate, endDate, drivers } = req.query;
+router.post('/workinghours', async (req, res) => {
+  const { sitesArray, serviceWeek, startDate, endDate, drivers } = req.body;
   const query = { driverId: { $in: drivers } };
 
   if (sitesArray) query.site = { $in: sitesArray };
@@ -116,6 +171,29 @@ router.get('/workinghours', async (req, res) => {
     res.status(500).json({ message: 'Error fetching day invoices for given site and week', error: error.message });
   }
 });
+
+//Route for Updating Comments
+router.put('/comments', async (req, res) => {
+  try {
+    const { invoiceID } = req.query;
+    const commentObj = req.body;
+    const { DayInvoice } = getModels(req);
+
+    if (!invoiceID) {
+      return res.status(400).json({ message: "Missing invoiceID" });
+    }
+
+    const updatedInvoice = await DayInvoice.findByIdAndUpdate(
+      invoiceID,
+      { $set: { comments: commentObj } },
+      { new: true }
+    );
+    res.status(200).json(updatedInvoice);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating Invoice comment", error: error.message });
+  }
+});
+
 
 // Route for fetching invoices by driver ID
 router.get('/driver', async (req, res) => {
@@ -246,12 +324,34 @@ router.post('/uploadInvoice', upload.any(), async (req, res) => {
 
 // Route for updating a day invoice
 router.put('/', async (req, res) => {
-  const { driverId, date, ...updates } = req.body;
+  const { driverId, date, site, serviceWeek, ...updates } = req.body;
 
   try {
-    const { DayInvoice, Installment } = getModels(req);
+    const { DayInvoice, Installment, IdCounter } = getModels(req);
 
     const dayInvoice = await DayInvoice.findOne({ driverId, date });
+
+    const invoiceInSameWeek = await DayInvoice.find({ driverId, serviceWeek, site })
+    const invoiceCounter = await IdCounter.findOneAndUpdate(
+      { idType: "InvoiceNumber" },
+      { $inc: { counterValue: 1 } },
+      { new: true, upsert: true }
+    );
+    let invoiceNumber;
+    let referenceNumber;
+    if (invoiceInSameWeek.length > 0 && invoiceInSameWeek[0]?.referenceNumber) {
+      invoiceNumber = invoiceCounter.counterValue;
+      referenceNumber = invoiceInSameWeek[0]?.referenceNumber
+    }
+    else {
+      const referenceCounter = await IdCounter.findOneAndUpdate(
+        { idType: "ReferenceNumber" },
+        { $inc: { counterValue: 1 } },
+        { new: true, upsert: true }
+      );
+      invoiceNumber = invoiceCounter.counterValue;
+      referenceNumber = referenceCounter.counterValue
+    }
 
     // Determine new and removed installments
     const newInstallment = dayInvoice.installmentDetail.length === 0
@@ -294,10 +394,18 @@ router.put('/', async (req, res) => {
     }));
 
     // Update the DayInvoice
-    const updatedDayInvoice = await DayInvoice.updateOne(
+    const updatedDayInvoice = await DayInvoice.findOneAndUpdate(
       { driverId, date },
-      { $set: updates },
+      {
+        $set: {
+          invoiceNumber,
+          referenceNumber,
+          ...updates,
+        },
+      },
+      { new: true }
     );
+
 
     res.status(200).json(updatedDayInvoice);
   } catch (error) {
@@ -566,5 +674,22 @@ router.get('/dayInvoiceById/:id', async (req, res) => {
     res.status(500).json({ message: 'Error fetching invoice', error: error.message });
   }
 });
+
+router.put('/additionalserviceapproval', async (req, res) => {
+  try {
+    const { DayInvoice } = getModels(req);
+    const dayInvoice = await DayInvoice.findByIdAndUpdate(req.body.id, {
+      $set: { additionalServiceApproval: req.body.additionalServiceApproval }
+    });
+
+    if (!dayInvoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    res.status(200).json(dayInvoice);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching invoice', error: error.message });
+  }
+})
 
 module.exports = router;

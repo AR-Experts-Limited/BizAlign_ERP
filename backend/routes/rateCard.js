@@ -53,7 +53,7 @@ router.get('/filter/weekandservice', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { RateCard } = getModels(req);
-    const { serviceTitle, serviceRate, minimumRate, vanRent, hourlyRate, vehicleType, byodRate, serviceWeek, active, mileage, addedBy, modifiedBy } = req.body;
+    const { serviceTitle, serviceRate, minimumRate, vanRent, vanRentHours, hourlyRate, vehicleType, byodRate, serviceWeek, active, mileage, addedBy, modifiedBy } = req.body;
     let { dateAdded } = req.body;
 
     dateAdded = new Date(dateAdded); // Convert dateAdded to Date object
@@ -69,6 +69,7 @@ router.post('/', async (req, res) => {
         vehicleType,
         minimumRate,
         vanRent,
+        vanRentHours,
         hourlyRate,
         byodRate,
         active,
@@ -90,6 +91,7 @@ router.post('/', async (req, res) => {
             byodRate,
             minimumRate,
             vanRent,
+            vanRentHours,
             hourlyRate,
             active,
             serviceWeek: week,
@@ -136,13 +138,13 @@ router.get('/search/title', async (req, res) => {
 
 // Update an existing rate card
 router.put('/:id', async (req, res) => {
-  const { serviceTitle, vehicleType, minimumRate, vanRent, hourlyRate, serviceRate, byodRate, mileage, serviceWeek, modifiedBy, active } = req.body;
+  const { serviceTitle, vehicleType, minimumRate, vanRent, vanRentHours, hourlyRate, serviceRate, byodRate, mileage, serviceWeek, modifiedBy, active } = req.body;
 
   try {
     const { RateCard } = getModels(req);
     const updatedRateCard = await RateCard.findByIdAndUpdate(
       req.params.id,
-      { serviceTitle, serviceRate, vehicleType, minimumRate, vanRent, hourlyRate, byodRate, mileage, serviceWeek, modifiedBy, active },
+      { serviceTitle, serviceRate, vehicleType, minimumRate, vanRent, vanRentHours, hourlyRate, byodRate, mileage, serviceWeek, modifiedBy, active },
       { new: true }
     );
 

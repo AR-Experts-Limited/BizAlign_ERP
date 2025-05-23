@@ -26,19 +26,54 @@ const upload = multer({
 // Helper function to get models from req.db
 const getModels = (req) => ({
   Installment: req.db.model('Installment', require('../models/installments').schema),
+  Driver: req.db.model('Driver', require('../models/Driver').schema),
   DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
   User: req.db.model('User', require('../models/User').schema),
   Notification: req.db.model('Notification', require('../models/notifications').schema),
 });
 
 // GET all installments (with optional filtering by site)
+//router.get('/', async (req, res) => {
+//  const { site } = req.query;
+//  try {
+//    const { Installment } = getModels(req);
+//    const query = site ? { site } : {};
+//    const installments = await Installment.find(query);
+//    res.json(installments);
+//  } catch (error) {
+//    console.error('Error fetching installments:', error);
+//    res.status(500).json({ message: 'Error fetching installments', error: error.message });
+//  }
+//});
+
+//Fetches Installments (Non-Disabled Drivers only)
 router.get('/', async (req, res) => {
   const { site } = req.query;
+
   try {
-    const { Installment } = getModels(req);
+    const { Installment, Driver } = getModels(req);
+
+    // Step 1: Get installments (filtered by site if provided)
     const query = site ? { site } : {};
     const installments = await Installment.find(query);
-    res.json(installments);
+
+    // Step 2: Extract all driverIds
+    const driverIds = installments.map(inst => inst.driverId);
+
+    // Step 3: Find only drivers who are disabled
+    const disabledDrivers = await Driver.find({
+      _id: { $in: driverIds },
+      disabled: true
+    });
+
+    const disabledDriverIds = new Set(disabledDrivers.map(d => d._id.toString()));
+
+    // Step 4: Filter out installments where driver is explicitly disabled
+    const filteredInstallments = installments.filter(inst =>
+      !disabledDriverIds.has(inst.driverId?.toString())
+    );
+
+    res.status(200).json(filteredInstallments);
   } catch (error) {
     console.error('Error fetching installments:', error);
     res.status(500).json({ message: 'Error fetching installments', error: error.message });

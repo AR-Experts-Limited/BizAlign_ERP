@@ -20,7 +20,9 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: { type: String },
   resetPasswordExpiry: { type: Date },
   otp: { type: String },
-  otpExpiration: { type: String }
+  otpExpiration: { type: String },
+  disabled: { type: Boolean, required: false },
+  disabledOn: { type: Date, required: false }
 });
 
 const User = mongoose.model('User', userSchema);

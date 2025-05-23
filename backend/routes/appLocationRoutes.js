@@ -32,6 +32,32 @@ router.patch('/update-location', async (req, res) => {
 });
 
 // Get Location Data
+router.get('/user/:user_ID', async (req, res) => {
+  const AppLocation = req.db.model('AppLocation', require('../models/AppLocation').schema)
+  const { user_ID } = req.params;
+
+  try {
+    // Check if the location data exists in the AppLocation collection
+    const locationData = await AppLocation.findOne({ user_ID });
+
+    if (!locationData || !locationData.currentLocation) {
+      return res.status(404).json({ message: 'Location data not found or not yet available.' });
+    }
+
+    // Respond with the latest currentLocation
+    res.status(200).json({
+      user_ID: locationData.user_ID,
+      currentLocation: locationData.currentLocation,
+      hourlyLocations: locationData.hourlyLocations, // Optionally include this if needed
+      locationRequest: locationData.locationRequest
+    });
+  } catch (error) {
+    console.error('Error fetching location data:', error);
+    res.status(500).json({ message: 'Error fetching location data.', error: error.message });
+  }
+});
+
+// Get Location Data
 router.get('/get-location', async (req, res) => {
   const AppLocation = req.db.model('AppLocation', require('../models/AppLocation').schema)
   const { user_ID } = req.query;
@@ -39,8 +65,8 @@ router.get('/get-location', async (req, res) => {
   try {
     // Check if the location data exists in the AppLocation collection
     const locationData = await AppLocation.find({ user_ID: { $in: user_ID } });
-    console.log(locationData)
-    console.log(user_ID)
+    //console.log(locationData)
+    //console.log(user_ID)
     // if (!locationData || !locationData.currentLocation) {
     //   return res.status(404).json({ message: 'Location data not found or not yet available.' });
     // }

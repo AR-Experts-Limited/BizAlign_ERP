@@ -12,10 +12,28 @@ router.get('/', async (req, res) => {
     }
 });
 
+//ProfitLoss for Week and Site
+router.get("/week-site", async (req, res) => {
+  const ProfitLoss = req.db.model('ProfitLoss', require('../models/ProfitLoss').schema);
+  try {
+    const { site, serviceWeek } = req.query;
+    const query = {};
+
+    if (site) query.site = site;
+    if (serviceWeek) query.week = serviceWeek;
+
+    const results = await ProfitLoss.find(query);
+    res.json(results);
+  } catch (error){
+    res.status(500).json({ message: 'Error fetching Profit Loss values!' });
+  }
+});
+
+
 // Add a new Profit Loss entry
 router.post('/', async (req, res) => {
     const ProfitLoss = req.db.model('ProfitLoss', require('../models/ProfitLoss').schema);
-    const { serviceName, week, site, profitLoss} = req.body;
+    const { serviceName, week, site, profitLoss, revenue } = req.body;
     var { addedBy } = req.body;
     addedBy = JSON.parse(addedBy);
     try {
@@ -23,7 +41,7 @@ router.post('/', async (req, res) => {
     if (exists) {
         const updatedRecord = await ProfitLoss.findOneAndUpdate(
           { serviceName, week, site }, // Query to find the document
-          { $set: { profitLoss: profitLoss, addedBy: addedBy } },
+          { $set: { profitLoss: profitLoss, addedBy: addedBy, revenue: revenue } },
           { new: true } 
       );
         res.status(201).json(updatedRecord);

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const axios = require('axios');
-const { PDFDocument } = require('pdf-lib');
+const { PDFDocument, rgb } = require('pdf-lib');
 const { sendToClients } = require('../utils/sseService');
 const { uploadPdfToS3 } = require('../utils/applications3Helper');
 const moment = require('moment-timezone');
@@ -143,119 +143,127 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH - Sign and generate final PDF with bill image
 router.patch('/:id/signed', async (req, res) => {
   const Deduction = req.db.model('Deductions', require('../models/deductions').schema);
   try {
     const { signed, typedName, signature } = req.body;
 
-    // Input validation
     if (signed === undefined || !typedName || !signature) {
       return res.status(400).json({ message: 'Missing required fields: signed, typedName, and signature.' });
     }
 
-    // Fetch the existing deduction record
     const existingDeduction = await Deduction.findById(req.params.id);
     if (!existingDeduction) {
       return res.status(404).json({ message: 'Deduction not found.' });
     }
 
-    // 1. Load the template PDF from S3 as Page 1
+    const londonDate = moment(existingDeduction.date).tz('Europe/London').format('DD/MM/YYYY');
+
+    // Load template
     const templateUrl = 'https://rainacrm.s3.us-east-1.amazonaws.com/templates/template_deduction.pdf';
     const templateResponse = await axios.get(templateUrl, { responseType: 'arraybuffer' });
     const templateBytes = Buffer.from(templateResponse.data, 'binary');
     const pdfDoc = await PDFDocument.load(templateBytes);
-
     const form = pdfDoc.getForm();
     const page1 = pdfDoc.getPages()[0];
 
-    const londonDate = moment(existingDeduction.date)
-      .tz('Europe/London')
-      .format('DD/MM/YYYY');
-
-    // Fill form fields
+    // Fill form
     form.getTextField('driverName').setText(existingDeduction.driverName);
     form.getTextField('serviceType').setText(existingDeduction.serviceType);
     form.getTextField('rate').setText(`£${existingDeduction.rate}`);
     form.getTextField('date').setText(londonDate);
     form.getTextField('signature').setText(typedName);
 
-    console.log('TimeFromServer:')
-    console.log(new Date(existingDeduction.date).toLocaleDateString('en-GB', {
-      timeZone: 'Europe/London',
-    }))
-
-    // Embed and draw the signature image
     const signatureResponse = await axios.get(signature, { responseType: 'arraybuffer' });
     const signaturePng = await pdfDoc.embedPng(signatureResponse.data);
     page1.drawImage(signaturePng, {
       x: 350,
       y: 290,
       width: 60,
-      height: 25,
+      height: 60,
     });
 
-    // Flatten the form to make it non-editable
     form.flatten();
 
-    // 2. Add the bill image as Page 2
-    const billImageResponse = await axios.get(existingDeduction.deductionDocument, { responseType: 'arraybuffer' });
-    const billImageBuffer = Buffer.from(billImageResponse.data, 'binary');
+    // Add second page (image or link)
+    if (existingDeduction.deductionDocument) {
+      try {
+        const rawUrl = existingDeduction.deductionDocument;
+        const fileExtension = rawUrl.split('.').pop().toLowerCase();
+        const pageWidth = 595.28;
+        const pageHeight = 841.89;
 
-    // Determine the file extension (Supports jpg, jpeg, png)
-    const imageUrl = existingDeduction.deductionDocument;
-    const fileExtension = imageUrl.split('.').pop().toLowerCase(); // Get file extension
+        let documentUrl = rawUrl;
+        if (!documentUrl.startsWith('http')) {
+          documentUrl = `https://rainacrm.s3.us-east-1.amazonaws.com/${documentUrl}`;
+        }
 
-    let billImage;
-    if (fileExtension === 'png') {
-      billImage = await pdfDoc.embedPng(billImageBuffer);
-    } else if (fileExtension === 'jpg' || fileExtension === 'jpeg') {
-      billImage = await pdfDoc.embedJpg(billImageBuffer);
-    } else {
-      return res.status(400).json({ message: 'Unsupported image format. Only PNG, JPG, and JPEG are allowed.' });
+        if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
+          const billImageResponse = await axios.get(documentUrl, { responseType: 'arraybuffer' });
+          const billImageBuffer = Buffer.from(billImageResponse.data, 'binary');
+
+          let billImage;
+          if (fileExtension === 'png') {
+            billImage = await pdfDoc.embedPng(billImageBuffer);
+          } else {
+            billImage = await pdfDoc.embedJpg(billImageBuffer);
+          }
+
+          const { width: imgWidth, height: imgHeight } = billImage.scale(1);
+          const scaleFactor = Math.min(pageWidth / imgWidth, pageHeight / imgHeight, 1);
+          const finalWidth = imgWidth * scaleFactor;
+          const finalHeight = imgHeight * scaleFactor;
+          const xPosition = (pageWidth - finalWidth) / 2;
+          const yPosition = (pageHeight - finalHeight) / 2;
+
+          const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
+          page2.drawImage(billImage, {
+            x: xPosition,
+            y: yPosition,
+            width: finalWidth,
+            height: finalHeight,
+          });
+        } else {
+          // Add a link instead of image
+          const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
+          page2.drawText(`Link to attached document:`, {
+            x: 50,
+            y: pageHeight - 100,
+            size: 16,
+          });
+          const wrappedUrl = documentUrl.match(/.{1,90}/g) || [documentUrl];
+          wrappedUrl.forEach((line, idx) => {
+            page2.drawText(line, {
+              x: 50,
+              y: pageHeight - 130 - (idx * 18),
+              size: 12,
+              color: rgb(0, 0, 1),
+            });
+          });
+        }
+      } catch (imageError) {
+        console.warn('Error processing deductionDocument:', imageError.message);
+      }
     }
 
-    // Get original image dimensions
-    const { width: imgWidth, height: imgHeight } = billImage.scale(1);
-
-    // Define A4 page size
-    const pageWidth = 595.28; // A4 width in points
-    const pageHeight = 841.89; // A4 height in points
-
-    // Calculate scaling factor to fit the image inside A4 while maintaining aspect ratio
-    const scaleFactor = Math.min(pageWidth / imgWidth, pageHeight / imgHeight, 1);
-
-    // Scale the image
-    const finalWidth = imgWidth * scaleFactor;
-    const finalHeight = imgHeight * scaleFactor;
-
-    // Calculate position to center the image
-    const xPosition = (pageWidth - finalWidth) / 2;
-    const yPosition = (pageHeight - finalHeight) / 2;
-
-    const page2 = pdfDoc.addPage([pageWidth, pageHeight]); // A4 page
-
-    // Draw the image in its original aspect ratio
-    page2.drawImage(billImage, {
-      x: xPosition,
-      y: yPosition,
-      width: finalWidth,
-      height: finalHeight,
-    });
-
-    // 3. Save the merged PDF and upload to S3
+    // Save PDF and upload to S3
     const finalPdfBytes = await pdfDoc.save();
     const fileName = `${existingDeduction.user_ID}_${Date.now()}_final_deduction`;
-    const s3Result = await uploadPdfToS3(req.db.db.databaseName, Buffer.from(finalPdfBytes), existingDeduction.user_ID, 'deduction-forms', fileName);
+    const s3Result = await uploadPdfToS3(
+      req.db.db.databaseName,
+      Buffer.from(finalPdfBytes),
+      existingDeduction.user_ID,
+      'deduction-forms',
+      fileName
+    );
 
-    // 4. Update the deductionDocument URL in the database
-    existingDeduction.signed = signed; // Use boolean for signed
+    // Update DB
+    existingDeduction.signed = signed;
     existingDeduction.deductionDocument = s3Result.url;
     const updatedDeduction = await existingDeduction.save();
 
-    sendToClients(
-      req.db, {
-      type: 'deductionUpdated', // Custom event to signal data update
+    sendToClients(req.db, {
+      type: 'deductionUpdated',
     });
 
     res.json({
@@ -263,7 +271,7 @@ router.patch('/:id/signed', async (req, res) => {
       deduction: updatedDeduction,
     });
   } catch (error) {
-    console.error('Error generating signed PDF with bill image:', error);
+    console.error('Error generating signed PDF:', error);
     res.status(500).json({ message: 'Error generating final deduction PDF.', error });
   }
 });

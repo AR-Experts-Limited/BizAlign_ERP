@@ -25,11 +25,16 @@ const appDataRoutes = require('./routes/appdata');
 const driverAvailabilityRoutes = require('./routes/driveravailability');
 const notificationRoutes = require('./routes/notifications');
 const appLocationRoutes = require('./routes/appLocationRoutes');
+const additionalChargesRoutes = require('./routes/additionalCharges')
 const auditLogRoutes = require('./routes/auditLog');
 const applicationSettingsRoutes = require('./routes/applicationSettings');
 const sitesRoutes = require('./routes/site');
+const companyIncentiveRoutes = require('./routes/companyIncentives');
 const sessionTimeRoutes = require('./routes/sessionTime')
+const approvalsRoutes = require('./routes/approvals')
 const { registerClient } = require('./utils/sseService');
+const overdueDrivers = require('./routes/overdueDrivers');
+
 
 const appNotifications = require('./routes/applicationNotifications'); // App
 const appdriversRoutes = require('./routes/applicationDrivers');//App
@@ -44,6 +49,8 @@ const applicationDataRoutes = require('./routes/applicationData');//App
 
 const dbMiddleware = require("./middleware/dbMiddleware");
 
+const testRoutes = require('./routes/test');
+
 const Driver = require('./models/Driver');
 const Notification = require('./models/notifications')
 const multer = require('multer');
@@ -51,7 +58,7 @@ const multerS3 = require('multer-s3');
 const s3 = require('./routes/aws');
 const { monitorDeductionChanges, monitorInstallmentChanges, monitorDriverDocChanges, monitorNotificationChanges } = require('./utils/monitorChanges');
 const cron = require('node-cron');
-const { setArchiveDrivers, setInactiveDrivers } = require('./utils/scheduledTasks');
+const { setArchiveDrivers, setInactiveDrivers, suspendInactiveDrivers } = require('./utils/scheduledTasks');
 
 const getFormattedDateTime = () => {
   const now = new Date();
@@ -86,7 +93,7 @@ const upload = multer({
 app.use(dbMiddleware);
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://10.122.195.152:5173', 'https://erp-rainaltd.bizalign.co.uk', 'https://app.bizalign.co.uk'],  // Change this to allow requests from your frontend
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://10.122.205.136:3000', 'https://erp-rainaltd.bizalign.co.uk', 'https://app.bizalign.co.uk'],  // Change this to allow requests from your frontend
   credentials: true,
 }));
 
@@ -132,11 +139,18 @@ app.use('/api/idcounter', idCounterRoutes);
 app.use('/api/appdata', appDataRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/driveravailability', driverAvailabilityRoutes);
+app.use('/api/addons', additionalChargesRoutes);
 app.use('/api/applocation', appLocationRoutes);
 app.use('/api/auditlog', auditLogRoutes);
 app.use('/api/applicationSettings', applicationSettingsRoutes);
 app.use('/api/sites', sitesRoutes);
 app.use('/api/sessionTime', sessionTimeRoutes);
+app.use('/api/companyincentive', companyIncentiveRoutes);
+app.use('/api/approvals', approvalsRoutes);
+app.use('/api/overdue-drivers', overdueDrivers);
+
+app.use('/api/test', testRoutes);
+
 
 
 // Route for page1.html

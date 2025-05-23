@@ -27,19 +27,54 @@ const upload = multer({
 // Helper function to get models from req.db
 const getModels = (req) => ({
   Deduction: req.db.model('Deduction', require('../models/deductions').schema),
+  Driver: req.db.model('Driver', require('../models/Driver').schema),
   DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
   User: req.db.model('User', require('../models/User').schema),
   Notification: req.db.model('Notification', require('../models/notifications').schema),
 });
 
 // GET all deductions (with optional filtering by site)
+//router.get('/', async (req, res) => {
+//  const { site } = req.query; // Optional query parameter for site filtering
+//  try {
+//    const { Deduction } = getModels(req);
+//    const query = site ? { site } : {}; // Filter by site if provided
+//    const deductions = await Deduction.find(query);
+//    res.json(deductions);
+//  } catch (error) {
+//    console.error('Error fetching deductions:', error);
+//    res.status(500).json({ message: 'Error fetching deductions', error: error.message });
+//  }
+//});
+
+//Get Deductions where Driver is not Disabled
 router.get('/', async (req, res) => {
-  const { site } = req.query; // Optional query parameter for site filtering
+  const { site } = req.query; // Optional site filter
+
   try {
-    const { Deduction } = getModels(req);
-    const query = site ? { site } : {}; // Filter by site if provided
+    const { Deduction, Driver } = getModels(req); // Ensure both models are registered
+
+    // Step 1: Fetch all deductions (optionally filtered by site)
+    const query = site ? { site } : {};
     const deductions = await Deduction.find(query);
-    res.json(deductions);
+
+    // Step 2: Get all driverIds from those deductions
+    const driverIds = deductions.map(d => d.driverId);
+
+    // Step 3: Fetch only disabled drivers (opposite of before)
+    const disabledDrivers = await Driver.find({
+      _id: { $in: driverIds },
+      disabled: true
+    });
+
+    const disabledDriverIds = new Set(disabledDrivers.map(d => d._id.toString()));
+
+    // Step 4: Filter out deductions linked to explicitly disabled drivers
+    const filteredDeductions = deductions.filter(d =>
+      !disabledDriverIds.has(d.driverId.toString())
+    );
+
+    res.status(200).json(filteredDeductions);
   } catch (error) {
     console.error('Error fetching deductions:', error);
     res.status(500).json({ message: 'Error fetching deductions', error: error.message });
@@ -59,6 +94,50 @@ router.get('/filter', async (req, res) => {
   }
 });
 
+// GET deductions filtered by site and ISO week (YYYY-W##)
+router.get('/by-site-week', async (req, res) => {
+  const { site, serviceWeek } = req.query;
+
+  if (!site || !serviceWeek) {
+    return res.status(400).json({ message: "Both 'site' and 'serviceWeek' are required." });
+  }
+
+  try {
+    const { Deduction } = getModels(req);
+    const [year, weekStr] = serviceWeek.split("-W");
+    const week = parseInt(weekStr, 10);
+    const startDate = getDateOfISOWeek(week, parseInt(year));
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+
+    // Query for deductions that fall in that week
+    const deductions = await Deduction.find({
+      site,
+      date: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    });
+
+    res.status(200).json(deductions);
+  } catch (error) {
+    console.error("Error fetching deductions for site and week:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+});
+
+// Helper: convert ISO week to date
+function getDateOfISOWeek(week, year) {
+  const simple = new Date(year, 0, 1 + (week - 1) * 7);
+  const dow = simple.getDay();
+  const ISOweekStart = simple;
+  if (dow <= 4)
+    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+  else
+    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+  return ISOweekStart;
+}
+
 // GET deductions for a specific driver
 router.get('/driverspecific', async (req, res) => {
   const { driverId } = req.query;
@@ -74,7 +153,7 @@ router.get('/driverspecific', async (req, res) => {
 
 // POST a new deduction
 router.post('/', upload.any(), async (req, res) => {
-  const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, deductionDocument } = req.body;
+  const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, deductionDocument, week } = req.body;
   let { addedBy } = req.body;
   addedBy = JSON.parse(addedBy);
 
@@ -93,6 +172,7 @@ router.post('/', upload.any(), async (req, res) => {
       signed,
       deductionDocument: doc,
       addedBy,
+      week
     });
     await newDeduction.save();
 

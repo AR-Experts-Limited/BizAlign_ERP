@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { initializeChangeStreams } = require('../utils/monitorChanges');
 const cron = require('node-cron');
-const { setArchiveDrivers, setInactiveDrivers } = require('../utils/scheduledTasks');
+const { setArchiveDrivers, setInactiveDrivers, suspendInactiveDrivers, remindPendingShiftOSMs, deleteDisabledDrivers } = require('../utils/scheduledTasks');
 
 const connections = {}; // Store connections
 
@@ -25,6 +25,8 @@ const getDatabaseConnection = async (dbName) => {
                                                     cron.schedule('0 0 * * *', () => {
                                                         setArchiveDrivers(conn);
                                                         setInactiveDrivers(conn);
+                                                        suspendInactiveDrivers(conn);
+                                                        deleteDisabledDrivers(conn);
                                                     },
                                                     {
                                                         timezone: 'Europe/London'

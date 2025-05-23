@@ -13,11 +13,12 @@ const dayInvoiceSchema = new mongoose.Schema({
   mainService: { type: String, required: true },
   serviceRateforMain: { type: Number, required: true },
   additionalService: { type: String },
+  additionalServiceApproval: { type: String },
   shiftTimes: { type: Object },
   incentiveDetailforMain: { type: Object },
   deductionDetail: { type: Array, "default": [] },
   installmentDetail: { type: Array, "default": [] },
-  additionalServiceDetails: { type: Object, required: true },
+  additionalServiceDetails: { type: Object },
   serviceRateforAdditional: { type: Number },
   byodRate: { type: Number, required: true },
   miles: { type: Number, required: true },
@@ -30,7 +31,10 @@ const dayInvoiceSchema = new mongoose.Schema({
   invoiceGeneratedBy: { type: String },
   invoiceGeneratedOn: { type: String },
   csvData: { type: Object },
-  invoicedoc: { type: String }
+  invoicedoc: { type: String },
+  comments: { type: Object },
+  invoiceNumber: { type: Number },
+  referenceNumber: { type: Number },
 });
 
 const DayInvoice = mongoose.model('DayInvoice', dayInvoiceSchema);

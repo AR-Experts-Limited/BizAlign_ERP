@@ -67,9 +67,9 @@ router.post('/check-company', async (req, res) => {
     const origin = req.headers['origin'];
     const host = req.headers['host'];
 
-    console.log('Client-Type:', clientType);
-    console.log('Origin:', origin);
-    console.log('Host:', host);
+    //console.log('Client-Type:', clientType);
+    //console.log('Origin:', origin);
+    //console.log('Host:', host);
 
     if (!cID) {
       return res.status(400).json({
@@ -114,15 +114,26 @@ router.post('/login', async (req, res) => {
   const User = req.db.model('User', require('../models/User').schema);
   try {
     const { email, password } = req.body;
+    
+    
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Both email and password are required' });
     }
 
     const user = await User.findOne({ email });
+
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+     //  Check if the user is disabled
+    if (user.disabled) {
+      return res.status(403).json({ message: 'Your account has been disabled. Please contact OSM/ Admin' });
+    }
+
+    
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -338,7 +349,7 @@ router.post('/forgot-password', async (req, res) => {
     await user.save();
 
     const resetLink = `${origin}/reset-password/${resetToken}`;
-    console.log(origin);
+    //console.log(origin);
 
     res.status(200).json({ resetLink, message: 'Reset link generated successfully.' });
   }catch (error){

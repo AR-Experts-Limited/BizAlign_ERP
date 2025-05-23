@@ -22,7 +22,7 @@ const generateTokens = (userId) => {
 router.get('/', async (req, res) => {
   const User = req.db.model('User', require('../models/User').schema)
   try {
-    const users = await User.find({})
+    const users = await User.find({disabled: { $ne: true }})
     res.status(200).json(users)
   }
   catch (error) {
@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
 router.get('/getUserByEmail/:email', async (req, res) => {
   const User = req.db.model('User', require('../models/User').schema)
   try {
-    const user = await User.find({ email: req.params.email });
+    const user = await User.find({ email: req.params.email, disabled: { $ne: true } });
     res.status(200).json(user);
   }
   catch (error) {
@@ -75,7 +75,7 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   // Check if the user exists
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email, disabled: { $ne: true } });
   if (!user) return res.status(400).json({ message: 'User not found' });
 
   // Compare password
@@ -139,7 +139,7 @@ router.post('/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
 
   // Find the user by email
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email, disabled: { $ne: true } });
   if (!user) return res.status(400).json({ message: 'User not found' });
 
   // Check if OTP exists and if it has expired
@@ -252,7 +252,7 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '1d' }
     );
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: 'None', secure: false, maxAge: 24 * 60 * 60 * 1000 });
-    res.status(201).json({ message: 'User created successfully', user: newUser });
+    res.status(201).json({ message: 'User created successfully', token, role: newUser.role });
   } catch (error) {
     console.error('Error during signup:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -280,6 +280,18 @@ router.delete('/deleteByUserID/:user_ID', async (req, res) => {
     res.status(500).json({ message: 'unable to delete user' })
   }
 })
+
+router.put('/by-userid', async (req, res) => {
+  const User = req.db.model('User', require('../models/User').schema)
+  const { user_ID, update } = req.body;
+  try {
+    const updated = await User.findOneAndUpdate({ user_ID }, update, { new: true });
+    res.status(200).json(updated);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
 
 router.put('/:id', async (req, res) => {
   const User = req.db.model('User', require('../models/User').schema)

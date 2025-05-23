@@ -282,81 +282,131 @@ router.get('/:siteSelection', async (req, res) => {
 // PATCH: Update driver documents for App
 router.patch('/user/:user_ID/documents', upload.single('document'), async (req, res) => {
   const Driver = req.db.model('Driver', require('../models/Driver').schema);
+
   try {
     const { user_ID } = req.params;
-    const { documentType } = req.body;
+    const { documentType, docLabel, fileGroupIndex } = req.body;
 
     if (!documentType || !req.file) {
-      console.error("Missing required fields: Document Type or File");
       return res.status(400).json({ message: "Document type and file are required." });
-    }
-
-    if (!req.file.buffer || req.file.size === 0) {
-      console.error("📂 Empty File Detected!");
-      return res.status(400).json({ message: "File is empty. Please try uploading again." });
     }
 
     const driver = await Driver.findOne({ user_ID });
     if (!driver) {
-      console.error("🚫 Driver Not Found:", user_ID);
       return res.status(404).json({ message: "Driver not found." });
     }
 
-    // Send progress updates via WebSocket or SSE
-    let progress = 0;
     const uploadResult = await uploadToS3(
       req.db.db.databaseName,
       req.file,
       driver.user_ID,
-      "driver-documents/temp",
-      documentType,
-      (percent) => {
-        progress = percent;
-      }
+      "driver-documents",
+      documentType
     );
 
     if (!uploadResult || !uploadResult.url) {
-      console.error("🛑 Upload to S3 Failed!");
       return res.status(500).json({ message: "Failed to upload document to S3." });
     }
 
-    // Update driver document field
+    const timestamp = new Date();
+    let newVersion;
+
+    // If it's profilePicture
     if (documentType === "profilePicture") {
-      driver.profilePicture = uploadResult.url; // ✅ Save only URL for profile picture
-    } else {
-      driver[documentType] = {
+      newVersion = {
+        original: uploadResult.url,
+        timestamp
+      };
+      
+      if (!Array.isArray(driver.profilePicture)) {
+        driver.profilePicture = [];
+      }
+      driver.profilePicture.push(newVersion);
+    } 
+    
+    // If it's an additionalDoc (special)
+    else if (documentType === "additionalDocs") {
+      if (!docLabel || fileGroupIndex === undefined) {
+        return res.status(400).json({ message: "docLabel and fileGroupIndex are required for additionalDocs." });
+      }
+
+      newVersion = {
+        original: uploadResult.url,
+        timestamp,
+        approvedBy: ''
+      };
+
+      // Push into correct additionalDocs label and group
+      if (!driver.additionalDocs.has(docLabel)) {
+        driver.additionalDocs.set(docLabel, []);
+      }
+      const docGroups = driver.additionalDocs.get(docLabel);
+      
+      const groupIdx = parseInt(fileGroupIndex);
+      if (!Array.isArray(docGroups[groupIdx])) {
+        docGroups[groupIdx] = [];
+      }
+      docGroups[groupIdx].push(newVersion);
+
+      driver.additionalDocs.set(docLabel, docGroups);
+    } 
+    
+    // If it's a normal document
+    else {
+      newVersion = {
+        original: '',
         temp: uploadResult.url,
         docApproval: false,
-        timestamp: new Date(),
+        timestamp,
+        approvedBy: ''
       };
+
+      if (!Array.isArray(driver[documentType])) {
+        driver[documentType] = [];
+      }
+      driver[documentType].push(newVersion);
     }
 
-    await driver.save();
+    await driver.save({ validateBeforeSave: false });
 
-    res.status(200).json({ message: "Document uploaded successfully.", document: driver[documentType] });
+    res.status(200).json({ message: "Document uploaded successfully.", document: newVersion });
+
   } catch (error) {
-    console.error("❌ ERROR UPDATING DOCUMENT:", error);
-    res.status(500).json({ message: "Error updating document.", error: error.message });
+    console.error("Error uploading document:", error);
+    res.status(500).json({ message: "Server error while uploading document.", error: error.message });
   }
 });
-
-
 
 
 // Get driver by user_ID -App
 router.get('/user/:user_ID', async (req, res) => {
   const Driver = req.db.model('Driver', require('../models/Driver').schema);
   const { user_ID } = req.params;
-
+ 
   try {
-    // Find the driver data by user_ID
     const driver = await Driver.findOne({ user_ID });
 
     if (!driver) {
       return res.status(404).json({ message: 'Driver not found' });
     }
 
-    res.status(200).json(driver);
+    const driverObj = driver.toObject(); 
+
+    // Correctly process latest profilePicture
+    if (driverObj.profilePicture?.length > 0) {
+      const sorted = [...driverObj.profilePicture].sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
+
+      driverObj.profilePicture = sorted[0]?.original || null;
+    } else {
+      driverObj.profilePicture = null;
+    }
+
+   //console.log(driverObj.profilePicture);
+
+    res.status(200).json(driverObj);
+ 
   } catch (error) {
     console.error('Error fetching driver by user_ID:', error);
     res.status(500).json({ message: 'Internal server error', error });

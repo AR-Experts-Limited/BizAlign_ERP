@@ -5,6 +5,7 @@ const ProfitLossSchema = new mongoose.Schema({
     week: String,
     site: String,
     profitLoss: Number,
+    revenue: Number,
     addedBy: Object,
   });
   

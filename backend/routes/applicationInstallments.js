@@ -3,8 +3,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer'); // To handle file uploads
 const axios = require('axios');
-const { PDFDocument } = require('pdf-lib');
-// Ensure the path is correct
+const { PDFDocument, rgb } = require('pdf-lib');// Ensure the path is correct
 const { sendToClients } = require('../utils/sseService');
 const { uploadPdfToS3 } = require('../utils/applications3Helper');
 
@@ -33,7 +32,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// PATCH - Sign and generate final PDF with bill image for an installment
 router.patch('/:id/signed', async (req, res) => {
     const Installment = req.db.model('Installment', require('../models/installments').schema);
     try {
@@ -77,56 +75,73 @@ router.patch('/:id/signed', async (req, res) => {
             x: 350,
             y: 290,
             width: 60,
-            height: 25,
+            height: 60,
         });
 
         // Flatten the form to make it non-editable
         form.flatten();
 
-        // 2. Add the bill image as Page 2
-        const billImageResponse = await axios.get(existingInstallment.installmentDocument, { responseType: 'arraybuffer' });
-        const billImageBuffer = Buffer.from(billImageResponse.data, 'binary');
 
-        // Determine the file extension (Supports jpg, jpeg, png)
-        const imageUrl = existingInstallment.installmentDocument;
-        const fileExtension = imageUrl.split('.').pop().toLowerCase();
+        // 2. Conditionally handle second page
+        if (existingInstallment.installmentDocument) {
+            try {
+                const rawUrl = existingInstallment.installmentDocument;
+                const fileExtension = rawUrl.split('.').pop().toLowerCase();
+                const pageWidth = 595.28;
+                const pageHeight = 841.89;
 
-        let billImage;
-        if (fileExtension === 'png') {
-            billImage = await pdfDoc.embedPng(billImageBuffer);
-        } else if (fileExtension === 'jpg' || fileExtension === 'jpeg') {
-            billImage = await pdfDoc.embedJpg(billImageBuffer);
-        } else {
-            return res.status(400).json({ message: 'Unsupported image format. Only PNG, JPG, and JPEG are allowed.' });
+                let documentUrl = rawUrl;
+                if (!documentUrl.startsWith('http')) {
+                    documentUrl = `https://rainacrm.s3.us-east-1.amazonaws.com/${documentUrl}`;
+                }
+
+                if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
+                    const billImageResponse = await axios.get(documentUrl, { responseType: 'arraybuffer' });
+                    const billImageBuffer = Buffer.from(billImageResponse.data, 'binary');
+
+                    let billImage;
+                    if (fileExtension === 'png') {
+                        billImage = await pdfDoc.embedPng(billImageBuffer);
+                    } else {
+                        billImage = await pdfDoc.embedJpg(billImageBuffer);
+                    }
+
+                    const { width: imgWidth, height: imgHeight } = billImage.scale(1);
+                    const scaleFactor = Math.min(pageWidth / imgWidth, pageHeight / imgHeight, 1);
+                    const finalWidth = imgWidth * scaleFactor;
+                    const finalHeight = imgHeight * scaleFactor;
+                    const xPosition = (pageWidth - finalWidth) / 2;
+                    const yPosition = (pageHeight - finalHeight) / 2;
+
+                    const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page2.drawImage(billImage, {
+                        x: xPosition,
+                        y: yPosition,
+                        width: finalWidth,
+                        height: finalHeight,
+                    });
+                } else {
+                    const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page2.drawText(`Link to attached document:`, {
+                        x: 50,
+                        y: pageHeight - 100,
+                        size: 16,
+                    });
+
+                    const wrappedUrl = documentUrl.match(/.{1,90}/g) || [documentUrl];
+                    wrappedUrl.forEach((line, idx) => {
+                        page2.drawText(line, {
+                            x: 50,
+                            y: pageHeight - 130 - (idx * 18),
+                            size: 12,
+                            color: rgb(0, 0, 1),
+                        });
+                    });
+                }
+            } catch (imageError) {
+                console.warn('Error handling installmentDocument:', imageError.message);
+            }
         }
-
-        // Get original image dimensions
-        const { width: imgWidth, height: imgHeight } = billImage.scale(1);
-
-        // Define A4 page size
-        const pageWidth = 595.28; // A4 width in points
-        const pageHeight = 841.89; // A4 height in points
-
-        // Calculate scaling factor to fit inside A4 while maintaining aspect ratio
-        const scaleFactor = Math.min(pageWidth / imgWidth, pageHeight / imgHeight, 1);
-
-        // Scale the image
-        const finalWidth = imgWidth * scaleFactor;
-        const finalHeight = imgHeight * scaleFactor;
-
-        // Calculate position to center the image
-        const xPosition = (pageWidth - finalWidth) / 2;
-        const yPosition = (pageHeight - finalHeight) / 2;
-
-        const page2 = pdfDoc.addPage([pageWidth, pageHeight]); // A4 page
-
-        // Draw the bill image in its original aspect ratio
-        page2.drawImage(billImage, {
-            x: xPosition,
-            y: yPosition,
-            width: finalWidth,
-            height: finalHeight,
-        });
 
         // 3. Save the merged PDF and upload to S3
         const finalPdfBytes = await pdfDoc.save();
