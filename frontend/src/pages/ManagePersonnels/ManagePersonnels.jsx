@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PersonnelsTable from './PersonnelsTable';
 import { fetchDrivers, } from '../../features/drivers/driverSlice';
 import { useSelector, useDispatch } from 'react-redux';
-import PersonnelForm from './PersonnelForm';
+import PersonnelForm from './PersonnelForm/PersonnelForm';
 import { fetchSites } from '../../features/sites/siteSlice';
 import TableFeatures from '../../components/TableFeatures/TableFeatures';
 

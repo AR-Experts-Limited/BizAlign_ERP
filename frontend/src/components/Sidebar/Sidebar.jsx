@@ -17,33 +17,32 @@ const Sidebar = ({ sidebarIsOpen }) => {
     }, [sidebarIsOpen]);
 
     const menuItems = [
-        { path: "/dashboard", name: "Dashboard", icon: <FcSurvey size={22} /> },
-        { path: "/manage-personnels", name: "Manage Personnels", icon: <FcBusinessman size={20} /> },
-        { path: "/rate-card", name: "Rate Cards", icon: <FcCalculator size={22} /> },
-        { path: "/notifications", name: "Notifications", icon: <FcSms size={20} /> },
-        { path: "/planner", name: "Schedule Planner", icon: <img src='/sidebar_icons/schedule.png' className='h-5 w-5' alt="schedule" /> },
-        { path: "/live-operations", name: "Live Operations", icon: <BiStation className='text-blue-500' size={20} /> },
-        { path: "/rota", name: "Rota", icon: <img src='/sidebar_icons/clipboard.png' className='h-5 w-5' alt="rota" /> },
-        { path: "/working-hours", name: "Working Hours", icon: <FcClock size={20} /> },
-        { path: "/installments", name: "Installments", icon: <img src='/sidebar_icons/loan.png' className='h-5 w-5' alt="installments" /> },
-        { path: "/deductions", name: "Deductions", icon: <img src='/sidebar_icons/tax.png' className='h-5 w-5' alt="deductions" /> },
-        { path: "/incentives", name: "Incentives", icon: <img src='/sidebar_icons/benefit.png' className='h-5 w-5' alt="incentives" /> },
-        { path: "/manage-summary", name: "Manage Summary", icon: <FcRules size={20} /> },
-        { path: "/manage-payments", name: "Manage Payments", icon: <FcSalesPerformance size={20} /> },
-        { path: "/print-invoices", name: "Print Invoices", icon: <FcPrint size={20} /> },
-        { path: "/profit-loss", name: "Profit / Loss", icon: <FcLineChart size={20} /> },
-        { path: "/manage-users", name: "Manage users", icon: <FcBusinessContact size={20} /> },
-
+        { path: "/dashboard", name: "Dashboard", icon: <i className="fi fi-rr-dashboard-panel hover:text-primary-800 text-[1.6rem]"></i> },
+        { path: "/manage-personnels", name: "Manage Personnels", icon: <i class="fi fi-rr-users-alt hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/rate-card", name: "Rate Cards", icon: <i class="fi fi-rr-calculator hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/notifications", name: "Notifications", icon: <i class="fi fi-rr-bell-notification-social-media hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/planner", name: "Schedule Planner", icon: <i class="fi fi-rr-calendar-clock hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/live-operations", name: "Live Operations", icon: <BiStation className='hover:text-primary-800' size={25} /> },
+        { path: "/rota", name: "Rota", icon: <i class="fi fi-rr-payroll-calendar hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/working-hours", name: "Working Hours", icon: <i class="fi fi-rr-time-half-past hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/installments", name: "Installments", icon: <i class="fi fi-rr-money-check-edit hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/deductions", name: "Deductions", icon: <i class="fi fi-rs-cheap-dollar hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/incentives", name: "Incentives", icon: <i class="fi fi-rr-handshake-deal-loan hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/manage-summary", name: "Manage Summary", icon: <i class="fi fi-rr-clip-file hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/manage-payments", name: "Manage Payments", icon: <i class="fi fi-rr-money-bill-wave hover:text-primary-800 text-[1.5rem]" ></i> },
+        { path: "/print-invoices", name: "Print Invoices", icon: <i class="fi fi-rr-print hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/profit-loss", name: "Profit / Loss", icon: <i class="fi fi-rr-chart-histogram hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/manage-users", name: "Manage users", icon: <i class="fi fi-rr-id-card-clip-alt hover:text-primary-800 text-[1.5rem]"></i> },
     ];
 
     return (
         <div
-            className={`h-full bg-neutral-300/80 dark:bg-dark-3 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.1)] overflow-auto transition-all duration-300 origin-left
-        ${sidebarIsOpen ? 'w-40 md:w-60' : 'w-0 md:w-17'}
+            className={`h-full bg-neutral-300/60 dark:bg-dark-3 border-r border-white overflow-auto transition-all duration-300 origin-left
+        ${sidebarIsOpen ? 'w-40 md:w-60' : 'w-0 md:w-18'}
       ${delayedPointerEnabled ? 'pointer-events-none' : ''}`}
         >
             <div className='mb-12'>
-                <div className="flex flex-col h-full gap-5 md:gap-3 m-2">
+                <div className="flex flex-col h-full gap-5 m-2">
                     <Tooltip.Provider delayDuration={500}>
                         {menuItems.map((item) => (
                             <Tooltip.Root key={item.path}>
@@ -52,13 +51,13 @@ const Sidebar = ({ sidebarIsOpen }) => {
                                         <NavLink
                                             to={item.path}
                                             className={({ isActive }) =>
-                                                `relative p-1 text-sm md:p-3 md:px-4 flex items-center gap-1 rounded-md overflow-hidden
+                                                `relative p-1 text-base md:p-2 md:px-4 flex items-center gap-1 rounded-md overflow-hidden
                        text-black dark:hover:bg-dark-5 hover:text-primary-500 hover:bg-primary-300/30 hover:shadow-md dark:text-white whitespace-nowrap group
-                       ${isActive ? "bg-primary-200/50 border border-primary-500 text-white shadow-lg" : ""}`
+                       ${isActive ? "bg-primary-300/30   border-l-3 border-primary-400 text-primary-800 rounded-l-none" : ""}`
                                             }
                                         >
                                             <div className='flex gap-1 md:gap-4 items-center'>
-                                                <div className='w-5 h-5'>{item.icon}</div>
+                                                <div className='w-7 h-7'>{item.icon}</div>
                                                 <div >{item.name}</div>
                                             </div>
                                         </NavLink>

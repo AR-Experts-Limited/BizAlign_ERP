@@ -20,7 +20,8 @@ import Instalments from './pages/Instalments/Instalments';
 import Deductions from './pages/Deductions/Deductions';
 import Incentives from './pages/Incentives/Incentives';
 import ManageUsers from './pages/ManageUsers/ManageUsers';
-import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels';
+import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels'
+
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);

@@ -66,7 +66,7 @@ const InputGroup = ({
             containerClass="!h-full !rounded-lg"
             inputClass={cn(
               " !w-full !font-outfit !text-base !border-[1.5px] !bg-transparent !border-neutral-300 !py-6 !px-14 rounded-lg focus:!border-primary-500 dark:!bg-dark-2 dark:!border-dark-3",
-              error ? "!border-2 !border-red animate-pulse" : ""
+              error ? "!border-[1.5px] !border-red animate-pulse" : ""
             )}
             buttonClass="!p-1 !my-1 !border-[0px] !border-r-1 !border-neutral-300 dark:!border-dark-3 !bg-transparent !rounded-l-lg"
             dropdownClass="!rounded-lg  dark:!bg-dark-3 dark:!border-dark-4"
@@ -135,7 +135,7 @@ const InputGroup = ({
               "px-5.5 py-3.5  placeholder:text-dark-6 dark:text-white resize-y",
               iconPosition === "left" && "pl-12.5",
               height === "sm" && "py-2.5",
-              error ? "border-2 border-red animate-pulse" : ""
+              error ? "border-[1.5px] border-red animate-pulse" : ""
             )}
           />
         );
@@ -157,7 +157,7 @@ const InputGroup = ({
               "px-5.5 py-3.5  placeholder:text-dark-6 dark:text-white",
               iconPosition === "left" && "pl-12.5",
               height === "sm" && "py-2.5",
-              error ? "border-2 border-red animate-pulse" : ""
+              error ? "border-[1.5px] border-red animate-pulse" : ""
             )}
           >
             {children}
@@ -180,7 +180,7 @@ const InputGroup = ({
                 : "px-5.5 py-3 text-dark placeholder:text-dark-6 dark:text-white",
               iconPosition === "left" && "pl-12.5",
               height === "sm" && "py-2.5",
-              error ? "border-2 border-red animate-pulse" : ""
+              error ? "border-[1.5px] border-red animate-pulse" : ""
             )}
             required={required}
             disabled={disabled}

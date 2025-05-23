@@ -64,7 +64,7 @@ const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, re
                 <input
                     ref={flatpickrRef}
                     name={name}
-                    className={cn("flatpickr form-datepicker w-full  rounded-lg border-[1.5px] border-neutral-300 bg-transparent px-5.5 py-3.5 h-13 outline-none transition focus:border-primary-500 active:border-primar-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary pl-12.5", error ? 'border-2 border-red animate-pulse' : '')}
+                    className={cn("flatpickr form-datepicker w-full  rounded-lg border-[1.5px] border-neutral-300 bg-transparent px-5.5 py-3.5 h-13 outline-none transition focus:border-primary-500 active:border-primar-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary pl-12.5", error ? 'border-[1.5px] border-red animate-pulse' : '')}
                     placeholder="mm/dd/yyyy"
                     required={required}
                     value={date ? new Date(date).toISOString().split('T')[0] : ''} //
