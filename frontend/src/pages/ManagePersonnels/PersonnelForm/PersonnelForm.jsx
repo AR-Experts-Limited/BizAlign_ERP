@@ -11,102 +11,17 @@ import DocumentsTab from './DocumentsTab';
 import VehicleInsuranceDetails from './VehicleInsuranceDetails';
 import SelfEmploymentDetails from './SelfEmploymentDetails';
 import SuccessTick from '../../../components/UIElements/SuccessTick';
-import { addDriver } from '../../../features/drivers/driverSlice';
+import { addDriver, updateDriver } from '../../../features/drivers/driverSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-const PersonnelForm = ({ sites, setPersonnelMode }) => {
+const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelMode, setPersonnelMode, setToastOpen }) => {
     const dispatch = useDispatch();
-    const clearDriver = {
-        vehicleRegPlate: '',
-        employmentStatus: 'Sole Trader',
-        firstName: '',
-        lastName: '',
-        address: '',
-        postcode: '',
-        nationalInsuranceNumber: '',
-        dateOfBirth: '',
-        nationality: '',
-        dateOfJoining: '',
-        vatDetails: {
-            vatNo: '',
-            vatEffectiveDate: ''
-        },
-        transportId: '',
-        transporterName: '',
-        utrNo: '',
-        utrUpdatedOn: '',
-        companyUtrNo: '',
-        companyName: '',
-        companyRegAddress: '',
-        companyRegNo: '',
-        companyRegExpiry: '',
-        typeOfDriver: '',
-        vehicleSize: '',
-        Email: '',
-        PhoneNo: '',
-        bankName: '',
-        sortCode: '',
-        bankAccountNumber: '',
-        accountName: '',
-        bankNameCompany: '',
-        sortCodeCompany: '',
-        bankAccountNumberCompany: '',
-        accountNameCompany: '',
-        bankChoice: 'Personal',
-        drivingLicenseNumber: '',
-        dlValidity: '',
-        dlExpiry: '',
-        issueDrivingLicense: '',
-        passportIssuedFrom: '',
-        passportNumber: '',
-        passportValidity: '',
-        passportExpiry: '',
-        rightToWorkValidity: '',
-        rightToWorkExpiry: '',
-        siteSelection: '',
-        ecsInformation: false,
-        ecsValidity: '',
-        ecsExpiry: '',
-        profilePicture: '',
-        insuranceDocument: '',
-        drivingLicenseFrontImage: '',
-        drivingLicenseBackImage: '',
-        passportDocument: '',
-        ecsCard: '',
-        rightToWorkCard: '',
-        signature: '',
-        insuranceProvider: '',
-        policyNumber: '',
-        policyStartDate: '',
-        policyEndDate: '',
-        insuranceProviderG: '',
-        policyNumberG: '',
-        policyStartDateG: '',
-        policyEndDateG: '',
-        insuranceProviderP: '',
-        policyNumberP: '',
-        policyStartDateP: '',
-        policyEndDateP: '',
-        MotorVehicleInsuranceCertificate: '',
-        GoodsInTransitInsurance: '',
-        PublicLiablity: '',
-        vatNo: '',
-        vatEffectiveDate: '',
-        ninoDocument: '',
-        companyRegistrationCertificate: ''
-    };
 
-    const [newDriver, setNewDriver] = useState(clearDriver);
     const [errors, setErrors] = useState({});
     const [age, setAge] = useState(null);
     const [selectedTab, setSelectedTab] = useState('personnelInfo');
     const [success, setSuccess] = useState(false);
-    const [ownVehicleInsuranceNA, setOwnVehicleInsuranceNA] = useState({
-        mvi: false,
-        goods: false,
-        public: false
-    });
 
     let tabsInfo = [
         { id: 'personnelInfo', label: 'Personnel Info', component: PersonnelInfoTab },
@@ -126,6 +41,7 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
             'firstName',
             'lastName',
             'dateOfBirth',
+            'postcode',
             'nationality',
             'nationalInsuranceNumber',
             'PhoneNo',
@@ -166,26 +82,23 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
             'ecsExpiry'
         ] : [],
         vehicleInsuranceDetails: newDriver.typeOfDriver === 'Own Vehicle' ? [
-            ...(!ownVehicleInsuranceNA.mvi ? [
+            ...(!newDriver.ownVehicleInsuranceNA.mvi ? [
                 'insuranceProvider',
                 'policyNumber',
                 'policyStartDate',
                 'policyEndDate',
-                'MotorVehicleInsuranceCertificate'
             ] : []),
-            ...(!ownVehicleInsuranceNA.goods ? [
+            ...(!newDriver.ownVehicleInsuranceNA.goods ? [
                 'insuranceProviderG',
                 'policyNumberG',
                 'policyStartDateG',
                 'policyEndDateG',
-                'GoodsInTransitInsurance'
             ] : []),
-            ...(!ownVehicleInsuranceNA.public ? [
+            ...(!newDriver.ownVehicleInsuranceNA.public ? [
                 'insuranceProviderP',
                 'policyNumberP',
                 'policyStartDateP',
                 'policyEndDateP',
-                'PublicLiablity'
             ] : [])
         ] : [],
         selfEmploymentDetails: newDriver.employmentStatus === 'Limited Company' ? [
@@ -212,6 +125,12 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         'insuranceDocument'
     ];
 
+    const objectFields = [
+        "ownVehicleInsuranceNA",
+        "vatDetails",
+        "companyVatDetails"
+    ]
+
     const validateFields = () => {
         const newErrors = {};
         const currentTabFields = requiredFields[selectedTab] || [];
@@ -225,6 +144,14 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         // Validate email format
         if (selectedTab === 'personnelInfo' && newDriver.Email && !/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(newDriver.Email)) {
             newErrors.Email = true;
+        }
+
+        if (selectedTab === 'personnelInfo' && newDriver.vatDetails?.vatNo !== '' && newDriver.vatDetails?.vatEffectiveDate === '') {
+            newErrors.vatEffectiveDate = true
+        }
+
+        if (selectedTab === 'selfEmploymentDetails' && newDriver.companyVatDetails?.companyVatNo !== '' && newDriver.companyVatDetails?.companyVatEffectiveDate === '') {
+            newErrors.companyVatEffectiveDate = true
         }
 
         // Validate sort code format
@@ -298,6 +225,10 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         if (newDriver.typeOfDriver !== 'Own Vehicle') {
             updatedTabs = updatedTabs.filter(tab => tab.id !== 'vehicleInsuranceDetails');
         }
+        else if (newDriver.typeOfDriver === 'Own Vehicle' && personnelMode === 'create') {
+            setNewDriver(prev => ({ ...prev, employmentStatus: 'Sole Trader' }))
+        }
+
 
         setTabs(updatedTabs);
     }, [newDriver.employmentStatus, newDriver.typeOfDriver]);
@@ -325,7 +256,7 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         setNewDriver((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e, personnelMode) => {
         e.preventDefault();
 
         if (!validateAllFields()) {
@@ -345,7 +276,7 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
 
         // Append all non-file fields
         Object.keys(newDriver).forEach(key => {
-            if (!fileFields.includes(key)) {
+            if (!fileFields.includes(key) && !objectFields.includes(key)) {
                 formData.append(key, newDriver[key] !== undefined && newDriver[key] !== null ? newDriver[key].toString() : '');
             }
         });
@@ -358,9 +289,13 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         });
 
         // Append ownVehicleInsuranceNA state
-        formData.append('ownVehicleInsuranceNA_mvi', ownVehicleInsuranceNA.mvi.toString());
-        formData.append('ownVehicleInsuranceNA_goods', ownVehicleInsuranceNA.goods.toString());
-        formData.append('ownVehicleInsuranceNA_public', ownVehicleInsuranceNA.public.toString());
+        if (newDriver.typeOfDriver === 'Own Vehicle') {
+            formData.append('ownVehicleInsuranceNA', JSON.stringify(newDriver.ownVehicleInsuranceNA));
+        }
+        else if (newDriver.typeOfDriver === 'Company Vehicle' && newDriver.employmentStatus === 'Limited Company')
+            formData.append('companyVatDetails', JSON.stringify(newDriver.companyVatDetails));
+
+        formData.append('vatDetails', JSON.stringify(newDriver.vatDetails));
 
         let userID = 0;
         try {
@@ -372,16 +307,39 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
         const formattedUserID = userID.toString().padStart(6, '0');
         formData.append('user_ID', formattedUserID);
 
-        try {
-            const response = await dispatch(addDriver(formData));
-            console.log(response);
-            setSuccess(true);
-            setTimeout(() => {
-                setSuccess(false);
+        if (personnelMode === 'create')
+            try {
+                const response = await dispatch(addDriver(formData));
                 setPersonnelMode('view');
-            }, 2000);
-        } catch (error) {
-            alert('Error adding driver');
+                setToastOpen({
+                    content: <>
+                        <SuccessTick width={16} height={16} />
+                        <p className='text-sm font-bold text-green-600'>Personnel Added Successfully</p>
+                    </>
+                })
+                setTimeout(() => {
+                    setToastOpen(null)
+                }, 2000);
+            } catch (error) {
+                alert('Error adding driver');
+            }
+        else if (personnelMode === 'edit') {
+            try {
+                console.log('Form data:', formData)
+                const response = await dispatch(updateDriver(formData));
+                setPersonnelMode('view');
+                setToastOpen({
+                    content: <>
+                        <SuccessTick width={16} height={16} />
+                        <p className='text-sm font-bold text-green-600'>Personnel Update Successfully</p>
+                    </>
+                })
+                setTimeout(() => {
+                    setToastOpen(null)
+                }, 2000);
+            } catch (error) {
+                alert('Error adding driver');
+            }
         }
     };
 
@@ -398,6 +356,7 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
 
     return (
         <>
+
             <div className='flex-1 p-2'>
                 {/* Tabs Navigation */}
                 <div className='flex justify-between overflow-x-auto snap-x snap-mandatory scrollbar-hide h-12 bg-primary-200/30 py-1 rounded-t-lg backdrop-blur-xl border border-primary-500'>
@@ -423,13 +382,12 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
                 <div className='border-b border-x border-primary-300 rounded-b-lg'>
                     <SelectedTabComponent
                         newDriver={newDriver}
+                        setNewDriver={setNewDriver}
                         onInputChange={onInputChange}
                         errors={errors}
                         age={age}
                         setAge={setAge}
                         sites={sites}
-                        ownVehicleInsuranceNA={ownVehicleInsuranceNA}
-                        setOwnVehicleInsuranceNA={setOwnVehicleInsuranceNA}
                     />
                 </div>
             </div>
@@ -451,13 +409,13 @@ const PersonnelForm = ({ sites, setPersonnelMode }) => {
                         Next
                     </button>
                     <button
-                        onClick={handleSubmit}
+                        onClick={(e) => handleSubmit(e, personnelMode)}
                         className='bg-green-500 rounded-md px-2 py-1 text-white'
                     >
-                        Save Personnel
+                        {personnelMode === 'create' ? 'Add Personnel' : 'Update Personnel'}
                     </button>
                     <button
-                        onClick={() => setPersonnelMode('view')}
+                        onClick={() => { setPersonnelMode('view'); setNewDriver(clearDriver) }}
                         className='bg-red-500 rounded-md px-2 py-1 text-white'
                     >
                         Cancel

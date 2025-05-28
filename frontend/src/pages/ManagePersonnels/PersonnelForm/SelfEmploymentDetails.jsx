@@ -4,8 +4,19 @@ import DatePicker from '../../../components/Datepicker/Datepicker';
 import { FaHouseUser, FaIdCard } from 'react-icons/fa';
 import { FaBuildingUser } from "react-icons/fa6";
 import { GoNumber } from 'react-icons/go';
+import { FaEye } from "react-icons/fa";
+import { handleFileView } from '../supportFunctions'
 
-const SelfEmploymentDetails = ({ newDriver, onInputChange, errors }) => {
+
+const SelfEmploymentDetails = ({ newDriver, setNewDriver, onInputChange, errors }) => {
+
+    const handleCompanyVatDetailsChange = (name, value) => {
+        setNewDriver(prev => ({
+            ...prev,
+            companyVatDetails: { ...prev.companyVatDetails, [name]: value }
+        }));
+    };
+
     return (
         <div className='p-6'>
             <h1 className='text-center font-bold'>Self-Employment Details</h1>
@@ -80,6 +91,33 @@ const SelfEmploymentDetails = ({ newDriver, onInputChange, errors }) => {
                         icon={<GoNumber className='text-neutral-300' />}
                     />
                 </div>
+                <div>
+                    <InputGroup
+                        label="VAT Number"
+                        placeholder="Enter VAT No."
+                        type="text"
+                        name="companyVatNo"
+                        iconPosition='left'
+                        icon={<GoNumber className='text-neutral-300' />}
+                        value={newDriver.companyVatDetails?.companyVatNo}
+                        onChange={(e) => handleCompanyVatDetailsChange('companyVatNo', e.target.value)}
+                        error={errors.companyVatNo}
+                    />
+                    <p className={`${errors.companyVatNo ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid VAT number</p>
+                </div>
+
+                <div>
+                    <DatePicker
+                        label="VAT Effective Date"
+                        value={newDriver.companyVatDetails?.companyVatEffectiveDate}
+                        name="companyVatEffectiveDate"
+                        iconPosition="left"
+                        onChange={(value) => handleCompanyVatDetailsChange('companyVatEffectiveDate', value)}
+                        disabled={newDriver.companyVatDetails?.companyVatNo === ''}
+                        error={errors.companyVatEffectiveDate}
+                    />
+                    <p className={`${errors.companyVatEffectiveDate ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid VAT effective date</p>
+                </div>
                 <div className="col-span-3">
                     <InputGroup
                         type="file"
@@ -88,6 +126,38 @@ const SelfEmploymentDetails = ({ newDriver, onInputChange, errors }) => {
                         name="companyRegistrationCertificate"
                         onChange={(e) => onInputChange(e)}
                     />
+                    {newDriver.companyRegistrationCertificateArray &&
+                        <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            <table className='table-general'>
+                                <thead className='sticky top-0 bg-white'>
+                                    <tr>
+                                        <th colSpan={3}>
+                                            History of Company Registration Certificate
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Actions</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(newDriver.companyRegistrationCertificateArray || [])
+                                        .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                            <tr>
+                                                <td>{newDriver.companyRegistrationCertificateArray.length - index}</td>
+                                                <td>
+                                                    <div className='flex justify-around'>
+                                                        <div onClick={() => handleFileView(doc.original)}
+                                                            className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                    </div>
+                                                </td>
+                                                <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>}
                 </div>
             </div>
         </div>

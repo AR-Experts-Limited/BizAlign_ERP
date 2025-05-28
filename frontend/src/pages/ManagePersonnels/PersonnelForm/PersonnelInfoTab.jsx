@@ -6,7 +6,16 @@ import { FaBuildingUser } from "react-icons/fa6";
 import { GoNumber } from 'react-icons/go';
 import countries from '../../../lib/countries';
 
-const PersonnelInfoTab = ({ sites, newDriver, onInputChange, errors, age, setAge }) => {
+const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, errors, age, setAge }) => {
+
+    const handleVatDetailsChange = (name, value) => {
+        console.log(value)
+        setNewDriver(prev => ({
+            ...prev,
+            vatDetails: { ...prev.vatDetails, [name]: value }
+        }));
+    };
+
     return (
         <div className='p-6'>
             <h1 className='text-center font-bold'>Personnel Information</h1>
@@ -112,7 +121,7 @@ const PersonnelInfoTab = ({ sites, newDriver, onInputChange, errors, age, setAge
                             onInputChange(null, value, "dateOfBirth");
                         }}
                     />
-                    {age !== null && <div className='absolute top-[40%] right-3 text-xs bg-stone-100 border border-stone-200 shadow-sm rounded-md p-2'>Age: {age}</div>}
+                    {age !== null && <div className='absolute top-[38%] right-3 text-xs bg-stone-100 border border-stone-200  rounded-md p-2'>Age: {age}</div>}
                     <p className={`${errors.dateOfBirth ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide date of birth</p>
                 </div>
 
@@ -337,8 +346,8 @@ const PersonnelInfoTab = ({ sites, newDriver, onInputChange, errors, age, setAge
                         name="vatNo"
                         iconPosition='left'
                         icon={<GoNumber className='text-neutral-300' />}
-                        value={newDriver.vatNo}
-                        onChange={(e) => onInputChange(e)}
+                        value={newDriver.vatDetails?.vatNo}
+                        onChange={(e) => handleVatDetailsChange('vatNo', e.target.value)}
                         error={errors.vatNo}
                     />
                     <p className={`${errors.vatNo ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid VAT number</p>
@@ -347,16 +356,16 @@ const PersonnelInfoTab = ({ sites, newDriver, onInputChange, errors, age, setAge
                 <div>
                     <DatePicker
                         label="VAT Effective Date"
-                        value={newDriver.vatEffectiveDate}
+                        value={newDriver.vatDetails?.vatEffectiveDate}
                         name="vatEffectiveDate"
                         iconPosition="left"
-                        onChange={(value) => onInputChange(null, value, "vatEffectiveDate")}
-                        disabled={!newDriver.vatNo}
+                        onChange={(value) => handleVatDetailsChange('vatEffectiveDate', value)}
+                        disabled={newDriver.vatDetails?.vatNo === ''}
                         error={errors.vatEffectiveDate}
                     />
                     <p className={`${errors.vatEffectiveDate ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid VAT effective date</p>
                 </div>
-
+                {console.log('Newdriver:', newDriver)}
                 <div>
                     <DatePicker
                         label="Date of Joining"

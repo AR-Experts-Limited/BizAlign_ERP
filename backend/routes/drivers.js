@@ -152,7 +152,7 @@ router.get('/count', async (req, res) => {
 router.get('/notifications', async (req, res) => {
   try {
     const { Driver } = getModels(req);
-    const drivers = await Driver.find({disabled: { $ne: true }}, 'siteSelection firstName lastName dlExpiry gtExpiry plExpiry hrExpiry ecsExpiry passportExpiry drExpiry rightToWorkExpiry passportDocument insuranceDocument drivingLicenseFrontImage drivingLicenseBackImage rightToWorkCard ecsCard expiredReasons approvedBy addedBy passportIssuedFrom activeStatus suspended typeOfDriver policyEndDate');
+    const drivers = await Driver.find({ disabled: { $ne: true } }, 'siteSelection firstName lastName dlExpiry gtExpiry plExpiry hrExpiry ecsExpiry passportExpiry drExpiry rightToWorkExpiry passportDocument insuranceDocument drivingLicenseFrontImage drivingLicenseBackImage rightToWorkCard ecsCard expiredReasons approvedBy addedBy passportIssuedFrom activeStatus suspended typeOfDriver policyEndDate');
     res.json(drivers);
   } catch (error) {
     console.error('Error fetching drivers for notifications:', error);
@@ -175,6 +175,7 @@ router.get('/:siteSelection', async (req, res) => {
 
 // Add a new driver with file upload
 router.post('/', upload.any(), async (req, res) => {
+  console.log('Inside post')
   try {
     const { Driver, IdCounter, Notification } = getModels(req);
 
@@ -202,7 +203,9 @@ router.post('/', upload.any(), async (req, res) => {
     //}
 
     const driverData = req.body;
-    driverData.addedBy = JSON.parse(driverData.addedBy);
+    if (driverData.addedBy) {
+      driverData.addedBy = JSON.parse(driverData.addedBy);
+    }
 
     if (driverData.typeOfDriver == "Own Vehicle") {
       driverData.ownVehicleInsuranceNA = JSON.parse(driverData.ownVehicleInsuranceNA);
@@ -368,25 +371,25 @@ router.post('/', upload.any(), async (req, res) => {
 
 router.post('/driverDisableEmail', async (req, res) => {
 
-  const {email} = req.body;
+  const { email } = req.body;
 
   try {
 
-  const transporter = nodemailer.createTransport({
-    service: 'gmail', // or your chosen email service
-    auth: {
-      user: process.env.MAILER_EMAIL, // Your email address
-      pass: process.env.MAILER_APP_PASSWORD, // Your email password or app password
-    },
-  });
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // or your chosen email service
+      auth: {
+        user: process.env.MAILER_EMAIL, // Your email address
+        pass: process.env.MAILER_APP_PASSWORD, // Your email password or app password
+      },
+    });
 
-  
-  const mailOptions = {
-    from: process.env.MAILER_EMAIL, // Sender address
-    to: email, // Receiver address (user's email)
-    cc: "fleet@rainaltd.com",
-    subject: 'Vehicle Return - Off Hire',
-    html: `
+
+    const mailOptions = {
+      from: process.env.MAILER_EMAIL, // Sender address
+      to: email, // Receiver address (user's email)
+      cc: "fleet@rainaltd.com",
+      subject: 'Vehicle Return - Off Hire',
+      html: `
       <div>
       <p>Dear Independent Contractor,</p>
 
@@ -412,10 +415,10 @@ router.post('/driverDisableEmail', async (req, res) => {
       </p>
       </div>
     `,
-  };
+    };
 
-  await transporter.sendMail(mailOptions);
-  return res.status(200).json({ message: 'Email sent successfully' });
+    await transporter.sendMail(mailOptions);
+    return res.status(200).json({ message: 'Email sent successfully' });
   } catch (error) {
     console.error("Error sending Email:", error);
   }
@@ -582,6 +585,253 @@ router.post('/delete-additional-version', async (req, res) => {
   } catch (error) {
     console.error("Delete additional version error:", error);
     return res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+
+// Update driver details with file upload support
+router.put('/newupdate/:id', upload.any(), async (req, res) => {
+  try {
+    const { Driver, Notification, User } = getModels(req);
+    const originalDriver = await Driver.findById(req.params.id);
+
+    if (!originalDriver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    // Parse any JSON fields that might be sent as strings
+    const driverData = req.body;
+
+    // Parse complex fields from stringified JSON
+    if (driverData.addedBy) {
+      try {
+        driverData.addedBy = JSON.parse(driverData.addedBy);
+      } catch (e) {
+        console.error('Error parsing addedBy:', e);
+      }
+    }
+
+    if (driverData.typeOfDriver === "Own Vehicle" && driverData.ownVehicleInsuranceNA) {
+      try {
+        driverData.ownVehicleInsuranceNA = JSON.parse(driverData.ownVehicleInsuranceNA);
+      } catch (e) {
+        console.error('Error parsing ownVehicleInsuranceNA:', e);
+      }
+    }
+
+    if (driverData.vatDetails) {
+      try {
+        driverData.vatDetails = JSON.parse(driverData.vatDetails);
+      } catch (e) {
+        console.error('Error parsing vatDetails:', e);
+        driverData.vatDetails = null;
+      }
+    } else {
+      driverData.vatDetails = null;
+    }
+
+    if (driverData.companyVatDetails) {
+      try {
+        driverData.companyVatDetails = JSON.parse(driverData.companyVatDetails);
+      } catch (e) {
+        console.error('Error parsing companyVatDetails:', e);
+        driverData.companyVatDetails = null;
+      }
+    } else {
+      driverData.companyVatDetails = null;
+    }
+
+    // Prepare update object with all fields
+    const updateFields = {
+      firstName: driverData.firstName,
+      lastName: driverData.lastName,
+      address: driverData.address,
+      postcode: driverData.postcode,
+      nationalInsuranceNumber: driverData.nationalInsuranceNumber,
+      dateOfBirth: driverData.dateOfBirth,
+      nationality: driverData.nationality,
+      dateOfJoining: driverData.dateOfJoining,
+      transportId: driverData.transportId,
+      transporterName: driverData.transporterName,
+      utrNo: driverData.utrNo,
+      utrUpdatedOn: driverData.utrUpdatedOn,
+      vatDetails: driverData.vatDetails,
+      typeOfDriver: driverData.typeOfDriver,
+      typeOfDriverTrace: driverData.typeOfDriverTrace,
+      customTypeOfDriver: driverData.customTypeOfDriver,
+      vehicleSize: driverData.vehicleSize,
+      Email: driverData.Email,
+      PhoneNo: driverData.PhoneNo,
+      bankName: driverData.bankName,
+      sortCode: driverData.sortCode,
+      bankAccountNumber: driverData.bankAccountNumber,
+      accountName: driverData.accountName,
+      bankNameCompany: driverData.bankNameCompany,
+      sortCodeCompany: driverData.sortCodeCompany,
+      bankAccountNumberCompany: driverData.bankAccountNumberCompany,
+      accountNameCompany: driverData.accountNameCompany,
+      bankChoice: driverData.bankChoice,
+      companyUtrNo: driverData.companyUtrNo,
+      companyRegNo: driverData.companyRegNo,
+      employmentStatus: driverData.employmentStatus,
+      drivingLicenseNumber: driverData.drivingLicenseNumber,
+      dlValidity: driverData.dlValidity,
+      dlExpiry: driverData.dlExpiry,
+      issueDrivingLicense: driverData.issueDrivingLicense,
+      activeStatus: driverData.activeStatus,
+      suspended: driverData.suspended,
+      expiredReasons: driverData.expiredReasons,
+      addedBy: driverData.addedBy,
+      insuranceProvider: driverData.insuranceProvider,
+      policyNumber: driverData.policyNumber,
+      policyStartDate: driverData.policyStartDate,
+      policyEndDate: driverData.policyEndDate,
+      companyName: driverData.companyName,
+      companyRegAddress: driverData.companyRegAddress,
+      insuranceProviderG: driverData.insuranceProviderG,
+      policyNumberG: driverData.policyNumberG,
+      policyStartDateG: driverData.policyStartDateG,
+      policyEndDateG: driverData.policyEndDateG,
+      insuranceProviderP: driverData.insuranceProviderP,
+      policyNumberP: driverData.policyNumberP,
+      policyStartDateP: driverData.policyStartDateP,
+      policyEndDateP: driverData.policyEndDateP,
+      passportIssuedFrom: driverData.passportIssuedFrom,
+      passportNumber: driverData.passportNumber,
+      passportValidity: driverData.passportValidity,
+      passportExpiry: driverData.passportExpiry,
+      rightToWorkValidity: driverData.rightToWorkValidity,
+      rightToWorkExpiry: driverData.rightToWorkExpiry,
+      siteSelection: driverData.siteSelection,
+      ecsInformation: driverData.ecsInformation,
+      ecsValidity: driverData.ecsValidity,
+      ecsExpiry: driverData.ecsExpiry,
+      delReqStatus: driverData.delReqStatus,
+      companyRegExpiryDate: driverData.companyRegExpiryDate,
+      ownVehicleInsuranceNA: driverData.ownVehicleInsuranceNA,
+      vehicleRegPlate: driverData.vehicleRegPlate,
+      disabled: driverData.disabled,
+      disabledOn: driverData.disabledOn
+    };
+
+    // Handle file uploads if present
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const docEntry = {
+          original: file.location,
+          temp: '',
+          docApproval: true,
+          timestamp: new Date(),
+          approvedBy: '',
+        };
+
+        const docEntrySmall = {
+          original: file.location,
+          timestamp: new Date()
+        };
+
+        switch (file.fieldname) {
+          case 'profilePicture':
+          case 'signature':
+            if (!Array.isArray(updateFields[file.fieldname])) {
+              updateFields[file.fieldname] = originalDriver[file.fieldname] || [];
+            }
+            updateFields[file.fieldname].push(docEntrySmall);
+            break;
+
+          case 'insuranceDocument':
+          case 'drivingLicenseFrontImage':
+          case 'drivingLicenseBackImage':
+          case 'passportDocument':
+          case 'ecsCard':
+          case 'rightToWorkCard':
+          case 'MotorVehicleInsuranceCertificate':
+          case 'GoodsInTransitInsurance':
+          case 'PublicLiablity':
+          case 'companyRegistrationCertificate':
+            if (!Array.isArray(updateFields[file.fieldname])) {
+              updateFields[file.fieldname] = originalDriver[file.fieldname] || [];
+            }
+            updateFields[file.fieldname].push(docEntry);
+            break;
+
+          default:
+            // Handle additional documents
+            const match = file.fieldname.match(/^extraDoc(\d+)_file(\d+)$/);
+            if (match) {
+              const docIndex = match[1];
+              const docLabel = driverData[`extraDoc${docIndex}_name`];
+
+              if (!updateFields.additionalDocs) {
+                updateFields.additionalDocs = new Map(originalDriver.additionalDocs || []);
+              }
+
+              if (!updateFields.additionalDocs.has(docLabel)) {
+                updateFields.additionalDocs.set(docLabel, []);
+              }
+
+              const fileVersion = {
+                original: file.location,
+                temp: '',
+                docApproval: true,
+                timestamp: new Date(),
+                approvedBy: '',
+              };
+
+              const currentGroups = updateFields.additionalDocs.get(docLabel);
+              currentGroups.push([fileVersion]);
+              updateFields.additionalDocs.set(docLabel, currentGroups);
+            }
+        }
+      }
+    }
+
+    // Perform the update
+    const updatedDriver = await Driver.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateFields },
+      { new: true }
+    );
+
+    // Update associated user if email or name changed
+    if (originalDriver.Email !== updatedDriver.Email ||
+      originalDriver.firstName !== updatedDriver.firstName ||
+      originalDriver.lastName !== updatedDriver.lastName) {
+      await User.findOneAndUpdate(
+        { user_ID: updatedDriver.user_ID },
+        {
+          firstName: updatedDriver.firstName,
+          lastName: updatedDriver.lastName,
+          email: updatedDriver.Email
+        }
+      );
+    }
+
+    // Send notification if site selection changed
+    if (originalDriver.siteSelection !== updatedDriver.siteSelection) {
+      const notification = {
+        driver: updatedDriver._id,
+        site: [originalDriver.siteSelection, updatedDriver.siteSelection],
+        changed: 'drivers',
+        message: `Driver ${updatedDriver.firstName} ${updatedDriver.lastName} was changed from site ${originalDriver.siteSelection} to ${updatedDriver.siteSelection}`,
+      };
+      await new Notification({ notification, targetDevice: 'website' }).save();
+    }
+
+    // Notify connected clients about the update
+    sendToClients(req.db, {
+      type: 'driverUpdated',
+      driverId: updatedDriver._id
+    });
+
+    res.json(updatedDriver);
+  } catch (error) {
+    console.error('Error updating driver:', error);
+    res.status(500).json({
+      message: 'Error updating driver',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

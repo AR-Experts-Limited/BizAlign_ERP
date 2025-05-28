@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { FaTrashAlt } from "react-icons/fa";
 import TableFeatures from '../../components/TableFeatures/TableFeatures';
 
-const PersonnelsTable = ({ driversList, columns }) => {
+const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteDriver }) => {
 
     return (
         <div className='overflow-auto'>
@@ -18,14 +18,14 @@ const PersonnelsTable = ({ driversList, columns }) => {
                 </thead>
                 <tbody>
                     {driversList.map((driver, index) => (
-                        <tr className={`cursor-pointer hover:bg-neutral-50`} >
+                        <tr onClick={() => handleEditDriver(driver)} className={`cursor-pointer hover:bg-neutral-50`} >
                             <td>{index + 1}</td>
                             {Object.values(columns).map((col) => (
                                 <td>{driver[col]}</td>
                             ))}
                             <td >
                                 <div className='flex justify-center'>
-                                    <div className={`flex justify-center items-center w-7 h-7 rounded-md p-1 hover:bg-neutral-200  text-red-500`}><FaTrashAlt size={16} /></div>
+                                    <div onClick={(e) => { e.stopPropagation(); handleDeleteDriver(driver._id, driver.user_ID) }} className={`flex justify-center items-center w-7 h-7 rounded-md p-1 hover:bg-neutral-200  text-red-500`}><FaTrashAlt size={16} /></div>
                                 </div>
                             </td>
                         </tr>

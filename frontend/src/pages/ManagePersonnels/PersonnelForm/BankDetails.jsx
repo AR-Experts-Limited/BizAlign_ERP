@@ -38,6 +38,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type='text'
                                 label="Bank Name"
                                 name="bankName"
+                                placeholder="Bank Name"
                                 value={newDriver.bankName}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -52,6 +53,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type={showDetails.showSortCode ? 'text' : 'password'}
                                 label="Sort Code"
                                 name="sortCode"
+                                placeholder="Sort Code"
                                 value={newDriver.sortCode}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -72,6 +74,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type={showDetails.showAccountNumber ? 'text' : 'password'}
                                 label="Account Number"
                                 name="bankAccountNumber"
+                                placeholder="Account Number"
                                 value={newDriver.bankAccountNumber}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -92,6 +95,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type='text'
                                 label="Account Name"
                                 name="accountName"
+                                placeholder="Account Name"
                                 value={newDriver.accountName}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -109,6 +113,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type='text'
                                 label="Company Bank Name"
                                 name="bankNameCompany"
+                                placeholder="Company Bank Name"
                                 value={newDriver.bankNameCompany}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -123,6 +128,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type={showDetails.showSortCodeCompany ? 'text' : 'password'}
                                 label="Company Sort Code"
                                 name="sortCodeCompany"
+                                placeholder="Company Sort Code"
                                 value={newDriver.sortCodeCompany}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -143,6 +149,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type={showDetails.showAccountNumberCompany ? 'text' : 'password'}
                                 label="Company Account Number"
                                 name="bankAccountNumberCompany"
+                                placeholder="Company Account Number"
                                 value={newDriver.bankAccountNumberCompany}
                                 onChange={onInputChange}
                                 iconPosition="left"
@@ -163,6 +170,7 @@ const BankDetails = ({ newDriver, onInputChange, errors }) => {
                                 type='text'
                                 label="Company Account Name"
                                 name="accountNameCompany"
+                                placeholder="Company Account Name"
                                 value={newDriver.accountNameCompany}
                                 onChange={onInputChange}
                                 iconPosition="left"

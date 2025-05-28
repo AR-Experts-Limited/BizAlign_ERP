@@ -3,8 +3,11 @@ import InputGroup from '../../../components/InputGroup/InputGroup';
 import DatePicker from '../../../components/Datepicker/Datepicker';
 import InputWrapper from '../../../components/InputGroup/InputWrapper';
 import { FaIdCard } from 'react-icons/fa';
+import { FaEye } from "react-icons/fa";
+import { handleFileView } from '../supportFunctions'
 
 const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
+
     const calculateDLValidity = () => {
         if (!newDriver.dlValidity || !newDriver.dlExpiry) return '';
 
@@ -115,9 +118,9 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                 name="drivingLicenseFrontImage"
                                 onChange={(e) => onInputChange(e)}
                             />
-                            <div className='mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            {newDriver.drivingLicenseFrontImageArray && <div className='mt-2 overflow-auto rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                 <table className='table-general'>
-                                    <thead>
+                                    <thead className='sticky top-0 bg-white'>
                                         <tr>
                                             <th colSpan={3}>
                                                 History of Driving license Front Image
@@ -129,8 +132,23 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                             <th>Timestamp</th>
                                         </tr>
                                     </thead>
+                                    <tbody>
+                                        {(newDriver.drivingLicenseFrontImageArray)
+                                            .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((drivingLicFrontImage, index) => (
+                                                <tr>
+                                                    <td>{newDriver.drivingLicenseFrontImageArray.length - index}</td>
+                                                    <td>
+                                                        <div className='flex justify-around'>
+                                                            <div onClick={() => handleFileView(drivingLicFrontImage.original)}
+                                                                className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>{new Date(drivingLicFrontImage.timestamp).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
                                 </table>
-                            </div>
+                            </div>}
                         </div>
                         <div>
                             <InputGroup
@@ -140,9 +158,9 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                 name="drivingLicenseBackImage"
                                 onChange={(e) => onInputChange(e)}
                             />
-                            <div className='mt-2 rounded-md h-20 w-full border-2 border-neutral-200'>
+                            {newDriver.drivingLicenseBackImageArray && <div className='mt-2 overflow-auto rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                 <table className='table-general'>
-                                    <thead>
+                                    <thead className='sticky top-0 bg-white'>
                                         <tr>
                                             <th colSpan={3}>
                                                 History of Driving license Back Image
@@ -154,13 +172,28 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                             <th>Timestamp</th>
                                         </tr>
                                     </thead>
+                                    <tbody>
+                                        {(newDriver.drivingLicenseBackImageArray).
+                                            sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((drivingLicBackImage, index) => (
+                                                <tr>
+                                                    <td>{newDriver.drivingLicenseBackImageArray.length - index}</td>
+                                                    <td>
+                                                        <div className='flex justify-around'>
+                                                            <div onClick={() => handleFileView(drivingLicBackImage.original)}
+                                                                className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>{new Date(drivingLicBackImage.timestamp).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
                                 </table>
-                            </div>
+                            </div>}
                         </div>
                     </InputWrapper>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

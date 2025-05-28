@@ -1,5 +1,7 @@
 import React from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
+import { FaEye } from "react-icons/fa";
+import { handleFileView } from '../supportFunctions'
 
 const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
     return (
@@ -15,23 +17,40 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                         name="profilePicture"
                         onChange={(e) => onInputChange(e)}
                     />
-                    <div className='mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
-                        <table className='table-general'>
-                            <thead>
-                                <tr>
-                                    <th colSpan={3}>
-                                        History of Profile Picture
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th>Version</th>
-                                    <th>Actions</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
+                    {newDriver.profilePictureArray &&
+                        <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            <table className='table-general'>
+                                <thead className='sticky top-0 bg-white'>
+                                    <tr>
+                                        <th colSpan={3}>
+                                            History of Profile Picture
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Actions</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(newDriver.profilePictureArray || [])
+                                        .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                            <tr>
+                                                <td>{newDriver.profilePictureArray.length - index}</td>
+                                                <td>
+                                                    <div className='flex justify-around'>
+                                                        <div onClick={() => handleFileView(doc.original)}
+                                                            className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                    </div>
+                                                </td>
+                                                <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>}
                 </div>
+
                 <div>
                     <InputGroup
                         type="file"
@@ -40,22 +59,38 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                         name="ninoDocument"
                         onChange={(e) => onInputChange(e)}
                     />
-                    <div className='mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
-                        <table className='table-general'>
-                            <thead>
-                                <tr>
-                                    <th colSpan={3}>
-                                        History of NINO Document
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th>Version</th>
-                                    <th>Actions</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
+                    {newDriver.ninoDocumentArray &&
+                        <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            <table className='table-general'>
+                                <thead className='sticky top-0 bg-white'>
+                                    <tr>
+                                        <th colSpan={3}>
+                                            History of NINO Document
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Actions</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(newDriver.ninoDocumentArray || [])
+                                        .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                            <tr>
+                                                <td>{newDriver.ninoDocumentArray.length - index}</td>
+                                                <td>
+                                                    <div className='flex justify-around'>
+                                                        <div onClick={() => handleFileView(doc.original)}
+                                                            className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                    </div>
+                                                </td>
+                                                <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>}
                 </div>
                 <div>
                     <InputGroup
@@ -65,25 +100,41 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                         name="signature"
                         onChange={(e) => onInputChange(e)}
                     />
-                    <div className='mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
-                        <table className='table-general'>
-                            <thead>
-                                <tr>
-                                    <th colSpan={3}>
-                                        History of Signatures
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th>Version</th>
-                                    <th>Actions</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
+                    {newDriver.signatureArray &&
+                        <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            <table className='table-general'>
+                                <thead className='sticky top-0 bg-white'>
+                                    <tr>
+                                        <th colSpan={3}>
+                                            History of Signature
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Actions</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(newDriver.signatureArray || [])
+                                        .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                            <tr>
+                                                <td>{newDriver.signatureArray.length - index}</td>
+                                                <td>
+                                                    <div className='flex justify-around'>
+                                                        <div onClick={() => handleFileView(doc.original)}
+                                                            className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                    </div>
+                                                </td>
+                                                <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

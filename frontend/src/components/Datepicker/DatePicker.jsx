@@ -5,7 +5,7 @@ import { TiDelete } from "react-icons/ti";
 import "flatpickr/dist/flatpickr.min.css";
 import { cn } from "../../lib/utils";
 
-const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, required, onChange, error }) => {
+const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, required, onChange, error, disabled }) => {
     const flatpickrRef = useRef(null);
     const flatpickrInstance = useRef(null);
     const [date, setDate] = useState("");
@@ -51,7 +51,7 @@ const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, re
 
     return (
         <div>
-            <label htmlFor={id} className="text-body-sm font-medium text-dark dark:text-white">
+            <label htmlFor={id} className={`${disabled ? 'text-gray-200' : 'text-dark'} text-body-sm font-medium  dark:text-white`}>
                 {label}
                 {required && <span className="ml-1 select-none text-red">*</span>}
             </label>
@@ -67,6 +67,7 @@ const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, re
                     className={cn("flatpickr form-datepicker w-full  rounded-lg border-[1.5px] border-neutral-300 bg-transparent px-5.5 py-3.5 h-13 outline-none transition focus:border-primary-500 active:border-primar-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary pl-12.5", error ? 'border-[1.5px] border-red animate-pulse' : '')}
                     placeholder="mm/dd/yyyy"
                     required={required}
+                    disabled={disabled}
                     value={date ? new Date(date).toISOString().split('T')[0] : ''} //
                 />
 

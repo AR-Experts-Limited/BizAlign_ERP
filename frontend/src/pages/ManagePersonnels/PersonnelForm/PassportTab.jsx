@@ -4,8 +4,13 @@ import DatePicker from '../../../components/Datepicker/Datepicker';
 import { FaGlobe } from 'react-icons/fa';
 import { GoNumber } from 'react-icons/go';
 import countries from '../../../lib/countries';
+import { FaEye } from "react-icons/fa";
+import { handleFileView } from '../supportFunctions'
+
 
 const PassportTab = ({ newDriver, onInputChange, errors }) => {
+
+
     return (
         <div className='p-6'>
             <h1 className='text-center font-bold'>Passport Information</h1>
@@ -75,6 +80,7 @@ const PassportTab = ({ newDriver, onInputChange, errors }) => {
                     {errors.passportExpiry && <p className='text-sm font-light text-red'>* Please provide passport expiry date</p>}
                 </div>
                 <div className='col-span-3 grid grid-cols-1 md:grid-cols-3'>
+                    <div className='text-amber-500 cols-span-1 md:col-span-3'>*Maximum file size - 5MB, Allowed Formats: jpeg, pdf, png.</div>
                     <div className='col-span-1'>
                         <InputGroup
                             type="file"
@@ -85,22 +91,37 @@ const PassportTab = ({ newDriver, onInputChange, errors }) => {
                             onChange={(e) => onInputChange(e)}
                         />
                     </div>
-                    <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
-                        <table className='table-general'>
-                            <thead>
-                                <tr>
-                                    <th colSpan={3}>
-                                        History of Passport Document
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th>Version</th>
-                                    <th>Actions</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
+                    {newDriver.passportDocumentArray &&
+                        <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            <table className='table-general'>
+                                <thead className='sticky top-0 bg-white'>
+                                    <tr>
+                                        <th colSpan={3}>
+                                            History of Passport Document
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Actions</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(newDriver.passportDocumentArray || [])
+                                        .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((passDoc, index) => (
+                                            <tr>
+                                                <td>{newDriver.passportDocumentArray.length - index}</td>
+                                                <td>
+                                                    <div className='flex justify-around'>
+                                                        <div onClick={() => handleFileView(passDoc.original)} className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                    </div>
+                                                </td>
+                                                <td>{new Date(passDoc.timestamp).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>}
                 </div>
             </div>
         </div>

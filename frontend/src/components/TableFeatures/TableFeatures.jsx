@@ -72,27 +72,27 @@ const TableFeatures = ({ columns, setColumns, content, setContent }) => {
 
   useEffect(() => {
     const handleFilterColumns = () => {
-      const filteredData = originalContent.map((obj) => {
-        return Object.keys(obj)
-          .filter((keyFilter) =>
-            filterCol.includes(
-              Object.entries(originalColumns).find(
-                ([key, value]) => value === keyFilter
-              )?.[0]
-            )
-          )
-          .reduce((filteredObj, key) => {
-            filteredObj[key] = obj[key];
-            return filteredObj;
-          }, {});
-      });
+      // const filteredData = originalContent.map((obj) => {
+      //   return Object.keys(obj)
+      //     .filter((keyFilter) =>
+      //       filterCol.includes(
+      //         Object.entries(originalColumns).find(
+      //           ([key, value]) => value === keyFilter
+      //         )?.[0]
+      //       )
+      //     )
+      //     .reduce((filteredObj, key) => {
+      //       filteredObj[key] = obj[key];
+      //       return filteredObj;
+      //     }, {});
+      // });
       const filteredObj = Object.fromEntries(
         Object.entries(originalColumns).filter(([key, value]) =>
           filterCol.includes(key)
         )
       );
       setColumns(filteredObj);
-      setContent(filteredData);
+      setContent(originalContent);
     };
     handleFilterColumns();
   }, [filterCol, originalContent]);

@@ -19,12 +19,17 @@ export const addDriver = createAsyncThunk('drivers/addDriver', async (driver) =>
 });
 
 export const updateDriver = createAsyncThunk('drivers/updateDriver', async (driver) => {
-    const response = await axios.put(`${API_BASE_URL}/${driver.id}`, driver);
+    const id = driver.get('_id');
+    const response = await axios.put(`${API_BASE_URL}/api/drivers/newupdate/${id}`, driver, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
     return response.data;
 });
 
 export const deleteDriver = createAsyncThunk('drivers/deleteDriver', async (id) => {
-    await axios.delete(`${API_BASE_URL}/${id}`);
+    await axios.delete(`${API_BASE_URL}/api/drivers/${id}`);
     return id;
 });
 
@@ -69,7 +74,7 @@ const driverSlice = createSlice({
 
             // Update Driver
             .addCase(updateDriver.fulfilled, (state, action) => {
-                const index = state.list.findIndex((d) => d.id === action.payload.id);
+                const index = state.list.findIndex((d) => d._id === action.payload._id);
                 if (index !== -1) state.list[index] = action.payload;
             })
 
@@ -79,7 +84,7 @@ const driverSlice = createSlice({
             })
             .addCase(deleteDriver.fulfilled, (state, action) => {
                 state.deleteStatus = 'succeeded';
-                state.list = state.list.filter((d) => d.id !== action.payload);
+                state.list = state.list.filter((d) => d._id !== action.payload);
             })
             .addCase(deleteDriver.rejected, (state, action) => {
                 state.deleteStatus = 'failed';

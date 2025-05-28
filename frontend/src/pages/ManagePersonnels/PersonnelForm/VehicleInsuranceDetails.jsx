@@ -2,12 +2,14 @@ import React from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
 import DatePicker from '../../../components/Datepicker/Datepicker';
 import { FaUniversity, FaIdCard } from 'react-icons/fa';
+import { FaEye } from "react-icons/fa";
+import { handleFileView } from '../supportFunctions'
 
-const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleInsuranceNA, setOwnVehicleInsuranceNA }) => {
+const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, errors }) => {
     const handleNAChange = (type) => (e) => {
-        setOwnVehicleInsuranceNA(prev => ({
+        setNewDriver(prev => ({
             ...prev,
-            [type]: e.target.checked
+            ownVehicleInsuranceNA: { ...prev.ownVehicleInsuranceNA, [type]: e.target.checked }
         }));
     };
 
@@ -22,14 +24,14 @@ const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleI
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={ownVehicleInsuranceNA.mvi}
+                            checked={newDriver.ownVehicleInsuranceNA.mvi}
                             onChange={handleNAChange('mvi')}
                         />
                         Not Applicable
                     </label>
                 </div>
 
-                {!ownVehicleInsuranceNA.mvi && (
+                {!newDriver.ownVehicleInsuranceNA.mvi && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <InputGroup
@@ -87,16 +89,50 @@ const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleI
                             {errors.policyEndDate && <p className='text-sm font-light text-red'>* Please provide policy end date</p>}
                         </div>
                         <div className="col-span-3">
+                            <div className='text-amber-500 cols-span-1 md:col-span-3'>*Maximum file size - 5MB, Allowed Formats: jpeg, pdf, png.</div>
                             <InputGroup
                                 type="file"
                                 fileStyleVariant="style1"
                                 label="Motor Vehicle Insurance Certificate"
                                 name="MotorVehicleInsuranceCertificate"
                                 onChange={(e) => onInputChange(e)}
-                                required={true}
-                                error={errors.MotorVehicleInsuranceCertificate}
+                            // required={true}
+                            // error={errors.MotorVehicleInsuranceCertificate}
                             />
                             {errors.MotorVehicleInsuranceCertificate && <p className='text-sm font-light text-red'>* Please provide motor vehicle insurance certificate</p>}
+
+                            {newDriver.MotorVehicleInsuranceCertificateArray &&
+                                <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                                    <table className='table-general'>
+                                        <thead className='sticky top-0 bg-white'>
+                                            <tr>
+                                                <th colSpan={3}>
+                                                    History of Motor Vehicle Insurance Certificate
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <th>Version</th>
+                                                <th>Actions</th>
+                                                <th>Timestamp</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(newDriver.MotorVehicleInsuranceCertificateArray || [])
+                                                .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                                    <tr>
+                                                        <td>{newDriver.MotorVehicleInsuranceCertificateArray.length - index}</td>
+                                                        <td>
+                                                            <div className='flex justify-around'>
+                                                                <div onClick={() => handleFileView(doc.original)}
+                                                                    className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                            </div>
+                                                        </td>
+                                                        <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>}
                         </div>
                     </div>
                 )}
@@ -109,14 +145,14 @@ const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleI
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={ownVehicleInsuranceNA.goods}
+                            checked={newDriver.ownVehicleInsuranceNA.goods}
                             onChange={handleNAChange('goods')}
                         />
                         Not Applicable
                     </label>
                 </div>
 
-                {!ownVehicleInsuranceNA.goods && (
+                {!newDriver.ownVehicleInsuranceNA.goods && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <InputGroup
@@ -174,16 +210,49 @@ const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleI
                             {errors.policyEndDateG && <p className='text-sm font-light text-red'>* Please provide policy end date</p>}
                         </div>
                         <div className="col-span-3">
+                            <div className='text-amber-500 cols-span-1 md:col-span-3'>*Maximum file size - 5MB, Allowed Formats: jpeg, pdf, png.</div>
                             <InputGroup
                                 type="file"
                                 fileStyleVariant="style1"
                                 label="Goods In Transit Insurance"
                                 name="GoodsInTransitInsurance"
                                 onChange={(e) => onInputChange(e)}
-                                required={true}
-                                error={errors.GoodsInTransitInsurance}
+                            // required={true}
+                            // error={errors.GoodsInTransitInsurance}
                             />
                             {errors.GoodsInTransitInsurance && <p className='text-sm font-light text-red'>* Please provide goods in transit insurance</p>}
+                            {newDriver.GoodsInTransitInsuranceArray &&
+                                <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                                    <table className='table-general'>
+                                        <thead className='sticky top-0 bg-white'>
+                                            <tr>
+                                                <th colSpan={3}>
+                                                    History of Goods In Transit Insurance
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <th>Version</th>
+                                                <th>Actions</th>
+                                                <th>Timestamp</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(newDriver.GoodsInTransitInsuranceArray || [])
+                                                .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                                    <tr>
+                                                        <td>{newDriver.GoodsInTransitInsuranceArray.length - index}</td>
+                                                        <td>
+                                                            <div className='flex justify-around'>
+                                                                <div onClick={() => handleFileView(doc.original)}
+                                                                    className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                            </div>
+                                                        </td>
+                                                        <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>}
                         </div>
                     </div>
                 )}
@@ -196,14 +265,14 @@ const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleI
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={ownVehicleInsuranceNA.public}
+                            checked={newDriver.ownVehicleInsuranceNA.public}
                             onChange={handleNAChange('public')}
                         />
                         Not Applicable
                     </label>
                 </div>
 
-                {!ownVehicleInsuranceNA.public && (
+                {!newDriver.ownVehicleInsuranceNA.public && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <InputGroup
@@ -261,16 +330,49 @@ const VehicleInsuranceDetails = ({ newDriver, onInputChange, errors, ownVehicleI
                             {errors.policyEndDateP && <p className='text-sm font-light text-red'>* Please provide policy end date</p>}
                         </div>
                         <div className="col-span-3">
+                            <div className='text-amber-500 cols-span-1 md:col-span-3'>*Maximum file size - 5MB, Allowed Formats: jpeg, pdf, png.</div>
                             <InputGroup
                                 type="file"
                                 fileStyleVariant="style1"
                                 label="Public Liability Insurance"
                                 name="PublicLiablity"
                                 onChange={(e) => onInputChange(e)}
-                                required={true}
-                                error={errors.PublicLiablity}
+                            // required={true}
+                            // error={errors.PublicLiablity}
                             />
                             {errors.PublicLiablity && <p className='text-sm font-light text-red'>* Please provide public liability insurance</p>}
+                            {newDriver.PublicLiablityArray &&
+                                <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                                    <table className='table-general'>
+                                        <thead className='sticky top-0 bg-white'>
+                                            <tr>
+                                                <th colSpan={3}>
+                                                    History of Public Liablity
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <th>Version</th>
+                                                <th>Actions</th>
+                                                <th>Timestamp</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(newDriver.PublicLiablityArray || [])
+                                                .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
+                                                    <tr>
+                                                        <td>{newDriver.PublicLiablityArray.length - index}</td>
+                                                        <td>
+                                                            <div className='flex justify-around'>
+                                                                <div onClick={() => handleFileView(doc.original)}
+                                                                    className='rounded-md p-2 hover:bg-neutral-200'><FaEye size={15} /></div>
+                                                            </div>
+                                                        </td>
+                                                        <td>{new Date(doc.timestamp).toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>}
                         </div>
                     </div>
                 )}
