@@ -28,6 +28,13 @@ const WeekRangeDropdown = ({ value, disabled, onChange }) => {
         generateWeeks();
     }, []);
 
+    useEffect(() => {
+        if (disabled) {
+            setStartWeek('')
+            setEndWeek('')
+        }
+    }, [disabled])
+
     // Parse the current value if it's an array
     useEffect(() => {
         if (value && Array.isArray(value) && value.length > 0) {
