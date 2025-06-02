@@ -61,9 +61,9 @@ router.post('/', async (req, res) => {
     if (!Array.isArray(serviceWeek)) {
       return res.status(400).json({ message: 'serviceWeek must be an array' });
     }
-
+    let newRateCard = ''
     if (serviceWeek.length === 1) {
-      const newRateCard = new RateCard({
+      newRateCard = new RateCard({
         serviceTitle,
         serviceRate,
         vehicleType,
@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
     } else {
       await Promise.all(
         serviceWeek.map(async (week) => {
-          const newRateCard = new RateCard({
+          newRateCard = new RateCard({
             serviceTitle,
             serviceRate,
             vehicleType,
@@ -113,7 +113,7 @@ router.post('/', async (req, res) => {
       type: 'rateCardUpdated', // Custom event to signal data update
     });
 
-    res.status(201).json({ message: 'Rate cards created' });
+    res.status(201).json(newRateCard);
   } catch (error) {
     res.status(500).json({ message: 'Error adding rate card', error: error.message });
   }

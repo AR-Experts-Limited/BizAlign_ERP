@@ -49,6 +49,8 @@ const InputGroup = ({
   background,
   withIcon,
   backgroundSize,
+  min,
+  step
 }) => {
   const id = useId();
 
@@ -172,6 +174,8 @@ const InputGroup = ({
             placeholder={placeholder}
             onChange={onChange}
             value={value}
+            min={min}
+            step={step}
             defaultValue={defaultValue}
             className={cn(
               "w-full rounded-lg border-[1.5px] border-neutral-300 bg-transparent outline-none transition focus:border-primary-500 disabled:cursor-default disabled:bg-gray-2 data-[active=true]:border-primary-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary-500 dark:disabled:bg-dark dark:data-[active=true]:border-primary-500",
@@ -180,7 +184,7 @@ const InputGroup = ({
                 : "px-5.5 py-3 text-dark placeholder:text-dark-6 dark:text-white",
               iconPosition === "left" && "pl-12.5",
               height === "sm" && "py-2.5",
-              error ? "border-[1.5px] border-red animate-pulse" : ""
+              error ? "border-[1.5px] border-red animate-pulse" : "",
             )}
             required={required}
             disabled={disabled}

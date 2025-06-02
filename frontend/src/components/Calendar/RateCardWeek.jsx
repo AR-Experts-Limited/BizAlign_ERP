@@ -4,7 +4,7 @@ import 'flatpickr/dist/themes/light.css';
 import './Calendar.css'
 import { BiChevronDown } from "react-icons/bi";
 
-function RateCardWeek({ value, onChange }) {
+function RateCardWeek({ value, onChange, disabled }) {
     const containerRef = useRef(null);
     const flatpickrRef = useRef(null);
 
@@ -14,6 +14,12 @@ function RateCardWeek({ value, onChange }) {
     useEffect(() => {
         selectedWeeksRef.current = selectedWeeks;
     }, [selectedWeeks]);
+
+    useEffect(() => {
+        if (disabled) {
+            setSelectedWeeks([])
+        }
+    }, [disabled])
 
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
@@ -116,26 +122,26 @@ function RateCardWeek({ value, onChange }) {
     };
 
     return (
-        <div ref={containerRef} className="relative">
+        <div ref={containerRef} className={`relative `} >
             <div
-                className={`w-full rounded-lg border-[1.5px] px-5.5 py-3.5 flex items-center gap-1 border-neutral-300 bg-transparent outline-none transition ${isCalendarOpen && 'border-primary-500'} dark:border-dark-3 dark:bg-dark-2`}
+                className={`w-full rounded-lg border-[1.5px] px-5.5 py-3.5 flex items-center gap-1 border-neutral-300 overflow-auto bg-transparent outline-none transition ${disabled && '!bg-neutral-50 pointer-events-none'} ${isCalendarOpen && 'border-primary-500'} dark:border-dark-3 dark:bg-dark-2`}
                 onClick={() => setIsCalendarOpen(true)}
             >
                 {selectedWeeks.length > 0 ? (
                     selectedWeeks.map((week, index) => (
                         <span
                             key={index}
-                            className="inline-flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm hover:bg-gray-200 transition-colors overflow-auto"
+                            className="inline-flex items-center shrink-0 bg-gray-100 px-3 py-1  rounded-full text-sm hover:bg-gray-200 transition-colors"
                         >
                             {getISOWeekString(week.startOfWeek)}
                             <span onClick={(e) => {
                                 e.stopPropagation();
                                 handleWeekRemove(week);
-                            }} className="cursor-pointer flex items-center justify-center ml-1 h-5 w-5 text-gray-500 hover:bg-red-300 rounded-full ">×</span>
+                            }} className="cursor-pointer shrink-0 flex items-center justify-center ml-1 h-5 w-5 text-gray-500 hover:bg-red-300 rounded-full ">×</span>
                         </span>
                     ))
                 ) : (
-                    <span className="text-gray-400">Select weeks</span>
+                    <span className={`text-gray-400 `}>Select weeks</span>
                 )}
                 <div className="ml-auto">
                     <BiChevronDown size={18} />
@@ -181,7 +187,7 @@ function RateCardWeek({ value, onChange }) {
 
                 </div>
             )}
-        </div>
+        </ div>
     );
 }
 

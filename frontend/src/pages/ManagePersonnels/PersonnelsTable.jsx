@@ -10,7 +10,7 @@ const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteD
             {/* <div className='w-full px-3 pt-2 flex justify-end'><TableFeatures columns={columns} setColumns={setColumns} content={driversList} setContent={setDriversList} /></div> */}
             <table className='table-general'>
                 <thead>
-                    <tr className='text-sm md:text-base sticky top-0 bg-white'>
+                    <tr className='text-sm md:text-base sticky top-0 bg-white text-neutral-400'>
                         <th>#</th>
                         {Object.keys(columns).map((col) => (<th>{col}</th>))}
                         <th>Options</th>

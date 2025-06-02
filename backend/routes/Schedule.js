@@ -31,39 +31,39 @@ router.post('/', async (req, res) => {
 
     if (!["unavailable", "dayoff"].includes(newSchedule.service)) {
       sendToClients(
-        req.db,{
+        req.db, {
         type: 'scheduleUpdated', // Custom event to signal data update
       });
 
 
-    const user = await User.findOne({ user_ID });
-    if (user?.expoPushTokens) {
-      const expo = new Expo();
-      const message = {
-        to: user.expoPushTokens,
+      const user = await User.findOne({ user_ID });
+      if (user?.expoPushTokens) {
+        const expo = new Expo();
+        const message = {
+          to: user.expoPushTokens,
+          title: "New Schedule Added",
+          body: `A new schedule ${service} has been added at ${site}`,
+          data: { scheduleId: newSchedule._id },
+          isRead: false,
+        };
+
+        try {
+          await expo.sendPushNotificationsAsync([message]);
+        } catch (notificationError) {
+          console.error('Error sending push notification:', notificationError.message);
+        }
+      }
+
+      const notification = {
         title: "New Schedule Added",
+        user_ID,
         body: `A new schedule ${service} has been added at ${site}`,
         data: { scheduleId: newSchedule._id },
         isRead: false,
       };
+      await new Notification({ notification, targetDevice: 'app' }).save();
 
-      try {
-        await expo.sendPushNotificationsAsync([message]);
-      } catch (notificationError) {
-        console.error('Error sending push notification:', notificationError.message);
-      }
     }
-
-    const notification = {
-      title: "New Schedule Added",
-      user_ID,
-      body: `A new schedule ${service} has been added at ${site}`,
-      data: { scheduleId: newSchedule._id },
-      isRead: false,
-    };
-    await new Notification({ notification, targetDevice: 'app' }).save();
-
-  }
 
     res.status(201).json(newSchedule);
   } catch (error) {
@@ -101,6 +101,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/allschedules', async (req, res) => {
+  const { week, drivers } = req.query;
+
+  try {
+    const { Schedule } = getModels(req);
+    const scheduleData = await Schedule.find();
+    res.json(scheduleData);
+  } catch (error) {
+    console.error('Error fetching schedule data:', error);
+    res.status(500).json({ message: 'Error fetching schedule data', error: error.message });
+  }
+});
+
 // Route to filter schedules by driver and date range
 router.get('/filter1', async (req, res) => {
   const { driverId, startDay, endDay } = req.query;
@@ -127,7 +140,7 @@ router.delete('/', async (req, res) => {
   try {
     const { Schedule } = getModels(req);
     await Schedule.deleteMany({ driverId, day: { $in: daysArray.map(day => new Date(day)) } });
-    sendToClients(req.db , {
+    sendToClients(req.db, {
       type: 'scheduleUpdated', // Custom event to signal data update
     });
     res.json({ message: 'Schedule deleted' });
