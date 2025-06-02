@@ -4,18 +4,18 @@ module.exports = async (req, res, next) => {
     try {
         const origin = req.headers['origin'];
         let subdomain = "";
-        let dbName = "crm_erp-rainaltd"; // Default DB
+        let dbName = "BizAlignDevDB"; // Default DB
 
         if (origin) {
             const originUrl = new URL(origin);
             const hostParts = originUrl.hostname.split(".");
 
             if (originUrl.hostname === "localhost") {
-                dbName = "crm_erp-rainaltd"; // Explicitly set for localhost
+                dbName = "BizAlignDevDB"; // Explicitly set for localhost
             } else if (hostParts.length > 2) {
                 subdomain = hostParts[0];
                 if (!isNaN(subdomain)) {
-                    dbName = "crm_erp-rainaltd"
+                    dbName = "BizAlignDevDB"
                 }
                 else {
                     dbName = `crm_${subdomain}`;
@@ -33,4 +33,3 @@ module.exports = async (req, res, next) => {
         res.status(500).json({ error: "Database connection failed" });
     }
 };
-
