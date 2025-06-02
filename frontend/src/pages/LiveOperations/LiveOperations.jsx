@@ -1,37 +1,41 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import TableStructure from '../../components/TableStructure/TableStructure';
-import checkContinuousSchedule from '../SchedulePlanner/checkContinuousSchedule';
-import calculateWorkStreak from '../SchedulePlanner/calculateWorkStreak';
+import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
 import moment from 'moment';
 import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 
 const LiveOperations = () => {
     const [rangeType, setRangeType] = useState('weekly');
     const [rangeOptions, setRangeOptions] = useState({});
     const [selectedRangeIndex, setSelectedRangeIndex] = useState();
+    const [selectedSite, setSelectedSite] = useState('');
+    const [driversList, setDriversList] = useState([]);
+    const [standbydriversList, setStandbydriversList] = useState([]);
+    const [searchDriver, setSearchDriver] = useState('');
+    const [days, setDays] = useState([]);
+    const [schedules, setSchedules] = useState([]);
+    const [scheduleMap, setScheduleMap] = useState({});
+    const [cacheRangeOption, setCacheRangeOption] = useState(null);
+    const [prevRangeType, setPrevRangeType] = useState(rangeType);
 
-    const [selectedSite, setSelectedSite] = useState('')
-    const [driversList, setDriversList] = useState([])
-    const [standbydriversList, setStandbydriversList] = useState([])
-    const [searchDriver, setSearchDriver] = useState('')
-    const [days, setDays] = useState([])
+    const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
+    const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList };
 
-    const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList }
-    const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList }
+    const { streaks, continuousStatus } = useMemo(() => {
+        if (driversList.length === 0 || schedules.length === 0) {
+            return { streaks: {}, continuousStatus: {} };
+        }
 
-    const [schedules, setSchedules] = useState([])
-    const [cacheRangeOption, setCacheRangeOption] = useState(null)
-    const [prevRangeType, setPrevRangeType] = useState(rangeType)
+        const streaks = calculateAllWorkStreaks(driversList, schedules);
+        const continuousStatus = checkAllContinuousSchedules(driversList, schedules);
 
+        return { streaks, continuousStatus };
+    }, [driversList, schedules]);
 
     useEffect(() => {
-        // console.log('rangeOption:', rangeOptions)
-        // console.log('selectedRangeIndexFromLiveOps', selectedRangeIndex)
-        // console.log('cacheOption', cacheRangeOption)
         if (driversList.length > 0 && rangeOptions) {
-            const rangeOptionsVal = Object.values(rangeOptions)
+            const rangeOptionsVal = Object.values(rangeOptions);
             const fetchSchedules = async () => {
                 const response = await axios.get(`${API_BASE_URL}/api/schedule/filter1`, {
                     params: {
@@ -40,48 +44,48 @@ const LiveOperations = () => {
                         endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
-                setSchedules(response.data)
-            }
+                setSchedules(response.data);
+            };
 
             if (!cacheRangeOption) {
-                fetchSchedules()
-                setCacheRangeOption(rangeOptions)
+                fetchSchedules();
+                setCacheRangeOption(rangeOptions);
             }
-            else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
-                fetchSchedules()
-                setCacheRangeOption(rangeOptions)
+            else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
+                fetchSchedules();
+                setCacheRangeOption(rangeOptions);
             }
-
         }
+    }, [rangeOptions, driversList]);
 
-    }, [rangeOptions, driversList])
+    useEffect(() => {
+        let map = {};
+        schedules.forEach(sch => {
+            const dateKey = new Date(sch.day).toLocaleDateString('en-UK');
+            const key = `${dateKey}_${sch.driverId}`;
+            map[key] = sch;
+        });
+        setScheduleMap(map);
+    }, [schedules]);
 
     useEffect(() => {
         if (rangeType !== prevRangeType) {
-            setCacheRangeOption(rangeOptions)
-            setPrevRangeType(rangeType)
+            setCacheRangeOption(rangeOptions);
+            setPrevRangeType(rangeType);
         }
-    }, [rangeOptions])
-
-    console.log('render')
-
-
-    const streaks = useMemo(() => {
-        const result = {};
-        driversList.forEach(driver => {
-            days.forEach(day => {
-                const key = `${driver._id}-${day.date}`;
-                result[key] = calculateWorkStreak(driver._id, day.date, schedules);
-            });
-        });
-        return result;
-    }, [driversList, days, schedules]);
+    }, [rangeOptions]);
 
     const tableData = (driver) => {
         return days.map((day) => {
-            const schedule = schedules.find((sch) => new Date(sch.day).toLocaleDateString('en-UK') == new Date(day.date).toLocaleDateString('en-UK') && sch.driverId === driver._id)
-            const continuousSchedule = checkContinuousSchedule(driver._id, day.date, schedules)
-            let streak = streaks[`${driver._id}-${day.date}`]
+            const dateKey = new Date(day.date).toLocaleDateString('en-UK');
+            const key = `${dateKey}_${driver._id}`;
+            const schedule = scheduleMap[key];
+
+            // Get pre-calculated values
+            const streak = streaks[driver._id]?.[dateKey] || 0;
+            const continuous = continuousStatus[driver._id]?.[dateKey] || "3";
 
             return (
 

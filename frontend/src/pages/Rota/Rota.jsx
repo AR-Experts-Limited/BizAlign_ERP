@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import TableStructure from '../../components/TableStructure/TableStructure';
-import checkContinuousSchedule from '../SchedulePlanner/checkContinuousSchedule';
-import calculateWorkStreak from '../SchedulePlanner/calculateWorkStreak';
+import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
 import moment from 'moment';
 moment.updateLocale('en', {
     week: {
@@ -28,10 +27,30 @@ const Rota = () => {
     const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList }
 
     const [schedules, setSchedules] = useState([])
+    const [scheduleMap, setScheduleMap] = useState({})
     const [cacheRangeOption, setCacheRangeOption] = useState(null)
     const [prevRangeType, setPrevRangeType] = useState(rangeType)
 
-    console.log("Start of the week (should be Sunday):", moment().startOf('week').format('YYYY-[W]w'));
+    const { streaks, continuousStatus } = useMemo(() => {
+        if (driversList.length === 0 || schedules.length === 0) {
+            return { streaks: {}, continuousStatus: {} };
+        }
+
+        const streaks = calculateAllWorkStreaks(driversList, schedules);
+        const continuousStatus = checkAllContinuousSchedules(driversList, schedules);
+
+        return { streaks, continuousStatus };
+    }, [driversList, schedules]);
+
+    useEffect(() => {
+        let map = {}
+        schedules.forEach(sch => {
+            const dateKey = new Date(sch.day).toLocaleDateString('en-UK'); // normalize date
+            const key = `${dateKey}_${sch.driverId}`;
+            map[key] = sch;
+        });
+        setScheduleMap(map)
+    }, [schedules])
 
     useEffect(() => {
         console.log('rangeOption:', rangeOptions)
@@ -70,22 +89,15 @@ const Rota = () => {
         }
     }, [rangeOptions])
 
-    const streaks = useMemo(() => {
-        const result = {};
-        driversList.forEach(driver => {
-            days.forEach(day => {
-                const key = `${driver._id}-${day.date}`;
-                result[key] = calculateWorkStreak(driver._id, day.date, schedules);
-            });
-        });
-        return result;
-    }, [driversList, days, schedules]);
 
     const tableData = (driver) => {
         return days.map((day) => {
-            const schedule = schedules.find((sch) => new Date(sch.day).toLocaleDateString('en-UK') == new Date(day.date).toLocaleDateString('en-UK') && sch.driverId === driver._id)
-            const continuousSchedule = checkContinuousSchedule(driver._id, day.date, schedules)
-            let streak = streaks[`${driver._id}-${day.date}`]
+            const dateKey = new Date(day.date).toLocaleDateString('en-UK');
+            const key = `${dateKey}_${driver._id}`;
+            const schedule = scheduleMap[key];
+
+            const streak = streaks[driver._id]?.[dateKey] || 0;
+            const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
 
             return (
 
