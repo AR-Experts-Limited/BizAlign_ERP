@@ -8,6 +8,7 @@ moment.updateLocale('en', {
     },
 });
 import axios from 'axios';
+import Modal from '../../components/Modal/Modal'
 import { FaLock, FaUnlock } from "react-icons/fa6";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -30,6 +31,7 @@ const Rota = () => {
     const [scheduleMap, setScheduleMap] = useState({})
     const [cacheRangeOption, setCacheRangeOption] = useState(null)
     const [prevRangeType, setPrevRangeType] = useState(rangeType)
+    const [rotaDetail, setRotaDetail] = useState(null)
 
     const { streaks, continuousStatus } = useMemo(() => {
         if (driversList.length === 0 || schedules.length === 0) {
@@ -116,12 +118,13 @@ const Rota = () => {
                             return (
                                 <div className={`relative flex justify-center h-full w-full `}>
                                     <div className='relative max-w-40'>
-                                        <div className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
+                                        <div onClick={() => { if (schedule?.status === 'completed') setRotaDetail('detail') }} className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
+                             ${schedule?.status === 'completed' ? 'cursor-pointer' : ''}
                              ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} 
                              ${schedule.status !== 'completed' && 'border-[1.5px] border-dashed border-gray-400/70 [border-left-style:solid] text-gray-400/70'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                             <div className='overflow-auto max-h-[4rem]'>{schedule?.service}</div>
                                             <div className='h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px] '>
-                                                {schedule.status !== 'completed' ? < FaLock size={17} /> : <FaUnlock className='text-orange-400' size={17} />}
+                                                {schedule?.status !== 'completed' ? < FaLock size={17} /> : <FaUnlock className='text-orange-400' size={17} />}
                                             </div>
                                         </div>
 
@@ -134,8 +137,15 @@ const Rota = () => {
         })
     }
     return (
-
-        <TableStructure title={'Rota'} state={state} setters={setters} tableData={tableData} />
+        <>
+            <TableStructure title={'Rota'} state={state} setters={setters} tableData={tableData} />
+            <Modal isOpen={rotaDetail}>
+                <div className='h-20 w-50 flex flex-col justify-center items-center'>
+                    <p>{rotaDetail}</p>
+                    <button className='px-2 py-1 bg-red-500 rounded-md text-white hover:bg-red-600' onClick={() => setRotaDetail(null)}> Close</button>
+                </div>
+            </Modal>
+        </>
     );
 };
 

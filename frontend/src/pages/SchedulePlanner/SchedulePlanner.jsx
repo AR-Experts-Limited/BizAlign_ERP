@@ -237,7 +237,7 @@ const SchedulePlanner = () => {
         <>
             < TableStructure title={'Schedule Planner'} state={state} setters={setters} tableData={tableData} />
             <Modal isOpen={addScheduleData} >
-                <div className='w-80 md:w-92'>
+                <div className='p-6 w-80 md:w-92'>
                     <div>
                         <div className='text-sm my-3'><span className=' font-medium'>Driver name:</span> {addScheduleData?.driver.firstName + ' ' + addScheduleData?.driver.lastName}</div>
                         <div className='text-sm my-3'><span className=' font-medium'>Vehicle Type:</span> {addScheduleData?.driver.typeOfDriver}</div>

@@ -133,6 +133,62 @@ router.get('/filter1', async (req, res) => {
   }
 });
 
+router.get('/combined', async (req, res) => {
+  const { driverId, startDay, endDay } = req.query;
+
+  try {
+    const { Schedule } = getModels(req);
+    const AppData = req.db.model('AppData', require('../models/appdata').schema);
+
+    const [schedules, appData] = await Promise.all([
+      Schedule.find({
+        driverId: { $in: driverId },
+        day: {
+          $gte: new Date(startDay),
+          $lte: new Date(endDay),
+        },
+      }),
+      AppData.find({
+        driverId: { $in: driverId },
+        day: {
+          $gte: new Date(startDay),
+          $lte: new Date(endDay),
+        },
+      }),
+    ]);
+
+    // Helper to group by driverId and day (ISO string for comparison)
+    const groupByDriverDay = (data) => {
+      const map = {};
+      for (const item of data) {
+        const key = `${item.driverId}_${item.day.toISOString().split('T')[0]}`;
+        if (!map[key]) {
+          map[key] = { driverId: item.driverId, day: item.day, schedule: null, appData: null };
+        }
+        if (item.__t === 'Schedule') map[key].schedule = item;
+        else map[key].appData = item;
+      }
+      return map;
+    };
+
+    // Annotate type for grouping
+    schedules.forEach(s => s.__t = 'Schedule');
+    appData.forEach(a => a.__t = 'AppData');
+
+    const combinedMap = groupByDriverDay([...schedules, ...appData]);
+
+    const combinedArray = Object.values(combinedMap).sort((a, b) => {
+      const dateA = new Date(a.day);
+      const dateB = new Date(b.day);
+      return dateA - dateB;
+    });
+
+    res.status(200).json(combinedArray);
+  } catch (error) {
+    res.status(500).json({ message: 'Error combining schedule and app data', error: error.message });
+  }
+});
+
 // Route to delete schedules by driver and date range
 router.delete('/', async (req, res) => {
   const { driverId, daysArray } = req.body;

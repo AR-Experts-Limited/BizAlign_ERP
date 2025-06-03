@@ -23,18 +23,19 @@ const TableStructure = ({ title, state, setters, tableData }) => {
     }, [driverStatus, standbyDriverStatus, dispatch]);
 
     useEffect(() => {
-        let driversList = Object.values(driversBySite).flat()
-        let standbydriversIds = standbydrivers.map((sdriver) => { if (sdriver.site !== selectedSite) return (sdriver.driverId) })
-        let standbydriversList = driversList.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
+        if (Object.keys(driversBySite).length > 0) {
+            let driversList = Object.values(driversBySite).flat()
+            let standbydriversIds = standbydrivers.map((sdriver) => { if (sdriver.site !== selectedSite) return (sdriver.driverId) })
+            let standbydriversList = driversList.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
 
-        if (selectedSite !== '')
-            driversList = driversBySite[selectedSite]
-        if (searchDriver !== '')
-            driversList = driversList.filter((driver) => String(driver.firstName + ' ' + driver.lastName).toLowerCase().includes(searchDriver.toLowerCase()))
+            if (selectedSite !== '')
+                driversList = driversBySite[selectedSite]
+            if (searchDriver !== '')
+                driversList = driversList.filter((driver) => String(driver.firstName + ' ' + driver.lastName).toLowerCase().includes(searchDriver.toLowerCase()))
 
-        setDriversList([...driversList, ...standbydriversList])
-        setStandbydriversList(standbydriversList)
-
+            setDriversList([...driversList, ...standbydriversList])
+            setStandbydriversList(standbydriversList)
+        }
     }, [driversBySite, selectedSite, searchDriver, standbydrivers])
 
     return (
