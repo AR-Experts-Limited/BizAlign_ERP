@@ -8,12 +8,13 @@ import moment from 'moment';
 
 const TableStructure = ({ title, state, setters, tableData }) => {
     const dispatch = useDispatch();
-    const { list: drivers, driverStatus } = useSelector((state) => state.drivers);
+    const { driverStatus } = useSelector((state) => state.drivers);
+    const driversBySite = useSelector((state) => state.drivers.bySite);
+
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
 
     const { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList } = state
     const { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList } = setters
-
 
     useEffect(() => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
@@ -22,19 +23,19 @@ const TableStructure = ({ title, state, setters, tableData }) => {
     }, [driverStatus, standbyDriverStatus, dispatch]);
 
     useEffect(() => {
-        let driversList = drivers
+        let driversList = Object.values(driversBySite).flat()
         let standbydriversIds = standbydrivers.map((sdriver) => { if (sdriver.site !== selectedSite) return (sdriver.driverId) })
-        let standbydriversList = drivers.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
+        let standbydriversList = driversList.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
 
+        if (selectedSite !== '')
+            driversList = driversBySite[selectedSite]
         if (searchDriver !== '')
             driversList = driversList.filter((driver) => String(driver.firstName + ' ' + driver.lastName).toLowerCase().includes(searchDriver.toLowerCase()))
-
-        driversList = driversList.filter((driver) => driver.siteSelection === selectedSite)
 
         setDriversList([...driversList, ...standbydriversList])
         setStandbydriversList(standbydriversList)
 
-    }, [drivers, selectedSite, searchDriver, standbydrivers])
+    }, [driversBySite, selectedSite, searchDriver, standbydrivers])
 
     return (
         <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden '>

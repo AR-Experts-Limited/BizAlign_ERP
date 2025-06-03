@@ -99,16 +99,18 @@ const ManagePersonnels = () => {
     };
 
     const [newDriver, setNewDriver] = useState(clearDriver);
-    const { list: drivers, driverStatus } = useSelector((state) => state.drivers);
+    const { driverStatus } = useSelector((state) => state.drivers);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
-    const [driversList, setDriversList] = useState(drivers)
+    const driversBySite = useSelector((state) => state.drivers.bySite);
+
+    const [driversList, setDriversList] = useState(Object.values(driversBySite).flat())
     const colList = { 'Vehicle Size': 'vehicleSize', 'First Name': 'firstName', 'Last Name': 'lastName', 'Transport Id': 'transportId', 'Site': 'siteSelection' }
     const [columns, setColumns] = useState(colList)
     const [toastOpen, setToastOpen] = useState(null)
 
     useEffect(() => {
-        setDriversList(drivers)
-    }, [drivers])
+        setDriversList(Object.values(driversBySite).flat())
+    }, [driversBySite])
 
     useEffect(() => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
