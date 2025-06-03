@@ -10,11 +10,13 @@ export const groupRateCards = (rateCards) => {
                 serviceWeeks: [card.serviceWeek],
                 ids: [card._id],
                 cards: [card],
+                weekIdMap: { [card.serviceWeek]: card._id },
             };
         } else {
             grouped[key].serviceWeeks.push(card.serviceWeek);
             grouped[key].ids.push(card._id);
             grouped[key].cards.push(card);
+            grouped[key].weekIdMap[card.serviceWeek] = card._id
         }
     });
 

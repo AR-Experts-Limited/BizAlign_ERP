@@ -18,7 +18,8 @@ const TrashBin = ({ onComplete, type, width, height }) => {
                 {type && type === 'error' ?
                     <p className={`flex justify-center items-center w-2 h-2 font-bold text-xs text-white transform transition-all duration-500 ${show ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}>!</p>
                     : <FaTrashCan
-                        className={`w-[1rem] h-[1rem] text-white transform transition-all duration-500 ${show ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
+                        className={`text-white transform transition-all duration-500 ${show ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
+                        size={15}
                     />}
             </div>
         </div>

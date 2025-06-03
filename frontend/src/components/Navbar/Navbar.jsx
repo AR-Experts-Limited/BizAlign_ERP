@@ -61,11 +61,11 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
             </div>
 
             <div className="relative flex-1 flex gap-1 md:gap-3 items-center justify-end">
-                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
-                    <FaCalendarDays size={15} />
+                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex cursor-pointer justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
+                    <i class="flex items-center fi fi-rr-calendar hover:text-primary-800 text-[1rem]"></i>
                 </div>
-                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
-                    <PiBell size={16} />
+                <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex cursor-pointer justify-center items-center bg-neutral-100 text-black border border-neutral-200 rounded-full hover:text-primary-500 dark:text-white dark:bg-dark-3 dark:border-dark-4">
+                    <i className="flex items-center fi fi-rr-bell hover:text-primary-800 text-[1rem]"></i>
                 </div>
                 <div className="text-xs md:text-lg h-8 w-8 md:h-11 md:w-11 flex justify-center items-center rounded-full bg-black text-white">
                     SR

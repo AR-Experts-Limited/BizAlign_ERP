@@ -9,12 +9,18 @@ export const fetchServices = createAsyncThunk('Services/fetchServices', async ()
     return response.data;
 });
 
+export const addService = createAsyncThunk('Ratecards/addServices', async (service) => {
+    const response = await axios.post(`${API_BASE_URL}/api/services`, service);
+    return response.data;
+});
+
 
 const ServiceSlice = createSlice({
     name: 'Services',
     initialState: {
         list: [],
         serviceStatus: 'idle',
+        addStatus: 'idle',
         error: null,
     },
     reducers: {},
@@ -30,6 +36,19 @@ const ServiceSlice = createSlice({
             })
             .addCase(fetchServices.rejected, (state, action) => {
                 state.serviceStatus = 'failed';
+                state.error = action.error.message;
+            })
+
+            // Add service
+            .addCase(addService.pending, (state) => {
+                state.addStatus = 'loading';
+            })
+            .addCase(addService.fulfilled, (state, action) => {
+                state.addStatus = 'succeeded';
+                state.list = [...state.list, ...action.payload];
+            })
+            .addCase(addService.rejected, (state, action) => {
+                state.addStatus = 'failed';
                 state.error = action.error.message;
             })
     },

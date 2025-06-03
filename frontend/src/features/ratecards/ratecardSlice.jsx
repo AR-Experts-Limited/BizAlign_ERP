@@ -19,9 +19,9 @@ export const updateRatecard = createAsyncThunk('Ratecards/updateRatecard', async
     return response.data;
 });
 
-export const deleteRatecard = createAsyncThunk('Ratecards/deleteRatecard', async (id) => {
-    await axios.delete(`${API_BASE_URL}/api/ratecards/${id}`);
-    return id;
+export const deleteRatecard = createAsyncThunk('Ratecards/deleteRatecard', async (ids) => {
+    await axios.delete(`${API_BASE_URL}/api/ratecards`, { data: { ids } });
+    return ids;
 });
 
 const RatecardSlice = createSlice({
@@ -56,7 +56,15 @@ const RatecardSlice = createSlice({
             })
             .addCase(addRatecard.fulfilled, (state, action) => {
                 state.addStatus = 'succeeded';
-                state.list.push(action.payload);
+                const { added, updated } = action.payload
+                state.list = state.list.map((item) => {
+                    if (updated.some((up) => up._id === item._id)) {
+                        return updated.find((up) => up._id === item._id)
+                    }
+                    else
+                        return item
+                })
+                state.list = [...state.list, ...added];
             })
             .addCase(addRatecard.rejected, (state, action) => {
                 state.addStatus = 'failed';
@@ -75,7 +83,7 @@ const RatecardSlice = createSlice({
             })
             .addCase(deleteRatecard.fulfilled, (state, action) => {
                 state.deleteStatus = 'succeeded';
-                state.list = state.list.filter((d) => d._id !== action.payload);
+                state.list = state.list.filter((d) => !action.payload.includes(d._id));
             })
             .addCase(deleteRatecard.rejected, (state, action) => {
                 state.deleteStatus = 'failed';

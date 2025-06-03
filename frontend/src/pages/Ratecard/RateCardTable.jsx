@@ -1,5 +1,5 @@
 // src/features/ratecards/RateCardTable.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { FiEdit3 } from "react-icons/fi";
 import { MdOutlineDelete } from "react-icons/md";
 import { FcInfo } from "react-icons/fc";
@@ -8,18 +8,48 @@ import { groupRateCards } from './groupRateCards';
 
 const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
+    const [dropdownPositions, setDropdownPositions] = useState({});
+    const [groupedRateCards, setGroupedRateCards] = useState([])
+    const dropdownRefs = useRef({});
 
-    const filteredRatecards = useMemo(() => {
-        return filterVehicleType
+    useEffect(() => {
+        let group = []
+        group = groupRateCards(filterVehicleType
             ? ratecards.filter(rc => rc.vehicleType === filterVehicleType)
-            : ratecards;
+            : ratecards);
+        setGroupedRateCards(group)
     }, [filterVehicleType, ratecards]);
 
-    const groupedRateCards = groupRateCards(filteredRatecards);
+
+    //const groupedRateCards = groupRateCards(filteredRatecards);
 
     const handleWeekSelect = (groupId, week) => {
         setSelectedWeeks(prev => ({ ...prev, [groupId]: week }));
     };
+
+    const setDropdownRef = (el, groupId) => {
+        dropdownRefs.current[groupId] = el;
+    };
+
+    useEffect(() => {
+        const calculatePositions = () => {
+            const newPositions = {};
+            Object.keys(dropdownRefs.current).forEach(groupId => {
+                const element = dropdownRefs.current[groupId];
+                if (element) {
+                    const rect = element.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    newPositions[groupId] = rect.bottom > viewportHeight - 200 ? 'top' : 'bottom';
+                }
+            });
+            setDropdownPositions(newPositions);
+        };
+        if (groupRateCards.length > 0) {
+            calculatePositions();
+            window.addEventListener('resize', calculatePositions);
+            return () => window.removeEventListener('resize', calculatePositions);
+        }
+    }, [groupedRateCards]);
 
     return (
         <div className='max-h-[40rem] relative md:col-span-7 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg'>
@@ -42,7 +72,7 @@ const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete 
                 </div>
             </div>
 
-            <div className="max-h-[32.5rem] px-2 overflow-auto">
+            <div className="max-h-[32.5rem] h-full px-2 overflow-auto">
                 <table className="ratecard-table w-full text-sm text-center">
                     <thead>
                         <tr className="sticky top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
@@ -50,22 +80,27 @@ const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete 
                             <th>Vehicle Type</th>
                             <th>Minimum Rate</th>
                             <th>Service Title</th>
-                            <th>Service Week</th>
+                            <th className='!w-24'>Service Week</th>
                             <th>Service Rate</th>
                             <th>Hourly Rate</th>
                             <th>Mileage</th>
                             <th>Byod Rate</th>
                             <th>Options</th>
-                            <th>Added by</th>
+                            {/* <th>Added by</th> */}
                         </tr>
                     </thead>
                     <tbody>
                         {groupedRateCards.map((group, index) => {
                             const selectedWeek = selectedWeeks[group._id] || group.serviceWeeks[0];
+                            const selectedIds = (Array.isArray(selectedWeek) ? selectedWeek : []).map((it) => group.weekIdMap[it]);
                             const currentCard = group.cards.find(card => card.serviceWeek === selectedWeek);
 
                             return (
-                                <tr key={index} className={`hover:bg-neutral-50 dark:hover:bg-dark-4 ${!group.active ? 'text-gray-400' : 'dark:text-white'}`}>
+                                <tr
+                                    key={index}
+                                    className={`hover:bg-neutral-50 dark:hover:bg-dark-4 ${!group.active ? 'text-gray-400' : 'dark:text-white'}`}
+                                    ref={(el) => setDropdownRef(el, group._id)}
+                                >
                                     <td className="border-b border-neutral-200">
                                         <div className="flex justify-center">
                                             <InputGroup type="toggleswitch" checked={group.active} />
@@ -77,18 +112,62 @@ const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete 
                                     <td className="border-b border-neutral-200">£ {group.minimumRate}</td>
                                     <td className="border-b border-neutral-200">{group.serviceTitle}</td>
                                     <td className="border-b border-neutral-200">
-                                        {group.serviceWeeks.length > 1 ? (
-                                            <select
-                                                value={selectedWeek}
-                                                onChange={(e) => handleWeekSelect(group._id, e.target.value)}
-                                                className="border-[1.5px] border-neutral-200 rounded-md bg-white px-1 py-2 outline-none focus:border-primary-400"
-                                            >
-                                                {group.serviceWeeks.map((week, i) => (
-                                                    <option key={i} value={week}>{week}</option>
-                                                ))}
-                                            </select>
-                                        ) : group.serviceWeeks[0]}
+                                        <div className="relative group">
+                                            <button className="w-full max-h-13 h-fit overflow-auto text-left border-[1.5px] border-neutral-200 rounded-md bg-white px-1 py-2 outline-none focus:border-primary-400">
+                                                <div className={`flex flex-nowrap gap-2 ${(selectedWeeks[group._id]?.length > 1) ? 'pb-5' : ''}`}>
+                                                    {selectedWeeks[group._id]?.length > 0 ?
+                                                        selectedWeeks[group._id].map((week) => (
+                                                            <div key={week} className="whitespace-nowrap break-keep w-full bg-gray-100 px-1 py-1 rounded-lg text-[0.7rem]">
+                                                                {week}
+                                                            </div>)) : <div>{group.serviceWeeks[0]}</div>}
+                                                </div>
+                                            </button>
+
+                                            <div className={`absolute z-10 hidden px-3 py-2 w-max bg-white border-[1.5px] border-neutral-200 rounded-md shadow-lg group-hover:block ${dropdownPositions[group._id] === 'top'
+                                                ? 'bottom-full '
+                                                : 'top-full'
+                                                }`}>
+                                                <div className="max-h-30 overflow-y-auto pr-3">
+                                                    <div>
+                                                        <label className="flex items-center gap-3 mb-1 text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedWeeks[group._id]?.length === group.serviceWeeks.length}
+                                                                onChange={(e) => {
+                                                                    const allWeeks = group.serviceWeeks;
+                                                                    setSelectedWeeks((prev) => ({
+                                                                        ...prev,
+                                                                        [group._id]: e.target.checked ? allWeeks : [],
+                                                                    }));
+                                                                }}
+                                                            />
+                                                            Select All
+                                                        </label>
+                                                    </div>
+                                                    {group.serviceWeeks.map((week, i) => (
+                                                        <label key={i} className="flex items-center gap-3 mb-1 text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedWeeks[group._id]?.includes(week) || false}
+                                                                onChange={(e) => {
+                                                                    const prevSelected = selectedWeeks[group._id] || [];
+                                                                    const updated = e.target.checked
+                                                                        ? [...prevSelected, week]
+                                                                        : prevSelected.filter((w) => w !== week);
+                                                                    setSelectedWeeks((prev) => ({
+                                                                        ...prev,
+                                                                        [group._id]: updated,
+                                                                    }));
+                                                                }}
+                                                            />
+                                                            {week}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
+
                                     <td className="border-b border-neutral-200">£ {group.serviceRate}</td>
                                     <td className="border-b border-neutral-200">£ {group.hourlyRate}</td>
                                     <td className="border-b border-neutral-200">£ {group.mileage}</td>
@@ -100,27 +179,27 @@ const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete 
                                             </button>
                                             <button
                                                 className="p-2 rounded-md hover:bg-neutral-200 text-red-400"
-                                                onClick={() => onDelete(group._id)}
+                                                onClick={() => { onDelete(selectedIds.length > 0 ? selectedIds : [group.weekIdMap[group.serviceWeeks[0]]]); setSelectedWeeks({}) }}
                                             >
                                                 <MdOutlineDelete size={17} />
                                             </button>
                                         </div>
                                     </td>
-                                    <td className="border-b border-neutral-200">
+                                    {/* <td className="border-b border-neutral-200">
                                         <div className="relative flex justify-center cursor-pointer group">
-                                            <div className="z-4 absolute -left-5 -top-18 text-white -translate-x-1/2 whitespace-normal break-words rounded-sm bg-black/40 mt-1 backdrop-blur-md p-2 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity dark:bg-dark-4">
+                                            <div className="z-4 absolute -left-5 -top-5 text-white -translate-x-1/2 whitespace-normal break-words rounded-sm bg-black/40 mt-1 backdrop-blur-md p-2 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity dark:bg-dark-4">
                                                 Added By: {group?.addedBy?.name} on {new Date(group.dateAdded).toLocaleDateString()}
                                             </div>
                                             <FcInfo size={18} />
                                         </div>
-                                    </td>
+                                    </td> */}
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div >
     );
 };
 

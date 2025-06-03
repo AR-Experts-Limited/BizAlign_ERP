@@ -53,27 +53,44 @@ router.get('/filter/weekandservice', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { RateCard } = getModels(req);
-    const { serviceTitle, serviceRate, minimumRate, vanRent, vanRentHours, hourlyRate, vehicleType, byodRate, serviceWeek, active, mileage, addedBy, modifiedBy } = req.body;
-    let { dateAdded } = req.body;
+    const {
+      serviceTitle,
+      serviceRate,
+      minimumRate,
+      vanRent,
+      vanRentHours,
+      hourlyRate,
+      vehicleType,
+      byodRate,
+      serviceWeek,
+      active,
+      mileage,
+      addedBy,
+      modifiedBy
+    } = req.body;
 
+    let { dateAdded } = req.body;
     dateAdded = new Date(dateAdded); // Convert dateAdded to Date object
 
     if (!Array.isArray(serviceWeek)) {
       return res.status(400).json({ message: 'serviceWeek must be an array' });
     }
-    let newRateCard = ''
-    if (serviceWeek.length === 1) {
-      newRateCard = new RateCard({
+
+    const rateCardsAdded = [];
+    const updatedRateCards = [];
+
+    for (const week of serviceWeek) {
+      const newRateCard = new RateCard({
         serviceTitle,
         serviceRate,
         vehicleType,
+        byodRate,
         minimumRate,
         vanRent,
         vanRentHours,
         hourlyRate,
-        byodRate,
         active,
-        serviceWeek: serviceWeek[0],
+        serviceWeek: week,
         mileage,
         dateAdded,
         addedBy,
@@ -81,43 +98,35 @@ router.post('/', async (req, res) => {
       });
 
       await newRateCard.save();
-    } else {
-      await Promise.all(
-        serviceWeek.map(async (week) => {
-          newRateCard = new RateCard({
-            serviceTitle,
-            serviceRate,
-            vehicleType,
-            byodRate,
-            minimumRate,
-            vanRent,
-            vanRentHours,
-            hourlyRate,
-            active,
-            serviceWeek: week,
-            mileage,
-            dateAdded,
-            addedBy,
-            modifiedBy,
-          });
-          await newRateCard.save();
-          await RateCard.updateMany(
-            { serviceWeek: week },
-            { $set: { mileage: mileage } }
-          );
-        })
+      rateCardsAdded.push(newRateCard);
+
+      // Update and retrieve the updated records for this week
+      await RateCard.updateMany(
+        { serviceWeek: week },
+        { $set: { mileage: mileage } }
       );
+
+      const updated = await RateCard.find({ serviceWeek: week });
+      updatedRateCards.push(...updated);
     }
+
+    // Remove duplicates from updatedRateCards that are already in rateCardsAdded
+    const addedIds = new Set(rateCardsAdded.map(card => card._id.toString()));
+    const filteredUpdated = updatedRateCards.filter(
+      card => !addedIds.has(card._id.toString())
+    );
 
     sendToClients(req.db, {
       type: 'rateCardUpdated', // Custom event to signal data update
     });
 
-    res.status(201).json(newRateCard);
+    res.status(201).json({ added: rateCardsAdded, updated: filteredUpdated });
+
   } catch (error) {
     res.status(500).json({ message: 'Error adding rate card', error: error.message });
   }
 });
+
 
 // Search rate cards by title
 router.get('/search/title', async (req, res) => {
@@ -181,19 +190,26 @@ router.put('/update/mileage', async (req, res) => {
 });
 
 // Delete a rate card
-router.delete('/:id', async (req, res) => {
+router.delete('/', async (req, res) => {
   try {
     const { RateCard } = getModels(req);
-    await RateCard.findByIdAndDelete(req.params.id);
+    const { ids } = req.body; // Expecting an array of rate card IDs
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No rate card IDs provided' });
+    }
+
+    const result = await RateCard.deleteMany({ _id: { $in: ids } });
 
     sendToClients(req.db, {
-      type: 'rateCardUpdated', // Custom event to signal data update
+      type: 'rateCardUpdated', // Notify clients of data change
     });
 
-    res.json({ message: 'Rate card deleted successfully' });
+    res.json({ message: `${result.deletedCount} rate card(s) deleted successfully` });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting rate card', error: error.message });
+    res.status(500).json({ message: 'Error deleting rate cards', error: error.message });
   }
 });
+
 
 module.exports = router;

@@ -24,10 +24,23 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
     const [newServiceInfo, setNewServiceInfo] = useState({
         title: '',
         hours: '',
-        minutes: '',
+        minutes: '0',
         totalHours: ''
     });
-    const [errors, setErrors] = useState({});
+    const [errors, setErrors] = useState({
+        vehicleType: false,
+        minimumRate: false,
+        serviceTitle: false,
+        serviceRate: false,
+        byodRate: false,
+        serviceWeek: false,
+        mileage: false,
+        vanRent: false,
+        vanRentHours: false,
+        newService: false,
+        hourlyRate: false,
+        existingRateCard: false
+    });
     const [breakdownHTML, setBreakdownHTML] = useState('');
     const [weekbyCalendar, setWeekbyCalendar] = useState(false);
 
@@ -52,6 +65,30 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
         setRateCard(prev => ({ ...prev, serviceWeek: [] }))
     }, [weekbyCalendar])
 
+    const validateFields = () => {
+        const newErrors = {
+            vehicleType: !rateCard.vehicleType,
+            minimumRate: !rateCard.minimumRate,
+            serviceTitle: !rateCard.serviceTitle,
+            serviceRate: !rateCard.serviceRate,
+            byodRate: !rateCard.byodRate,
+            serviceWeek: rateCard.serviceWeek.length === 0,
+            mileage: !rateCard.mileage,
+            vanRent: rateCard.vehicleType === 'Own Vehicle' && !rateCard.vanRent,
+            vanRentHours: rateCard.vehicleType === 'Own Vehicle' && !rateCard.vanRentHours,
+            newService: false,
+            hourlyRate: false,
+            existingRateCard: false
+        };
+
+        if (newService) {
+            newErrors.newService = !newServiceInfo.title || !newServiceInfo.hours;
+        }
+
+        setErrors(newErrors);
+        return !Object.values(newErrors).some(error => error);
+    };
+
     const calculateHourlyRate = () => {
         const {
             minimumRate,
@@ -62,9 +99,10 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
             vanRentHours,
         } = rateCard;
 
-        if (!minimumRate || !serviceTitle || !serviceRate) {
+        if (!minimumRate || !serviceTitle || serviceRate === '' || serviceRate === null) {
             setErrors(prev => ({ ...prev, hourlyRate: false }));
             setRateCard(prev => ({ ...prev, hourlyRate: '' }));
+            setBreakdownHTML(''); // Clear breakdown when not all inputs are valid
             return;
         }
 
@@ -72,43 +110,50 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
             ? newServiceInfo
             : services.find(service => service.title === serviceTitle);
 
-        if (!service) {
-            console.warn("Service not found");
+        if (!service || (!service.totalHours && !service.hours)) {
+            console.warn("Service not found or hours not defined");
             return;
         }
 
-        const serviceHours = service.totalHours || service.hours;
+        const serviceHours = parseFloat(service.totalHours || service.hours);
         let hourlyRate;
 
         if (vehicleType === 'Own Vehicle') {
             if (!vanRent || !vanRentHours) {
                 setErrors(prev => ({ ...prev, hourlyRate: false }));
                 setRateCard(prev => ({ ...prev, hourlyRate: '' }));
+                setBreakdownHTML(''); // Clear breakdown when not all inputs are valid
                 return;
             }
-            hourlyRate = (serviceRate / serviceHours - (vanRent / 6) / vanRentHours).toFixed(2);
-            setBreakdownHTML(renderBreakdownHTML(serviceRate, serviceHours, vanRent, vanRentHours, hourlyRate));
+            const vanRentPerDay = parseFloat(vanRent) / 6;
+            const vanRentPerHour = vanRentPerDay / parseFloat(vanRentHours);
+            hourlyRate = (parseFloat(serviceRate) / serviceHours - vanRentPerHour).toFixed(2);
+            setBreakdownHTML(renderBreakdownHTML(parseFloat(serviceRate), serviceHours, parseFloat(vanRent), parseFloat(vanRentHours), parseFloat(hourlyRate)));
         } else {
-            hourlyRate = serviceRate / serviceHours;
-            setBreakdownHTML(null);
+            hourlyRate = (parseFloat(serviceRate) / serviceHours).toFixed(2);
+            setBreakdownHTML('');
         }
 
-        setRateCard(prev => ({ ...prev, hourlyRate }));
-        setErrors(prev => ({ ...prev, hourlyRate: hourlyRate < minimumRate }));
+        setRateCard(prev => ({ ...prev, hourlyRate: parseFloat(hourlyRate) }));
+        setErrors(prev => ({ ...prev, hourlyRate: parseFloat(hourlyRate) < parseFloat(minimumRate) }));
     };
 
     const renderBreakdownHTML = (serviceRate, serviceHours, vanRent, vanRentHours, hourlyRate) => {
+        const hourlyRateBeforeVan = (serviceRate / serviceHours).toFixed(2);
+        const vanRentPerDay = (vanRent / 6).toFixed(2);
+        const vanRentPerHourCalculated = ((vanRent / 6) / vanRentHours).toFixed(2);
+
         return (
             <div className="grid grid-cols-2 text-sm text-gray-700 p-3 bg-white rounded-lg border border-neutral-400 gap-x-1 gap-y-2">
                 <div className="font-medium">Hourly Rate:</div>
-                <div>£{serviceRate} / {serviceHours} hrs = <span className="font-medium">£{(serviceRate / serviceHours).toFixed(2)}</span></div>
+                <div>£{serviceRate.toFixed(2)} / {serviceHours.toFixed(2)} hrs = <span className="font-medium">£{hourlyRateBeforeVan}</span></div>
                 <div className="font-medium">Van Rent:</div>
-                <div>£{vanRent} ÷ 6 days = £{(vanRent / 6).toFixed(2)}</div>
+                <div>£{vanRent.toFixed(2)} &divide; 6 days = £{vanRentPerDay}</div>
                 <div className="font-medium">Van Rent per Hour:</div>
-                <div>£{(vanRent / 6).toFixed(2)} / {vanRentHours} hrs = <span className="font-medium">£{((vanRent / 6) / vanRentHours).toFixed(2)}</span></div>
+                <div>£{vanRentPerDay} / {vanRentHours.toFixed(2)} hrs = <span className="font-medium">£{vanRentPerHourCalculated}</span></div>
                 <div className="font-medium">Adjusted Hourly Rate:</div>
                 <div>
-                    (£{(serviceRate / serviceHours).toFixed(2)} - £{((vanRent / 6) / vanRentHours).toFixed(2)}) =
+                    (£{hourlyRateBeforeVan} - £{vanRentPerHourCalculated}) =
                     <span className="font-bold text-gray-900"> £{hourlyRate.toFixed(2)}/hr</span>
                 </div>
             </div>
@@ -116,7 +161,6 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
     };
 
     const checkExistingRateCards = () => {
-        console.log(rateCard)
         let foundRateCard = []
         if (rateCard.serviceTitle !== '' && rateCard.serviceWeek.length > 0) {
             foundRateCard = ratecards.filter(item =>
@@ -125,15 +169,111 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                 rateCard.serviceWeek.some(week => item.serviceWeek === week)
             );
         }
-        console.log(foundRateCard)
         setErrors(prev => ({
             ...prev,
             existingRateCard: foundRateCard.length > 0
         }));
     };
 
+
     const handleAddRateCard = () => {
-        onAddRatecard(rateCard);
+        const isValid = validateFields();
+        if (!isValid) return;
+
+        if (errors.existingRateCard) {
+            return;
+        }
+
+        onAddRatecard(rateCard, newService, newServiceInfo, errors.existingweek);
+    };
+
+    const handleVehicleTypeChange = (e) => {
+        setRateCard(prev => ({ ...prev, vehicleType: e.target.value }));
+        setErrors(prev => ({ ...prev, vehicleType: false }));
+    };
+
+    const handleMinimumRateChange = (e) => {
+        const value = e.target.value;
+        setRateCard(prev => ({ ...prev, minimumRate: value === '' ? '' : parseFloat(value) }));
+        setErrors(prev => ({ ...prev, minimumRate: false }));
+    };
+
+    const handleVanRentChange = (e) => {
+        const value = e.target.value;
+        setRateCard(prev => ({ ...prev, vanRent: value === '' ? '' : parseFloat(value) }));
+        setErrors(prev => ({ ...prev, vanRent: false }));
+    };
+
+    const handleVanRentHoursChange = (e) => {
+        const value = e.target.value;
+        setRateCard(prev => ({ ...prev, vanRentHours: value === '' ? '' : parseFloat(value) }));
+        setErrors(prev => ({ ...prev, vanRentHours: false }));
+    };
+
+    const handleNewServiceTitleChange = (e) => {
+        const value = e.target.value;
+        if (services.some(service =>
+            String(service.title).replace(/ +/g, "").toLowerCase() ===
+            String(value).replace(/ +/g, "").toLowerCase()
+        )) {
+            setErrors(prev => ({ ...prev, newService: true }));
+        } else {
+            setErrors(prev => ({ ...prev, newService: false }));
+        }
+        setNewServiceInfo(prev => ({ ...prev, title: value }));
+        setRateCard(prev => ({ ...prev, serviceTitle: value }));
+        setErrors(prev => ({ ...prev, serviceTitle: false }));
+    };
+
+    const handleHoursChange = (e) => {
+        const value = e.target.value;
+        setNewServiceInfo(prev => ({
+            ...prev,
+            hours: value,
+            totalHours: parseFloat(prev.minutes) + parseFloat(value || 0)
+        }));
+        setErrors(prev => ({ ...prev, serviceTitle: false }));
+    };
+
+    const handleMinutesChange = (e) => {
+        const value = e.target.value;
+        setNewServiceInfo(prev => ({
+            ...prev,
+            minutes: value,
+            totalHours: parseFloat(newServiceInfo.hours || 0) + parseFloat(value)
+        }));
+    };
+
+    const handleServiceChange = (e) => {
+        setRateCard(prev => ({ ...prev, serviceTitle: e.target.value }));
+        setErrors(prev => ({ ...prev, serviceTitle: false }));
+    };
+
+    const handleWeekChange = (e) => {
+        setErrors(prev => ({ ...prev, existingweek: ratecards.some((item) => e.includes(item.serviceWeek)) }))
+        setRateCard(prev => ({ ...prev, serviceWeek: e }));
+        setErrors(prev => ({ ...prev, serviceWeek: false }));
+    };
+
+    const handleMileageChange = (e) => {
+        const value = e.target.value;
+        setRateCard(prev => ({ ...prev, mileage: value === '' ? '' : parseFloat(value) }));
+        setErrors(prev => ({ ...prev, mileage: false }));
+    };
+
+    const handleServiceRateChange = (e) => {
+        const value = e.target.value;
+        setRateCard(prev => ({
+            ...prev,
+            serviceRate: value === '' ? '' : parseFloat(value)
+        }));
+        setErrors(prev => ({ ...prev, serviceRate: false }));
+    };
+
+    const handleByodRateChange = (e) => {
+        const value = e.target.value;
+        setRateCard(prev => ({ ...prev, byodRate: value === '' ? '' : parseFloat(value) }));
+        setErrors(prev => ({ ...prev, byodRate: false }));
     };
 
     return (
@@ -148,51 +288,66 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                         <InputGroup
                             type="dropdown"
                             className={`${rateCard.vehicleType === '' && 'text-gray-400'}`}
-                            onChange={(e) => setRateCard(prev => ({ ...prev, vehicleType: e.target.value }))}
+                            onChange={handleVehicleTypeChange}
                             label="Vehicle Type"
                             required="true"
+                            error={errors.vehicleType}
                         >
                             <option value=''>-Select Type of Vehicle-</option>
                             <option value='Own Vehicle'>Own vehicle</option>
                             <option value='Company Vehicle'>Company vehicle</option>
                         </InputGroup>
+                        {errors.vehicleType && <p className='text-red-400 text-sm mt-1'>* Vehicle type is required</p>}
                     </div>
 
                     <div>
                         <InputGroup
                             type="number"
                             label="Contractual Minimum Rate"
+                            placeholder="Minimum Rate"
                             required="true"
                             step="any"
-                            onChange={(e) => setRateCard(prev => ({ ...prev, minimumRate: parseFloat(e.target.value) }))}
+                            min='1'
+                            onChange={handleMinimumRateChange}
+                            error={errors.minimumRate}
+                            value={rateCard.minimumRate}
                         />
+                        {errors.minimumRate && <p className='text-red-400 text-sm mt-1'>* Minimum rate is required</p>}
                     </div>
 
                     {rateCard?.vehicleType === 'Own Vehicle' && (
-                        <div className='flex space-between gap-5'>
-                            <div>
-                                <InputGroup
-                                    label='Van Rent per week'
-                                    required='true'
-                                    placeholder='Van Rent'
-                                    type='number'
-                                    step="any"
-                                    min='1'
-                                    onChange={(e) => setRateCard(prev => ({ ...prev, vanRent: e.target.value }))}
-                                />
+                        <>
+                            <div className='flex space-between gap-5'>
+                                <div>
+                                    <InputGroup
+                                        label='Van Rent per week'
+                                        required='true'
+                                        placeholder='Van Rent'
+                                        type='number'
+                                        step="any"
+                                        min='1'
+                                        onChange={handleVanRentChange}
+                                        error={errors.vanRent}
+                                        value={rateCard.vanRent}
+                                    />
+                                    {errors.vanRent && <p className='text-red-400 text-sm mt-1'>* Van rent is required</p>}
+                                </div>
+                                <div>
+                                    <InputGroup
+                                        label='Van Rent Hours'
+                                        required='true'
+                                        placeholder='Rent Hours'
+                                        type='number'
+                                        step='0.25'
+                                        min='1'
+                                        onChange={handleVanRentHoursChange}
+                                        error={errors.vanRentHours}
+                                        value={rateCard.vanRentHours}
+                                    />
+                                    {errors.vanRentHours && <p className='text-red-400 text-sm mt-1'>* Van rent hours are required</p>}
+                                </div>
                             </div>
-                            <div>
-                                <InputGroup
-                                    label='Van Rent Hours'
-                                    required='true'
-                                    placeholder='Rent Hours'
-                                    type='number'
-                                    step='0.25'
-                                    min='1'
-                                    onChange={(e) => setRateCard(prev => ({ ...prev, vanRentHours: e.target.value }))}
-                                />
-                            </div>
-                        </div>
+                        </>
                     )}
 
                     <InputWrapper title="Service">
@@ -201,91 +356,91 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                 <input
                                     type="radio"
                                     checked={newService}
-                                    onChange={(e) => setNewService(e.target.value)}
+                                    onChange={(e) => {
+                                        setNewService(e.target.checked);
+                                        setErrors(prev => ({ ...prev, serviceTitle: false }));
+                                    }}
                                 />
                                 <label className='font-medium text-sm'> New Service</label>
                             </div>
 
-                            <div>
-                                <InputGroup
-                                    type="text"
-                                    label='Service title'
-                                    placeholder="New service title"
-                                    required={newService}
-                                    disabled={!newService}
-                                    onChange={(e) => {
-                                        if (services.some(service =>
-                                            String(service.title).replace(/ +/g, "").toLowerCase() ===
-                                            String(e.target.value).replace(/ +/g, "").toLowerCase()
-                                        )) {
-                                            setErrors(prev => ({ ...prev, newService: true }));
-                                        } else {
-                                            setNewServiceInfo(prev => ({ ...prev, title: e.target.value }));
-                                            setRateCard(prev => ({ ...prev, serviceTitle: e.target.value }))
-                                            setErrors(prev => ({ ...prev, newService: false }));
-                                        }
-                                    }}
-                                />
-                                {errors.newService && <p className='text-red-400'>* the given service already exists</p>}
-                            </div>
+                            {newService && (
+                                <>
+                                    <div>
+                                        <InputGroup
+                                            type="text"
+                                            label='Service title'
+                                            placeholder="New service title"
+                                            required={true}
+                                            onChange={handleNewServiceTitleChange}
+                                            error={!newServiceInfo.title && errors.serviceTitle}
+                                            value={newServiceInfo.title}
+                                        />
+                                        {errors.newService && <p className='text-red-400 text-sm mt-1'>* The given service already exists</p>}
+                                        {!newServiceInfo.title && errors.serviceTitle && <p className='text-red-400 text-sm mt-1'>* Service title is required</p>}
+                                    </div>
 
-                            <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
-                                <InputGroup
-                                    type="number"
-                                    label='Hours'
-                                    required={newService}
-                                    disabled={!newService}
-                                    min={1}
-                                    onChange={(e) => {
-                                        setNewServiceInfo(prev => ({
-                                            ...prev,
-                                            hours: e.target.value,
-                                            totalHours: parseFloat(prev.minutes) + parseFloat(e.target.value)
-                                        }));
-                                    }}
-                                />
-                                <InputGroup
-                                    type='dropdown'
-                                    label='Minutes'
-                                    required={newService}
-                                    disabled={!newService}
-                                    onChange={(e) => {
-                                        setNewServiceInfo(prev => ({
-                                            ...prev,
-                                            minutes: e.target.value,
-                                            totalHours: parseFloat(prev.hours) + parseFloat(e.target.value)
-                                        }));
-                                    }}
-                                >
-                                    <option value="0">0</option>
-                                    <option value="0.25">15</option>
-                                    <option value="0.50">30</option>
-                                    <option value="0.75">45</option>
-                                </InputGroup>
-                            </div>
+                                    <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+                                        <div>
+                                            <InputGroup
+                                                type="number"
+                                                label='Hours'
+                                                required={true}
+                                                min={1}
+                                                onChange={handleHoursChange}
+                                                error={!newServiceInfo.hours && errors.serviceTitle}
+                                                value={newServiceInfo.hours}
+                                            />
+                                            {!newServiceInfo.hours && errors.serviceTitle && <p className='text-red-400 text-sm mt-1'>* Hours are required</p>}
+                                        </div>
+                                        <div>
+                                            <InputGroup
+                                                type='dropdown'
+                                                label='Minutes'
+                                                onChange={handleMinutesChange}
+                                                value={newServiceInfo.minutes}
+                                            >
+                                                <option value="0">0</option>
+                                                <option value="0.25">15</option>
+                                                <option value="0.50">30</option>
+                                                <option value="0.75">45</option>
+                                            </InputGroup>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             <div className='flex items-center gap-1'>
                                 <input
                                     type="radio"
                                     checked={!newService}
-                                    onChange={() => setNewService(false)}
+                                    onChange={() => {
+                                        setNewService(false);
+                                        setErrors(prev => ({ ...prev, serviceTitle: false }));
+                                    }}
                                 />
                                 <label className='font-medium text-sm'> Existing Service</label>
                             </div>
 
-                            <div>
-                                <InputGroup
-                                    type='dropdown'
-                                    required={!newService}
-                                    label='Select service'
-                                    disabled={newService}
-                                    onChange={(e) => setRateCard(prev => ({ ...prev, serviceTitle: e.target.value }))}
-                                >
-                                    {services.map((service) => (
-                                        <option value={service.title}>{service.title}</option>
-                                    ))}
-                                </InputGroup>
-                            </div>
+                            {!newService && (
+                                <div>
+                                    <InputGroup
+                                        type='dropdown'
+                                        required={true}
+                                        label='Select service'
+                                        className={`${rateCard.serviceTitle === '' && 'text-gray-400'}`}
+                                        onChange={handleServiceChange}
+                                        error={!rateCard.serviceTitle && errors.serviceTitle}
+                                        value={rateCard.serviceTitle}
+                                    >
+                                        <option value="">-Select Service-</option>
+                                        {services.map((service) => (
+                                            <option key={service.title} value={service.title}>{service.title}</option>
+                                        ))}
+                                    </InputGroup>
+                                    {!rateCard.serviceTitle && errors.serviceTitle && <p className='text-red-400 text-sm mt-1'>* Service is required</p>}
+                                </div>
+                            )}
                         </div>
                     </InputWrapper>
 
@@ -295,14 +450,18 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                 <input
                                     type='radio'
                                     checked={weekbyCalendar}
-                                    onChange={() => setWeekbyCalendar(prev => !prev)}
+                                    onChange={() => {
+                                        setWeekbyCalendar(prev => !prev);
+                                        setErrors(prev => ({ ...prev, serviceWeek: false }));
+                                    }}
                                 />
                                 <label className='text-sm font-medium'>Select Weeks <span className='text-red-400'>*</span></label>
                             </div>
                             <div className='mt-3'>
                                 <RateCardWeek
-                                    onChange={(e) => setRateCard(prev => ({ ...prev, serviceWeek: e }))}
+                                    onChange={handleWeekChange}
                                     disabled={!weekbyCalendar}
+                                    selectedWeeks={rateCard.serviceWeek}
                                 />
                             </div>
                         </div>
@@ -311,15 +470,20 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                 <input
                                     type='radio'
                                     checked={!weekbyCalendar}
-                                    onChange={() => setWeekbyCalendar(prev => !prev)}
+                                    onChange={() => {
+                                        setWeekbyCalendar(prev => !prev);
+                                        setErrors(prev => ({ ...prev, serviceWeek: false }));
+                                    }}
                                 />
                                 <label className='text-sm font-medium'>Select Week Range <span className='text-red-400'>*</span></label>
                             </div>
                             <WeekRangeDropdown
-                                onChange={(e) => setRateCard(prev => ({ ...prev, serviceWeek: e }))}
+                                onChange={handleWeekChange}
                                 disabled={weekbyCalendar}
+                                selectedWeeks={rateCard.serviceWeek}
                             />
                         </div>
+                        {errors.serviceWeek && <p className='text-red-400 text-sm mt-1'>* Please select at least one week</p>}
                     </InputWrapper>
 
                     <div>
@@ -329,15 +493,18 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             icon={<FaPoundSign className='text-neutral-300' />}
                             placeholder="Select week mileage"
                             label="Week Mileage"
-                            onChange={(e) => setRateCard(prev => ({ ...prev, mileage: e.target.value }))}
+                            onChange={handleMileageChange}
                             required="true"
                             min={1}
+                            error={errors.mileage}
+                            value={rateCard.mileage}
                         />
                         {errors.mileage && (
-                            <p className='text-sm text-red-400 m-1'>
+                            <p className='text-red-400 text-sm mt-1'>* Mileage is required</p>)}
+                        {errors.existingweek &&
+                            (<p className='text-sm text-red-400 mt-1'>
                                 * Modifying the mileage may impact the mileage values of the existing rate cards for the selected weeks
-                            </p>
-                        )}
+                            </p>)}
                     </div>
 
                     <div>
@@ -350,12 +517,12 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             step='any'
                             iconPosition='left'
                             icon={<FaPoundSign className='text-neutral-300' />}
-                            onChange={(e) => setRateCard(prev => ({
-                                ...prev,
-                                serviceRate: e.target.value === '' ? '' : parseFloat(e.target.value)
-                            }))}
+                            onChange={handleServiceRateChange}
+                            error={errors.serviceRate}
+                            value={rateCard.serviceRate}
                         />
-                        {rateCard.hourlyRate && (
+                        {errors.serviceRate && <p className='text-red-400 text-sm mt-1'>* Service rate is required</p>}
+                        {rateCard.hourlyRate !== '' && !isNaN(rateCard.hourlyRate) && (
                             <p className='text-sm m-1 text-gray-500'>
                                 <div className='flex flex-col gap-2'>
                                     <div>
@@ -369,7 +536,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                         {errors.hourlyRate && (
                             <p className='text-sm m-1 text-red-400'>
                                 *{rateCard.vehicleType === 'Own Vehicle' && 'Adjusted '}
-                                hourly rate is below the minimum rate (£{rateCard.minimumRate} /hr)
+                                hourly rate is below the minimum rate (£{rateCard.minimumRate.toFixed(2)} /hr)
                             </p>
                         )}
                     </div>
@@ -381,9 +548,12 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             icon={<FaPoundSign className='text-neutral-300' />}
                             placeholder="Select byod rate"
                             label="Byod Rate"
-                            onChange={(e) => setRateCard(prev => ({ ...prev, byodRate: e.target.value }))}
+                            onChange={handleByodRateChange}
                             required="true"
+                            error={errors.byodRate}
+                            value={rateCard.byodRate}
                         />
+                        {errors.byodRate && <p className='text-red-400 text-sm mt-1'>* BYOD rate is required</p>}
                     </div>
 
                     <div className='w-full flex justify-between mt-2 gap-3 items-center'>
@@ -393,7 +563,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             </p>
                         )}
                         <button
-                            disabled={Object.keys(errors).some((er) => er !== 'mileage' && errors[er])}
+                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er])}
                             onClick={handleAddRateCard}
                             className='ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                         >

@@ -13,6 +13,7 @@ import Sidebar from './Components/Sidebar/Sidebar';
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard';
 import Ratecard from './pages/Ratecard/Ratecard';
+import Notifications from './pages/Notifications/Notifications';
 import SchedulePlanner from './pages/SchedulePlanner/SchedulePlanner';
 import Rota from './pages/Rota/Rota';
 import LiveOperations from './pages/LiveOperations/LiveOperations';
@@ -34,7 +35,7 @@ function App() {
     { path: "/planner", name: "Schedule Planner", component: SchedulePlanner },
     { path: "/manage-personnels", name: "Manage Personnels", component: ManagePersonnels },
     // { path: "/manage-fleet", name: "Manage Fleet", component: ManageFleet },
-    //{ path: "/notifications", name: "Notifications", component: Notifications },
+    { path: "/notifications", name: "Notifications", component: Notifications },
     { path: "/live-operations", name: "Live Operations", component: LiveOperations },
     { path: "/rota", name: "Rota", component: Rota },
     { path: "/deductions", name: "Deductions", component: Deductions },
