@@ -37,7 +37,7 @@ const Rota = () => {
         }
 
         const streaks = calculateAllWorkStreaks(driversList, schedules);
-        const continuousStatus = checkAllContinuousSchedules(driversList, schedules);
+        const continuousStatus = checkAllContinuousSchedules(driversList, schedules, days.map((day) => day.date));
 
         return { streaks, continuousStatus };
     }, [driversList, schedules]);
@@ -92,29 +92,43 @@ const Rota = () => {
 
     const tableData = (driver) => {
         return days.map((day) => {
-            const dateKey = new Date(day.date).toLocaleDateString('en-UK');
+            const dateObj = new Date(day.date);
+            const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${driver._id}`;
-            const schedule = scheduleMap[key];
 
+            const schedule = scheduleMap[key];
             const streak = streaks[driver._id]?.[dateKey] || 0;
             const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
 
-            return (
+            const isToday = dateObj.toDateString() === new Date().toDateString();
+            const cellClass = isToday ? 'bg-amber-100/30' : '';
 
-                <td key={day.date} className={`${new Date(day.date).toDateString() === new Date().toDateString() ? 'bg-amber-100/30' : ''}`} >
-                    {schedule && <div className={`relative flex justify-center h-full w-full `}>
-                        <div className='relative max-w-40'>
-                            <div className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
+            return (
+                <td key={day.date} className={cellClass} >
+                    {(() => {
+                        // Render scheduled cell
+                        if (schedule) {
+                            const borderColor =
+                                streak < 3 ? 'border-l-green-500/60' :
+                                    streak < 5 ? 'border-l-yellow-500/60' :
+                                        'border-l-red-400';
+
+                            return (
+                                <div className={`relative flex justify-center h-full w-full `}>
+                                    <div className='relative max-w-40'>
+                                        <div className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
                              ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} 
                              ${schedule.status !== 'completed' && 'border-[1.5px] border-dashed border-gray-400/70 [border-left-style:solid] text-gray-400/70'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
-                                <div className='overflow-auto max-h-[4rem]'>{schedule?.service}</div>
-                                <div className='h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px] '>
-                                    {schedule.status !== 'completed' ? < FaLock size={17} /> : <FaUnlock className='text-orange-400' size={17} />}
-                                </div>
-                            </div>
+                                            <div className='overflow-auto max-h-[4rem]'>{schedule?.service}</div>
+                                            <div className='h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px] '>
+                                                {schedule.status !== 'completed' ? < FaLock size={17} /> : <FaUnlock className='text-orange-400' size={17} />}
+                                            </div>
+                                        </div>
 
-                        </div>
-                    </div>}
+                                    </div>
+                                </div>)
+                        }
+                    })()}
                 </td>
             )
         })

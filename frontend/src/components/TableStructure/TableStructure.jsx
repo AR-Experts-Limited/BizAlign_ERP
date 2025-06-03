@@ -73,7 +73,7 @@ const TableStructure = ({ title, state, setters, tableData }) => {
                                                 {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs'>Stand by driver from {driver.siteSelection}</div>}
                                             </div>
                                         </td>
-                                        {tableData(driver)}
+                                        {tableData(driver, disableDriver, standbydriver)}
                                     </tr>)
                             })}
                         </tbody>

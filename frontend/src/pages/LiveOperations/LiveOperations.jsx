@@ -28,7 +28,7 @@ const LiveOperations = () => {
         }
 
         const streaks = calculateAllWorkStreaks(driversList, schedules);
-        const continuousStatus = checkAllContinuousSchedules(driversList, schedules);
+        const continuousStatus = checkAllContinuousSchedules(driversList, schedules, days.map((day) => day.date));
 
         return { streaks, continuousStatus };
     }, [driversList, schedules]);
@@ -79,31 +79,56 @@ const LiveOperations = () => {
 
     const tableData = (driver) => {
         return days.map((day) => {
-            const dateKey = new Date(day.date).toLocaleDateString('en-UK');
+            const dateObj = new Date(day.date);
+            const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${driver._id}`;
-            const schedule = scheduleMap[key];
 
-            // Get pre-calculated values
+            const schedule = scheduleMap[key];
             const streak = streaks[driver._id]?.[dateKey] || 0;
-            const continuous = continuousStatus[driver._id]?.[dateKey] || "3";
+            const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
+
+            const isToday = dateObj.toDateString() === new Date().toDateString();
+            const cellClass = isToday ? 'bg-amber-100/30' : '';
 
             return (
+                <td key={day.date} className={cellClass} >
+                    {(() => {
+                        // Render scheduled cell
+                        if (schedule) {
+                            const borderColor =
+                                streak < 3 ? 'border-l-green-500/60' :
+                                    streak < 5 ? 'border-l-yellow-500/60' :
+                                        'border-l-red-400';
 
-                <td key={day.date} className={`${new Date(day.date).toDateString() === new Date().toDateString() ? 'bg-amber-100/30' : ''}`} >
-                    {schedule && <div className={`relative flex justify-center h-full w-full `}>
-                        <div className='relative max-w-40'>
-                            <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4  dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 ${streak < 3 ? ' border-l-4 border-l-green-500/60 dark:border-l-green-500/60' : streak < 5 ? 'border-l-4 border-l-yellow-500/60' : 'border-l-4 border-l-red-400'} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
-                                <div className='overflow-auto max-h-[4rem]'>{schedule?.service}</div>
-                                <div className='flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px] '>
-                                    <svg className='w-4 h-4' viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
-                                        <polyline points="0,25 20,25 30,05 40,40 50,10 60,25 100,25"
-                                            stroke="orange" stroke-width="7" fill="none"
-                                            class="ecg-path" />
-                                    </svg>
+                            return (
+                                <div className={`relative flex justify-center h-full w-full `}>
+                                    <div className='relative max-w-40'>
+                                        <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
+                                            <div className='overflow-auto max-h-[4rem]'>{schedule?.service}</div>
+                                            <div className='flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px] '>
+                                                <svg className='w-4 h-4' viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                                                    <polyline points="0,25 20,25 30,05 40,40 50,10 60,25 100,25"
+                                                        stroke="orange" stroke-width="7" fill="none"
+                                                        class="ecg-path" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>)
+                        }
+                        //  Render continuous schedule block (Unavailable or Day-off)
+                        if (continuousSchedule < 3) {
+                            const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
+                            return (
+                                <div className="flex justify-center items-center w-full h-full rounded-lg border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+                                    <div className="text-sm text-center text-white bg-stone-300 px-1 py-0.5 rounded-md">
+                                        {label}
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>}
+                            );
+                        }
+
+                    })()}
                 </td>
             )
         })

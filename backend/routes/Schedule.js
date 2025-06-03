@@ -149,6 +149,20 @@ router.delete('/', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+
+  try {
+    const { Schedule } = getModels(req);
+    await Schedule.findByIdAndDelete(req.params.id)
+    sendToClients(req.db, {
+      type: 'scheduleUpdated', // Custom event to signal data update
+    });
+    res.json({ message: 'Schedule deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting schedule', error: error.message });
+  }
+});
+
 // Route to filter schedules by site and date range
 router.get('/filter2', async (req, res) => {
   const { site, startDay, endDay } = req.query;
