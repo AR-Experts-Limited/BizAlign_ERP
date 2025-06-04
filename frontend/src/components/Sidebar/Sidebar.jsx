@@ -21,6 +21,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
         { path: "/manage-personnels", name: "Manage Personnels", icon: <i class="fi fi-rr-users-alt hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/rate-card", name: "Rate Cards", icon: <i class="fi fi-rr-calculator hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/notifications", name: "Notifications", icon: <i class="fi fi-rr-bell-notification-social-media hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/approvals", name: "Approvals", icon: <i class="fi fi-rr-checkbox hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/planner", name: "Schedule Planner", icon: <i class="fi fi-rr-calendar-clock hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/live-operations", name: "Live Operations", icon: <BiStation className='hover:text-primary-800' size={25} /> },
         { path: "/rota", name: "Rota", icon: <i class="fi fi-rr-payroll-calendar hover:text-primary-800 text-[1.5rem]"></i> },

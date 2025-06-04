@@ -22,6 +22,7 @@ import Deductions from './pages/Deductions/Deductions';
 import Incentives from './pages/Incentives/Incentives';
 import ManageUsers from './pages/ManageUsers/ManageUsers';
 import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels'
+import Approvals from './pages/Approvals/Approvals';
 
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
     { path: "/manage-personnels", name: "Manage Personnels", component: ManagePersonnels },
     // { path: "/manage-fleet", name: "Manage Fleet", component: ManageFleet },
     { path: "/notifications", name: "Notifications", component: Notifications },
+    { path: "/approvals", name: "Approvals", component: Approvals },
     { path: "/live-operations", name: "Live Operations", component: LiveOperations },
     { path: "/rota", name: "Rota", component: Rota },
     { path: "/deductions", name: "Deductions", component: Deductions },
