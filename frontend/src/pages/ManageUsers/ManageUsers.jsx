@@ -141,7 +141,7 @@ const ManageUsers = () => {
                         canEditUser={canEditUser} />}
             </div>
             <Modal isOpen={deleteUserDetails}>
-                <div className='max-w-120 max-h-75'>
+                <div className='max-w-120 max-h-75 p-6'>
                     {(() => {
                         if (deleteUserDetails?.delReqStatus === '' && currentUser.role !== 'super-admin') {
                             return (
