@@ -120,7 +120,7 @@ router.put('/', async (req, res) => {
 router.post('/', upload.any(), async (req, res) => {
   const { driverId, driverName, user_ID, installmentRate, tenure, site, installmentType, installmentPending, spreadRate, signed } = req.body;
   let { addedBy } = req.body;
-  addedBy = JSON.parse(addedBy);
+  // addedBy = JSON.parse(addedBy);
 
   try {
     const { Installment, User, Notification } = getModels(req);

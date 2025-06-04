@@ -6,7 +6,7 @@ import { FcInfo } from "react-icons/fc";
 import InputGroup from '../../components/InputGroup/InputGroup';
 import { groupRateCards } from './groupRateCards';
 
-const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete }) => {
+const RateCardTable = ({ toastOpen, ratecards, filterVehicleType, onFilterChange, onDelete }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
     const [dropdownPositions, setDropdownPositions] = useState({});
     const [groupedRateCards, setGroupedRateCards] = useState([])
@@ -178,8 +178,9 @@ const RateCardTable = ({ ratecards, filterVehicleType, onFilterChange, onDelete 
                                                 <FiEdit3 size={17} />
                                             </button>
                                             <button
-                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400"
-                                                onClick={() => { onDelete(selectedIds.length > 0 ? selectedIds : [group.weekIdMap[group.serviceWeeks[0]]]); setSelectedWeeks({}) }}
+                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400 disabled:text-gray-300"
+                                                disabled={toastOpen}
+                                                onClick={() => { if (!toastOpen) onDelete(selectedIds.length > 0 ? selectedIds : [group.weekIdMap[group.serviceWeeks[0]]]); setSelectedWeeks({}) }}
                                             >
                                                 <MdOutlineDelete size={17} />
                                             </button>

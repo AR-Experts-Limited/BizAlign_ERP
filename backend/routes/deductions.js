@@ -155,7 +155,7 @@ router.get('/driverspecific', async (req, res) => {
 router.post('/', upload.any(), async (req, res) => {
   const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, deductionDocument, week } = req.body;
   let { addedBy } = req.body;
-  addedBy = JSON.parse(addedBy);
+  // addedBy = JSON.parse(addedBy);
 
   try {
     const { Deduction, User, Notification } = getModels(req);

@@ -68,6 +68,7 @@ const Ratecard = () => {
                 />
 
                 <RateCardTable
+                    toastOpen={toastOpen}
                     ratecards={ratecards}
                     filterVehicleType={filterVehicleType}
                     onFilterChange={setFilterVehicleType}
