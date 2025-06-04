@@ -17,7 +17,7 @@ import Location from '../../components/Location/Location'
 
 const Dashboard = () => {
     const dispatch = useDispatch();
-    const { list: drivers, driverStatus, addStatus, deleteStatus, error } = useSelector((state) => state.drivers);
+    const { bySite, driverStatus, addStatus, deleteStatus, error } = useSelector((state) => state.drivers);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
     const { list: schedules, scheduleStatus } = useSelector((state) => state.schedules)
 
@@ -29,7 +29,7 @@ const Dashboard = () => {
     }, [driverStatus, siteStatus, dispatch]);
 
     const informationCardDetails = [
-        { title: 'Total Personnels', icon: <FiUserCheck size={20} />, info: drivers.length },
+        { title: 'Total Personnels', icon: <FiUserCheck size={20} />, info: Object.values(bySite).flat().length },
         { title: 'Total Sites', icon: <TbMap size={20} />, info: sites.length },
         { title: 'Total Rate Cards', icon: <PiCardholder size={20} />, info: 0 },
         { title: 'Overall Revenue', icon: <AiOutlineStock size={20} />, info: '£' + '0.00' },
@@ -66,7 +66,7 @@ const Dashboard = () => {
                         <div>
                             <p className='my-2'>Total Expenses:</p>
                             <p className='my-2'>Total Profitable Revenue:</p>
-                            <p className='my-2'>Total Personnels: {drivers.filter((d) => d.siteSelection === site.siteKeyword).length}</p>
+                            <p className='my-2'>Total Personnels: {bySite[site.siteKeyword]?.length || 0}</p>
                         </div>
                     </div>
                 ))}
