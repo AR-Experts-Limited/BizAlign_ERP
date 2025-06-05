@@ -158,7 +158,7 @@ const TableFilters = ({ state, setters }) => {
 
 
     return (
-        <div className='grid grid-cols-2 md:grid-cols-4 md:flex-row justify-around items-center p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-4/90 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white' >
+        <div className='grid grid-cols-2 md:grid-cols-4 md:flex-row justify-around items-center p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white' >
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Search Personnel Name:</label>
                 <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
@@ -184,7 +184,7 @@ const TableFilters = ({ state, setters }) => {
             </div>
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Timeframe: </label>
-                <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
+                <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:bg-dark-3 dark:border-dark-5" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="biweekly">Bi-weekly</option>

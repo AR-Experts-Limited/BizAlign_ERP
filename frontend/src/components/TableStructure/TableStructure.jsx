@@ -39,12 +39,12 @@ const TableStructure = ({ title, state, setters, tableData }) => {
     }, [driversBySite, selectedSite, searchDriver, standbydrivers])
 
     return (
-        <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden '>
+        <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white'>
             <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>{title}</h2>
             <div className='flex flex-col w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-4 shadow overflow-hidden'>
                 <TableFilters state={state} setters={setters} />
                 <div className="my-3 relative rounded-t-lg flex-1 overflow-auto">
-                    <table className='calendar-table text-xs md:text-base w-full border border-neutral-200'>
+                    <table className='calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4'>
                         <thead>
                             <tr className='text-white'>
                                 <th className='sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-700 font-medium'>
@@ -68,7 +68,7 @@ const TableStructure = ({ title, state, setters, tableData }) => {
                                 const standbydriver = standbydriversList.some((sdriver) => sdriver._id === driver._id)
                                 return (
                                     <tr>
-                                        <td className='z-10 sticky left-0 bg-white'>
+                                        <td className='z-10 sticky left-0 bg-white dark:bg-dark-3'>
                                             <div className='flex flex-col gap-3 '>
                                                 <p>{driver.firstName + ' ' + driver.lastName}</p>
                                                 {disableDriver && <div className='text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm'>{disableDriver}</div>}

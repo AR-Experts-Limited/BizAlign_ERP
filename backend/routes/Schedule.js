@@ -8,6 +8,7 @@ const getModels = (req) => ({
   Schedule: req.db.model('Schedule', require('../models/Schedule').schema),
   User: req.db.model('User', require('../models/User').schema),
   Notification: req.db.model('Notification', require('../models/notifications').schema),
+  DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
 });
 
 // Route for adding a new schedule
@@ -188,6 +189,65 @@ router.get('/combined', async (req, res) => {
     res.status(500).json({ message: 'Error combining schedule and app data', error: error.message });
   }
 });
+
+router.get('/combined-invoice', async (req, res) => {
+  const { driverId, startDay, endDay } = req.query;
+
+  try {
+    const { Schedule, DayInvoice } = getModels(req);
+
+    const [schedules, invoices] = await Promise.all([
+      Schedule.find({
+        driverId: { $in: driverId },
+        day: {
+          $gte: new Date(startDay),
+          $lte: new Date(endDay),
+        },
+      }),
+      DayInvoice.find({
+        driverId: { $in: driverId },
+        date: {
+          $gte: new Date(startDay),
+          $lte: new Date(endDay),
+        },
+      }),
+    ]);
+
+    // Add a type flag for grouping logic
+    schedules.forEach(s => s.__t = 'Schedule');
+    invoices.forEach(i => i.__t = 'DayInvoice');
+
+    // Group data by driverId and day
+    const groupByDriverDay = (data) => {
+      const map = {};
+      for (const item of data) {
+        const key = `${item.driverId}_${(item.day || item.date).toISOString().split('T')[0]}`;
+        if (!map[key]) {
+          map[key] = {
+            driverId: item.driverId,
+            day: item.day || item.date,
+            schedule: null,
+            invoice: null,
+          };
+        }
+        if (item.__t === 'Schedule') map[key].schedule = item;
+        else map[key].invoice = item;
+      }
+      return map;
+    };
+
+    const combinedMap = groupByDriverDay([...schedules, ...invoices]);
+
+    const combinedArray = Object.values(combinedMap).sort((a, b) => {
+      return new Date(a.day) - new Date(b.day);
+    });
+
+    res.status(200).json(combinedArray);
+  } catch (error) {
+    res.status(500).json({ message: 'Error combining schedule and invoice data', error: error.message });
+  }
+});
+
 
 // Route to delete schedules by driver and date range
 router.delete('/', async (req, res) => {
