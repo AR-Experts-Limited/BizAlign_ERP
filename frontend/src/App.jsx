@@ -23,6 +23,7 @@ import Incentives from './pages/Incentives/Incentives';
 import ManageUsers from './pages/ManageUsers/ManageUsers';
 import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels'
 import Approvals from './pages/Approvals/Approvals';
+import DailyInvoice from './pages/DailyInvoice/DailyInvoice';
 
 
 function App() {
@@ -46,7 +47,7 @@ function App() {
     { path: "/incentives", name: "Incentives", component: Incentives },
     // { path: "/approvals", name: "Approvals", component: Approvals },
     // { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
-    // { path: "/manage-payments", name: "Manage Payments", component: ManagePayments },
+    { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
     // { path: '/add-ons', name: 'Additional Charges', component: AdditionalCharges },
     // { path: "/print-invoices", name: "Print Invoices", component: PrintInvoices },
     // { path: "/profit-loss", name: "Profit / Loss", component: ProfitLoss },

@@ -71,7 +71,7 @@ const TableStructure = ({ title, state, setters, tableData }) => {
                                         <td className='z-10 sticky left-0 bg-white dark:bg-dark-3'>
                                             <div className='flex flex-col gap-3 '>
                                                 <p>{driver.firstName + ' ' + driver.lastName}</p>
-                                                {disableDriver && <div className='text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm'>{disableDriver}</div>}
+                                                {disableDriver && title !== 'Daily Invoice' && <div className='text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm'>{disableDriver}</div>}
                                                 {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs'>Stand by driver from {driver.siteSelection}</div>}
                                             </div>
                                         </td>
