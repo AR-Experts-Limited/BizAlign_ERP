@@ -218,7 +218,7 @@ const Deductions = () => {
     };
 
     return (
-        <div className='w-full h-full flex flex-col p-1.5 md:p-3.5'>
+        <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
             <h2 className='text-xl mb-3 font-bold dark:text-white'>Deductions</h2>
             <div className='h-full grid grid-cols-1 md:grid-cols-7 gap-3'>
                 {/* Add new deduction section */}
@@ -406,7 +406,7 @@ const Deductions = () => {
                     <div className='z-5 rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                         <h3>Deductions list</h3>
                     </div>
-                    <div className='p-4 overflow-auto max-h-[32rem]'>
+                    <div className='px-2 overflow-auto max-h-[39.5rem]'>
                         <table className="table-general">
                             <thead>
                                 <tr className="sticky top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">

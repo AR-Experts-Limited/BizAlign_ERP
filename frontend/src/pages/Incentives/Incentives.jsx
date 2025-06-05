@@ -1,18 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import InputGroup from '../../components/InputGroup/InputGroup';
+import { IoCalendarOutline } from "react-icons/io5";
+import { TiDelete } from "react-icons/ti";
+import monthSelectPlugin from "flatpickr/dist/plugins/monthSelect";
+import "flatpickr/dist/plugins/monthSelect/style.css";
 import { MdOutlineDelete } from "react-icons/md";
 import { FaPoundSign } from 'react-icons/fa';
+import axios from 'axios';
+// import { toast } from 'react-toastify';
+// import 'react-toastify/dist/ReactToastify.css';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchSites } from '../../features/sites/siteSlice';
+import { fetchServices } from '../../features/services/serviceSlice';
+import { FaUser } from "react-icons/fa";
+import { FaBuildingUser } from "react-icons/fa6";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const Incentives = () => {
+    const dispatch = useDispatch();
+    const { list: sites, siteStatus } = useSelector((state) => state.sites);
+    const { list: services, serviceStatus } = useSelector((state) => state.services);
+    const { userDetails } = useSelector((state) => state.auth);
+
     const [newIncentive, setNewIncentive] = useState({
-        site: '',
+        site: userDetails?.site || '',
         service: '',
         month: '',
         type: '',
         rate: 0,
     });
+
+    const [incentives, setIncentives] = useState([]);
     const [errors, setErrors] = useState({
         site: false,
         service: false,
@@ -21,41 +42,33 @@ const Incentives = () => {
         rate: false,
     });
 
-    // Sample data for dropdowns and table
-    const sites = [
-        { siteKeyword: 'DPR1', siteName: 'Leyland (DPR1)' },
-        { siteKeyword: 'DXM3', siteName: 'DXM3 - Rochdale' },
-        { siteKeyword: 'DXM2', siteName: 'DXM2 - Manchester' },
-        { siteKeyword: 'DXM5', siteName: 'DXM5 - Bolton' },
-    ];
-    const services = [
-        { _id: '1', title: 'Service A' },
-        { _id: '2', title: 'Service B' },
-        { _id: '3', title: 'Service C' },
-    ];
     const incentiveTypes = ['Normal', 'Prime', 'Peak'];
 
-    // Sample data for the table
-    const incentives = [
-        {
-            _id: '1',
-            site: 'DPR1',
-            service: 'Service A',
-            month: '2025-01',
-            type: 'Normal',
-            rate: 100,
-            addedBy: { name: 'John Doe', email: 'john@example.com', addedOn: '2025-01-01T12:00:00Z' },
-        },
-        {
-            _id: '2',
-            site: 'DXM3',
-            service: 'Service B',
-            month: '2025-02',
-            type: 'Prime',
-            rate: 150,
-            addedBy: { name: 'Jane Smith', email: 'jane@example.com', addedOn: '2025-02-01T12:00:00Z' },
-        },
-    ];
+    useEffect(() => {
+        if (siteStatus === 'idle') dispatch(fetchSites());
+        if (serviceStatus === 'idle') dispatch(fetchServices());
+    }, [siteStatus, serviceStatus, dispatch]);
+
+    useEffect(() => {
+        fetchIncentives();
+    }, []);
+
+    const fetchIncentives = async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/incentives`);
+            if (userDetails?.role === 'OSM') {
+                const filteredIncentives = response.data.filter(
+                    (incentive) => incentive.site === userDetails?.site
+                );
+                setIncentives(filteredIncentives);
+            } else {
+                setIncentives(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching incentives:', error);
+            // toast.error('Failed to fetch incentives');
+        }
+    };
 
     const validateFields = () => {
         const newErrors = {
@@ -69,25 +82,83 @@ const Incentives = () => {
         return !Object.values(newErrors).some(error => error);
     };
 
-    const handleAddIncentive = () => {
+    const handleAddIncentive = async () => {
         if (!validateFields()) return;
-        // Placeholder for adding incentive logic
+
+        try {
+            const incentiveToAdd = {
+                ...newIncentive,
+                // addedBy: {
+                //     name: `${currentUser.firstName} ${currentUser.lastName}`,
+                //     email: currentUser.email,
+                //     addedOn: new Date().toISOString()
+                // }
+            };
+
+            const response = await axios.post(`${API_BASE_URL}/api/incentives`, incentiveToAdd);
+            setIncentives([...incentives, response.data]);
+
+            // Reset form
+            setNewIncentive({
+                site: currentUser?.site || '',
+                service: '',
+                month: '',
+                type: '',
+                rate: 0,
+            });
+
+            // toast.success('Incentive added successfully');
+        } catch (error) {
+            console.error('Error adding incentive:', error);
+            // toast.error('Failed to add incentive');
+        }
+    };
+
+    const handleDeleteIncentive = async (id) => {
+        try {
+            await axios.delete(`${API_BASE_URL}/api/incentives/${id}`);
+            setIncentives(incentives.filter(incentive => incentive._id !== id));
+            // toast.success('Incentive deleted successfully');
+        } catch (error) {
+            console.error('Error deleting incentive:', error);
+            // toast.error('Failed to delete incentive');
+        }
+    };
+
+    const handleMonthChange = ([date]) => {
+        const monthStr = date.toISOString().slice(0, 7);
+        const monthNum = monthStr.slice(-2);
+
+        let type = 'Normal';
+        if (['07', '08', '09'].includes(monthNum)) type = 'Prime';
+        if (['10', '11', '12'].includes(monthNum)) type = 'Peak';
+
+        setNewIncentive({
+            ...newIncentive,
+            month: monthStr,
+            type
+        });
+        setErrors({ ...errors, month: false });
     };
 
     return (
-        <div className="relative w-full p-4 overflow-auto">
+        <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
             <h2 className="text-xl mb-3 font-bold dark:text-white">Incentives</h2>
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+            <div className="h-full grid grid-cols-1 md:grid-cols-7 gap-3">
+                {/* Add new incentive section */}
                 <div className="h-full md:col-span-2 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg">
-                    <div className="relative overflow-auto max-h-[40rem]">
+                    <div className="relative overflow-auto max-h-[42rem]">
                         <div className="sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white">
                             <h3>Add new incentive</h3>
                         </div>
                         <div className="p-4 pb-8 flex flex-col gap-3">
+                            {/* Site selection */}
                             <div>
                                 <InputGroup
                                     type="dropdown"
                                     label="Select Site"
+                                    icon={<FaBuildingUser className='text-neutral-200' size={20} />}
+                                    iconPosition="left"
                                     required={true}
                                     className={`${newIncentive.site === '' && 'text-gray-400'}`}
                                     onChange={(e) => {
@@ -96,8 +167,9 @@ const Incentives = () => {
                                     }}
                                     error={errors.site}
                                     value={newIncentive.site}
+                                    disabled={userDetails?.role === 'OSM'}
                                 >
-                                    <option value="">-- Select Site --</option>
+                                    <option value="">- Select Site -</option>
                                     {sites.map((site) => (
                                         <option key={site.siteKeyword} value={site.siteKeyword}>
                                             {site.siteName}
@@ -107,10 +179,13 @@ const Incentives = () => {
                                 {errors.site && <p className="text-red-400 text-sm mt-1">* Site is required</p>}
                             </div>
 
+                            {/* Service selection */}
                             <div>
                                 <InputGroup
                                     type="dropdown"
                                     label="Select Service"
+                                    icon={<i class="absolute top-3.5 left-4.5 text-neutral-200 text-[1.2rem] fi fi-rr-shipping-fast"></i>}
+                                    iconPosition="left"
                                     required={true}
                                     className={`${newIncentive.service === '' && 'text-gray-400'}`}
                                     onChange={(e) => {
@@ -120,7 +195,7 @@ const Incentives = () => {
                                     error={errors.service}
                                     value={newIncentive.service}
                                 >
-                                    <option value="">-- Select Service --</option>
+                                    <option value="">- Select Service -</option>
                                     {services.map((service) => (
                                         <option key={service._id} value={service.title}>
                                             {service.title}
@@ -130,48 +205,51 @@ const Incentives = () => {
                                 {errors.service && <p className="text-red-400 text-sm mt-1">* Service is required</p>}
                             </div>
 
+                            {/* Month selection */}
                             <div>
-                                <label className="text-sm font-medium">Month <span className="text-red-400">*</span></label>
-                                <Flatpickr
-                                    value={newIncentive.month}
-                                    onChange={([date]) => {
-                                        setNewIncentive({ ...newIncentive, month: date.toISOString().slice(0, 7) });
-                                        setErrors({ ...errors, month: false });
-                                    }}
-                                    options={{
-                                        mode: 'single',
-                                        dateFormat: 'Y-m',
-                                        altInput: true,
-                                        altFormat: 'F Y',
-                                    }}
-                                    className={`w-full p-2 border rounded-md ${errors.month ? 'border-red-400' : 'border-neutral-300'} focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                                />
+                                <label className="text-sm font-medium block mb-3">Month <span className="text-red-400">*</span></label>
+                                <div className={`relative [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5`}>
+                                    <Flatpickr
+                                        value={newIncentive.month}
+                                        placeholder="Select Month"
+                                        onChange={handleMonthChange}
+                                        options={{
+                                            plugins: [new monthSelectPlugin({
+                                                shorthand: true,
+                                                dateFormat: "Y-m",
+                                                theme: "light"
+                                            })],
+                                            dateFormat: "Y-m",
+                                        }}
+                                        className={`w-full pl-12 p-3 border-[1.5px] rounded-md ${errors.month ? 'border-red-400' : 'border-neutral-300'} focus:outline-none focus:border-2 focus:border-primary-500`}
+                                    />
+                                    {newIncentive.month ? (
+                                        <TiDelete
+                                            onClick={() => setNewIncentive({ ...newIncentive, month: '', type: '' })}
+                                            className="size-7 cursor-pointer text-red-light right-3 left-auto"
+                                        />
+                                    ) : (
+                                        <IoCalendarOutline className="pointer-events-none size-5 text-neutral-300" />
+                                    )}
+                                </div>
                                 {errors.month && <p className="text-red-400 text-sm mt-1">* Month is required</p>}
                             </div>
 
+                            {/* Incentive type */}
                             <div>
                                 <InputGroup
-                                    type="dropdown"
+                                    type="text"
                                     label="Incentive Type"
                                     required={true}
-                                    className={`${newIncentive.type === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        setNewIncentive({ ...newIncentive, type: e.target.value });
-                                        setErrors({ ...errors, type: false });
-                                    }}
-                                    error={errors.type}
                                     value={newIncentive.type}
-                                >
-                                    <option value="">-- Select Type --</option>
-                                    {incentiveTypes.map((type) => (
-                                        <option key={type} value={type}>
-                                            {type}
-                                        </option>
-                                    ))}
-                                </InputGroup>
+                                    disabled={true}
+                                    placeholder="Select month to determine type"
+                                    error={errors.type}
+                                />
                                 {errors.type && <p className="text-red-400 text-sm mt-1">* Incentive type is required</p>}
                             </div>
 
+                            {/* Rate */}
                             <div>
                                 <InputGroup
                                     type="number"
@@ -182,7 +260,7 @@ const Incentives = () => {
                                     iconPosition="left"
                                     icon={<FaPoundSign className="text-neutral-300" />}
                                     onChange={(e) => {
-                                        setNewIncentive({ ...newIncentive, rate: e.target.value });
+                                        setNewIncentive({ ...newIncentive, rate: parseFloat(e.target.value) });
                                         setErrors({ ...errors, rate: false });
                                     }}
                                     error={errors.rate}
@@ -202,11 +280,12 @@ const Incentives = () => {
                     </div>
                 </div>
 
-                <div className="max-h-[40rem] relative md:col-span-5 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg">
+                {/* Incentives list section */}
+                <div className="h-full relative md:col-span-5 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg">
                     <div className="z-5 rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white">
                         <h3>Incentives list</h3>
                     </div>
-                    <div className="p-4">
+                    <div className="p-4 overflow-auto max-h-[39.5rem]">
                         <table className="table-general">
                             <thead>
                                 <tr>
@@ -216,6 +295,8 @@ const Incentives = () => {
                                     <th>Month</th>
                                     <th>Incentive Type</th>
                                     <th>Rate</th>
+                                    {/* <th>Added By</th>
+                                    <th>Added On</th> */}
                                     <th>Options</th>
                                 </tr>
                             </thead>
@@ -228,8 +309,16 @@ const Incentives = () => {
                                         <td>{new Date(incentive.month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</td>
                                         <td>{incentive.type}</td>
                                         <td>£ {incentive.rate}</td>
+                                        {/* <td>
+                                            {incentive.addedBy?.name}<br />
+                                            {incentive.addedBy?.email}
+                                        </td> 
+                                        <td>{new Date(incentive.addedBy?.addedOn).toLocaleString()}</td>*/}
                                         <td>
-                                            <button className="p-2 rounded-md hover:bg-neutral-200 text-red-400">
+                                            <button
+                                                onClick={() => handleDeleteIncentive(incentive._id)}
+                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400"
+                                            >
                                                 <MdOutlineDelete size={17} />
                                             </button>
                                         </td>
