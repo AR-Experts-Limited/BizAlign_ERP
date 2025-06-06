@@ -78,7 +78,7 @@ const Login = () => {
             if (verifyStatus.payload.success) {
                 navigate('/dashboard');
             } else {
-                alert('unsuccessful');
+                setError("Invalid OTP");
             }
         };
 
@@ -98,12 +98,12 @@ const Login = () => {
                                 value={digit}
                                 onChange={(e) => handleChange(e, index)}
                                 autoFocus={index === 0}
-                                className="w-10 h-12 border border-stone-400 rounded-md text-center text-lg focus:outline-none focus:ring-2 focus:ring-green-500 inset-shadow-sm bg-white/40"
+                                className="w-10 h-12 border border-stone-400 rounded-md text-center text-lg focus:outline-none focus:border-2 focus:border-cyan-800 inset-shadow-sm bg-white/40"
                             />
                         ))}
                     </div>
 
-                    {error && <p className="text-red-600 text-sm mb-3 text-center">{error}</p>}
+                    {error && <p className="bg-red-300/50 border border-red-600 rounded-md px-3 py-2 text-red-600 text-sm mb-3 text-center">{error}</p>}
 
                     <div className="flex justify-around gap-4 m-8 ">
                         <button

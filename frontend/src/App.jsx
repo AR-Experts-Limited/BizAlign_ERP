@@ -37,58 +37,48 @@ function App() {
     { path: "/rate-card", name: "Rate Cards", component: Ratecard },
     { path: "/planner", name: "Schedule Planner", component: SchedulePlanner },
     { path: "/manage-personnels", name: "Manage Personnels", component: ManagePersonnels },
-    // { path: "/manage-fleet", name: "Manage Fleet", component: ManageFleet },
     { path: "/notifications", name: "Notifications", component: Notifications },
     { path: "/approvals", name: "Approvals", component: Approvals },
     { path: "/live-operations", name: "Live Operations", component: LiveOperations },
     { path: "/rota", name: "Rota", component: Rota },
     { path: "/deductions", name: "Deductions", component: Deductions },
-    // { path: "/working-hours", name: "Working Hours", component: WorkingHours },
     { path: "/installments", name: "Installments", component: Instalments },
     { path: "/incentives", name: "Incentives", component: Incentives },
-    // { path: "/approvals", name: "Approvals", component: Approvals },
-    // { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
-    // { path: '/add-ons', name: 'Additional Charges', component: AdditionalCharges },
-    // { path: "/print-invoices", name: "Print Invoices", component: PrintInvoices },
-    // { path: "/profit-loss", name: "Profit / Loss", component: ProfitLoss },
-    // { path: "/application-settings", name: "Application Settings", component: ApplicationSettings },
     { path: "/manage-users", name: "Manage Users", component: ManageUsers },
-
   ];
 
-  return (<>
-    <Routes>
-      <Route path='/' element={<LandingPage />} />
-    </Routes>
+  return (
     <div className="app fixed bg-stone-100 dark:bg-dark-4 w-screen h-screen flex flex-col">
-
       {!hideLayout && <Navbar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} />}
 
       <div className="flex flex-1 overflow-hidden">
-        {!hideLayout &&
+        {!hideLayout && (
           <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-60' : 'w-0 md:w-18'}`}>
             <Sidebar sidebarIsOpen={sidebarIsOpen} />
-          </div>}
+          </div>
+        )}
 
-        <Routes>
-          <Route path='/login' element={<Login />} />
-          {routes.map(({ path, name, component: Component }) => (
-            <Route
-              className="flex-1 overflow-auto"
-              key={path}
-              path={path}
-              element={
-                <ProtectedRoute routeName={name}>
-                  <Component />
-                </ProtectedRoute>
-              }
-            />
-          ))}
-        </Routes>
+        <div className="flex-1 overflow-auto">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            {routes.map(({ path, name, component: Component }) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <ProtectedRoute routeName={name}>
+                    <Component />
+                  </ProtectedRoute>
+                }
+              />
+            ))}
+            {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
+          </Routes>
+        </div>
       </div>
-    </div >
-  </>
+    </div>
   );
 }
 
