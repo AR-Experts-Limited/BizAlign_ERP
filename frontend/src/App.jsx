@@ -25,6 +25,7 @@ import ManageUsers from './pages/ManageUsers/ManageUsers';
 import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels'
 import Approvals from './pages/Approvals/Approvals';
 import DailyInvoice from './pages/DailyInvoice/DailyInvoice';
+import ManageSummary from './pages/ManageSummary/ManageSummary';
 
 
 function App() {
@@ -44,8 +45,10 @@ function App() {
     { path: "/deductions", name: "Deductions", component: Deductions },
     { path: "/installments", name: "Installments", component: Instalments },
     { path: "/incentives", name: "Incentives", component: Incentives },
+    { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
     { path: "/manage-users", name: "Manage Users", component: ManageUsers },
+
   ];
 
   return (

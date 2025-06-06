@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../features/sites/siteSlice';
+import InputGroup from '../InputGroup/InputGroup';
 import moment from 'moment';
 moment.updateLocale('en', {
     week: {
@@ -11,7 +12,7 @@ import WeekFilter from '../Calendar/WeekFilter';
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 
-const TableFilters = ({ state, setters }) => {
+const TableFilters = ({ title, state, setters, handleFileChange }) => {
     const dispatch = useDispatch();
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
 
@@ -182,7 +183,7 @@ const TableFilters = ({ state, setters }) => {
                     <button name="next" onClick={() => handleForwardOrBackward('next')} className='dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5'><FaChevronRight size={14} /></button>
                 </div>
             </div>
-            <div className='flex flex-col gap-1'>
+            {title !== 'Manage Summary' ? <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Timeframe: </label>
                 <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:bg-dark-3 dark:border-dark-5" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
                     <option value="daily">Daily</option>
@@ -190,7 +191,9 @@ const TableFilters = ({ state, setters }) => {
                     <option value="biweekly">Bi-weekly</option>
                     <option value="monthly">Monthly</option>
                 </select>
-            </div>
+            </div> : <InputGroup type='file' onChange={(e) => handleFileChange(e)} />}
+
+
         </div>
     );
 };
