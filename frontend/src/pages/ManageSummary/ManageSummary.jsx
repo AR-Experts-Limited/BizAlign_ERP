@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { NavLink } from "react-router-dom";
 import TableStructure from '../../components/TableStructure/TableStructure';
 import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
 import moment from 'moment';
 import axios from 'axios';
 import Modal from '../../components/Modal/Modal'
-import { FcApproval } from "react-icons/fc";
 import InputWrapper from '../../components/InputGroup/InputWrapper';
 import Papa from "papaparse";
+import { renderStageButton } from './renderStageButton';
 import InputGroup from '../../components/InputGroup/InputGroup';
+import { FcApproval, FcClock, FcTodoList, FcHighPriority, FcCheckmark } from "react-icons/fc";
+import { BsCheckCircleFill } from "react-icons/bs";
+import { AiOutlineClockCircle } from "react-icons/ai";
+{/* <AiOutlineClockCircle className="text-yellow-500 text-xl" />, */ }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const stageIcons = {
+    "Access Requested": <FcHighPriority size={22} />,
+    "Under Edit": <i class="flex items-center text-amber-500 fi fi-rr-pen-square"></i>,
+    "Under Approval": <i class="flex items-center text-sky-500 fi fi-rs-memo-circle-check"></i>,
+    "Invoice Generation": <FcClock size={22} />,
+    "completed": <BsCheckCircleFill className="text-green-600 text-xl" />
+};
 
 const ManageSummary = () => {
     const [rangeType, setRangeType] = useState('weekly');
@@ -26,6 +38,8 @@ const ManageSummary = () => {
     const [prevRangeType, setPrevRangeType] = useState(rangeType);
     const [csvData, setCsvData] = useState([])
     const [currentInvoice, setCurrentInvoice] = useState(null)
+    const [selectedSchedules, setSelectedSchedules] = useState([]);
+
 
     const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
     const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList };
@@ -64,9 +78,16 @@ const ManageSummary = () => {
             const invoiceDate = new Date(invoice.date).toLocaleDateString();
             const invoiceName = invoice.driverName?.trim();
             const invoiceService = invoice.mainService?.trim();
+            const existingCsvData = invoice.csvData || null
+
+            let matchedCsv = null
 
             const key = `${invoiceDate}_${invoiceName}_${invoiceService}`;
-            const matchedCsv = csvData[key] || null;
+            if (existingCsvData)
+                matchedCsv = existingCsvData
+
+            else
+                matchedCsv = csvData[key] || null;
 
             const dateKey = new Date(invoice.date).toLocaleDateString('en-UK');
             const mapKey = `${dateKey}_${invoice.driverId}`;
@@ -133,6 +154,61 @@ const ManageSummary = () => {
         reader.readAsText(file);
     }
 
+    const handleSelectAll = (e) => {
+        let allSelectedInvoices = []
+        if (e.target.name === 'selectAll') {
+            const selectedApprovalStatus = invoiceMap[selectedSchedules[0]]?.approvalStatus
+            allSelectedInvoices.push(selectedSchedules[0])
+            Object.keys(invoiceMap).map((invKey) => {
+                if (invoiceMap[invKey]?.approvalStatus === selectedApprovalStatus) {
+                    allSelectedInvoices.push(invKey)
+                }
+            })
+        }
+        setSelectedSchedules(allSelectedInvoices)
+    }
+
+    const updateInvoiceApprovalStatus = async (currentInvoice) => {
+        const stages = [
+            "Access Requested",
+            "Under Edit",
+            "Under Approval",
+            "Invoice Generation",
+            "Completed"
+        ];
+
+        const { invoice, matchedCsv } = currentInvoice
+        const currentStatus = invoice.approvalStatus;
+        const nextStatusIndex = stages.indexOf(currentStatus) + 1;
+
+        if (nextStatusIndex >= stages.length) {
+            console.warn("Already at final stage.");
+            return;
+        }
+
+
+        const updatedInvoice = [{
+            id: invoice._id,
+            updateData: {
+                approvalStatus: stages[nextStatusIndex],
+                csvData: matchedCsv
+
+            }
+        }];
+
+        try {
+            const response = await axios.put(`${API_BASE_URL}/api/dayInvoice/updateApprovalStatusBatch`, {
+                updates: updatedInvoice,
+                site: selectedSite
+            });
+            console.log("Invoice updated successfully:", response.data);
+
+        } catch (error) {
+            console.error("Failed to update invoice:", error);
+        }
+    };
+
+
     const tableData = (driver) => {
         return days.map((day) => {
             const dateObj = new Date(day.date);
@@ -143,6 +219,8 @@ const ManageSummary = () => {
             const isToday = dateObj.toDateString() === new Date().toDateString();
             const cellClass = isToday ? 'bg-amber-100/30' : '';
             const misMatch = (Number(invoice?.miles) !== Number(matchedCsv?.['Total Distance Allowance'])) ? true : false
+            const disabledSelection = (invoice && selectedSchedules.length > 0 && key !== selectedSchedules[0] && invoiceMap[selectedSchedules[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
+
 
             return (
                 <td key={day.date} className={cellClass} >
@@ -150,23 +228,45 @@ const ManageSummary = () => {
                         // Render invoice cell
                         if (invoice) {
                             return (
-                                <div className={`relative flex justify-center h-full w-full `}>
+                                <div className={`relative flex justify-center h-full w-full`}>
                                     <div className='relative max-w-40'>
-                                        <div onClick={() => { if (matchedCsv) setCurrentInvoice({ ...invoiceMap[key], misMatch }) }} className={`relative z-6 w-full h-full flex flex gap-1 cursor-pointer items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border ${!matchedCsv && 'border-dashed '} border-gray-300 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300`}>
+                                        <div
+
+                                            onClick={(e) => {
+                                                if (!matchedCsv || disabledSelection) return;
+
+                                                if (e.metaKey || e.ctrlKey) {
+                                                    // Cmd/Ctrl + click: multi-select toggle, don't open modal
+                                                    setSelectedSchedules(prev =>
+                                                        prev.includes(key)
+                                                            ? prev.filter(k => k !== key)
+                                                            : [...prev, key]
+                                                    );
+                                                } else {
+                                                    // Simple click: open modal
+                                                    setCurrentInvoice({ ...invoiceMap[key], misMatch });
+                                                }
+                                            }}
+                                            className={`relative z-6 w-full h-full flex flex gap-1 cursor-pointer items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
+                                            ${disabledSelection && '!text-gray-300 !pointers-event-none'}
+                                            ${!matchedCsv
+                                                    ? 'border-dashed border-gray-300'
+                                                    : selectedSchedules.includes(key)
+                                                        ? 'border-2 border-primary-700'
+                                                        : 'border-gray-300 dark:border-dark-5'} 
+                                             rounded-md text-sm p-2 `}
+                                        >
                                             <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService}</div>
-                                            {matchedCsv &&
+
+                                            {matchedCsv && (
                                                 <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px]">
-                                                    {(() => {
-                                                        if (misMatch)
-                                                            return (<i class="flex items-center text-red-500 text-[1rem] fi fi-sr-exclamation"></i>)
-                                                        else
-                                                            return (<FcApproval size={27} />)
-                                                    })()}
-                                                </div>}
+                                                    {invoice?.approvalStatus && stageIcons[invoice.approvalStatus]}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-
-                                </div>)
+                                </div>
+                            )
                         }
                     })()}
                 </td>
@@ -176,7 +276,7 @@ const ManageSummary = () => {
 
     return (
         <>
-            <TableStructure title={'Manage Summary'} state={state} setters={setters} tableData={tableData} handleFileChange={handleFileChange} />
+            <TableStructure title={'Manage Summary'} state={state} setters={setters} tableData={tableData} handleFileChange={handleFileChange} selectedInvoices={selectedSchedules} handleSelectAll={handleSelectAll} />
             <Modal isOpen={currentInvoice} onHide={() => setCurrentInvoice(null)}>
                 <h2 className="text-lg px-4 py-2 border-b border-neutral-300">Invoice Comparison</h2>
                 <div className="p-6">
@@ -200,7 +300,7 @@ const ManageSummary = () => {
                             "Access Requested",
                             "Under Edit",
                             "Under Approval",
-                            "Invoice Generation"
+                            "Invoice Generation",
                         ];
                         const stage = stages.findIndex(status => status === currentInvoice?.invoice?.approvalStatus);
 
@@ -235,7 +335,8 @@ const ManageSummary = () => {
 
                 </div>
 
-                <div className='flex justify-end w-full px-4 py-2 border-t border-neutral-300'>
+                <div className='flex justify-end w-full px-4 py-2 border-t border-neutral-300 gap-3'>
+                    {renderStageButton(currentInvoice, updateInvoiceApprovalStatus)}
                     <button
                         onClick={() => setCurrentInvoice(null)}
                         className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
@@ -243,6 +344,7 @@ const ManageSummary = () => {
                         Close
                     </button>
                 </div>
+
             </Modal>
 
         </>

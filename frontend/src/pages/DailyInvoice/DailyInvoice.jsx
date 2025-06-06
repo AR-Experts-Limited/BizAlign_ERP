@@ -39,7 +39,7 @@ const DailyInvoice = () => {
                         enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
-                setInvoices(response.data);
+                setInvoices(response.data.filter((inv) => inv.approvalStatus === 'completed'));
             };
 
             if (!cacheRangeOption) {

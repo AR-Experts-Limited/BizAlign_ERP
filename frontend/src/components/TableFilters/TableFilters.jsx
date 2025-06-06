@@ -12,7 +12,7 @@ import WeekFilter from '../Calendar/WeekFilter';
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 
-const TableFilters = ({ title, state, setters, handleFileChange }) => {
+const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoices, handleSelectAll }) => {
     const dispatch = useDispatch();
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
 
@@ -159,7 +159,7 @@ const TableFilters = ({ title, state, setters, handleFileChange }) => {
 
 
     return (
-        <div className='grid grid-cols-2 md:grid-cols-4 md:flex-row justify-around items-center p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white' >
+        <div className={`grid grid-cols-2 ${title === 'Manage Summary' && selectedInvoices.length > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`} >
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Search Personnel Name:</label>
                 <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
@@ -193,7 +193,12 @@ const TableFilters = ({ title, state, setters, handleFileChange }) => {
                 </select>
             </div> : <InputGroup type='file' onChange={(e) => handleFileChange(e)} />}
 
-
+            {title === 'Manage Summary' && selectedInvoices.length > 0 &&
+                <div className='w-fit flex items-center gap-2 rounded-md border-[1.5px] border-neutral-300 p-3 mt-2.5'>
+                    <button name='selectAll' onClick={(e) => handleSelectAll(e)} className='text-sm rounded-md bg-primary-500 px-2 py-1'>Select All</button>
+                    <button name='clear' onClick={(e) => handleSelectAll(e)} className='text-white text-sm rounded-md bg-red-500 px-2 py-1'>Clear</button>
+                </div>
+            }
         </div>
     );
 };

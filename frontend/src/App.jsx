@@ -26,12 +26,13 @@ import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels'
 import Approvals from './pages/Approvals/Approvals';
 import DailyInvoice from './pages/DailyInvoice/DailyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
+import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
 
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
   const location = useLocation();
-  const hideLayout = location.pathname === '/login';
+  const hideLayout = location.pathname === '/login' || location.pathname === '/';
 
   const routes = [
     { path: "/dashboard", name: "Dashboard", component: Dashboard },
@@ -48,6 +49,7 @@ function App() {
     { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
     { path: "/manage-users", name: "Manage Users", component: ManageUsers },
+    { path: "/settings", name: "Application Settings", component: ApplicationSettings },
 
   ];
 
