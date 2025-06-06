@@ -108,13 +108,13 @@ const DailyInvoice = () => {
             <Modal isOpen={currentInvoice} onHide={() => { setCurrentInvoice(null); }}>
                 {currentInvoice && (
                     <>
-                        <h2 className="text-xl font-semibold px-6 py-2 text-gray-800 dark:text-white border-b border-neutral-300">Daily Invoice Details</h2>
-                        <div className="p-6  mx-auto max-h-[40rem] overflow-auto">
+                        <h2 className="text-xl font-semibold px-2 md:px-6 py-2 text-gray-800 dark:text-white border-b border-neutral-300">Daily Invoice Details</h2>
+                        <div className="p-2 md:p-6  mx-auto max-h-[40rem] overflow-auto">
 
                             {/* Driver Information */}
                             <div className="mb-6">
                                 <InputWrapper title={'Driver Information'}>
-                                    <div className="grid grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                         <div>
                                             <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
                                             <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice.driverName}</p>
@@ -138,7 +138,7 @@ const DailyInvoice = () => {
                             {/* Invoice Information */}
                             <div className="mb-6">
                                 <InputWrapper title={'Invoice Information'}>
-                                    <div className="grid grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div>
                                             <p className="text-sm text-gray-600 dark:text-gray-400">Invoice Number</p>
                                             <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice.invoiceNumber}</p>
@@ -166,9 +166,9 @@ const DailyInvoice = () => {
 
                             {/* Service Details */}
                             <div className="mb-6">
-                                <InputWrapper title={'Service Details'}>
+                                <InputWrapper title={'Main Service Details'}>
 
-                                    <div className="grid grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div>
                                             <p className="text-sm text-gray-600 dark:text-gray-400">Main Service</p>
                                             <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice.mainService}</p>
@@ -195,9 +195,39 @@ const DailyInvoice = () => {
                                         </div>
                                     </div>
                                 </InputWrapper>
-
                             </div>
 
+                            {currentInvoice.additionalServiceDetails && <div className="mb-6">
+                                <InputWrapper title={'Additional Service Details'}>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Main Service</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice.additionalServiceDetails?.service}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Service Rate</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">£{currentInvoice.additionalServiceDetails?.serviceRate}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">BYOD Rate</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">£{currentInvoice.additionalServiceDetails?.byodRate}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Total Miles</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice.additionalServiceDetails?.miles}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Mileage Rate</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">£{currentInvoice.additionalServiceDetails?.mileage}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Calculated Mileage</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">£{currentInvoice.additionalServiceDetails?.calculatedMileage}</p>
+                                        </div>
+                                    </div>
+                                </InputWrapper>
+                            </div>}
 
 
                             {/* Total */}
@@ -207,7 +237,7 @@ const DailyInvoice = () => {
                             </div>
 
                         </div>
-                        <div className=" border-t border-neutral-300 flex px-6 py-2 justify-end gap-2 items-center">
+                        <div className=" border-t border-neutral-300 flex px-2 md:px-6 py-2 justify-end gap-2 items-center">
                             <button
                                 className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600"
                                 onClick={() => {

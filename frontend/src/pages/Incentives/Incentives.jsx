@@ -16,6 +16,7 @@ import { fetchSites } from '../../features/sites/siteSlice';
 import { fetchServices } from '../../features/services/serviceSlice';
 import { FaUser } from "react-icons/fa";
 import { FaBuildingUser } from "react-icons/fa6";
+import moment from 'moment';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -126,7 +127,7 @@ const Incentives = () => {
     };
 
     const handleMonthChange = ([date]) => {
-        const monthStr = date.toISOString().slice(0, 7);
+        const monthStr = moment(date).format('YYYY-MM')
         const monthNum = monthStr.slice(-2);
 
         let type = 'Normal';
@@ -245,6 +246,8 @@ const Incentives = () => {
                                     disabled={true}
                                     placeholder="Select month to determine type"
                                     error={errors.type}
+                                    icon={<i class="absolute top-3.5 left-4.5 fi fi-rr-handshake-deal-loan text-neutral-300 text-[1.2rem]"></i>}
+                                    iconPosition="left"
                                 />
                                 {errors.type && <p className="text-red-400 text-sm mt-1">* Incentive type is required</p>}
                             </div>

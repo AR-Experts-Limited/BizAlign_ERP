@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { NavLink } from "react-router-dom";
 import TableStructure from '../../components/TableStructure/TableStructure';
 import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
 import moment from 'moment';
@@ -13,9 +14,21 @@ import { addSchedule, deleteSchedule } from '../../features/schedules/scheduleSl
 import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
 import { addStandbyDriver, deleteStandbyDriver, fetchStandbyDrivers } from '../../features/standbydrivers/standbydriverSlice';
 import InputGroup from '../../components/InputGroup/InputGroup'
+import InputWrapper from '../../components/InputGroup/InputWrapper';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+/**
+ * Helper function to find rate card
+ */
+const rateCardFinder = (ratecards, week, service, typeOfDriver) => {
+    return ratecards.find(
+        (rc) =>
+            rc.serviceWeek === week &&
+            rc.serviceTitle === service &&
+            rc.vehicleType === typeOfDriver
+    );
+};
 
 const SchedulePlanner = () => {
     const dispatch = useDispatch();
@@ -112,7 +125,7 @@ const SchedulePlanner = () => {
     }, [driversList, schedules, days]);
 
     useEffect(() => {
-        if (addScheduleData) {
+        if (addScheduleData?.service) {
             const foundRatecard = ratecards.find((ratecard) => ratecard.serviceWeek === addScheduleData?.week && ratecard.serviceTitle === addScheduleData?.service)
             if (!foundRatecard)
                 setAddScheduleData(prev => ({ ...prev, error: true }))
@@ -237,26 +250,55 @@ const SchedulePlanner = () => {
         <>
             < TableStructure title={'Schedule Planner'} state={state} setters={setters} tableData={tableData} />
             <Modal isOpen={addScheduleData} >
-                <div className='p-6 w-80 md:w-92'>
-                    <div>
-                        <div className='text-sm my-3'><span className=' font-medium'>Driver name:</span> {addScheduleData?.driver.firstName + ' ' + addScheduleData?.driver.lastName}</div>
-                        <div className='text-sm my-3'><span className=' font-medium'>Vehicle Type:</span> {addScheduleData?.driver.typeOfDriver}</div>
-                        <div className='text-sm my-3'><span className=' font-medium'>Date:</span> {addScheduleData?.date}</div>
+                <div className='px-6 py-3 border-b border-neutral-300'><h1>Add Schedule</h1></div>
+                <div className='p-6 md:w-[30rem] '>
+                    <div className='flex-1 flex flex-col gap-3'>
+                        <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Driver name:</span> {addScheduleData?.driver.firstName + ' ' + addScheduleData?.driver.lastName}</div>
+                        <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Vehicle Type:</span> {addScheduleData?.driver.typeOfDriver}</div>
+                        <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Date:</span> {addScheduleData?.date}</div>
 
-                        <InputGroup value={addScheduleData ? addScheduleData.service : ''} type='dropdown' label='Select service' onChange={(e) => setAddScheduleData(prev => ({ ...prev, service: e.target.value }))}  >
-                            <option value=''>-Select Service-</option>
-                            {services.map((service) => (
-                                <option value={service.title}>{service.title}</option>
-                            ))}
-                        </InputGroup>
+                        <InputWrapper title={'Services with ratecard available'} >
+                            <div className='flex gap-2 w-full'>
+                                <InputGroup className='w-full' value={addScheduleData ? addScheduleData.service : ''}
+
+                                    type='dropdown' onChange={(e) => setAddScheduleData(prev => ({ ...prev, service: e.target.value }))}  >
+                                    <option value=''>-Select Service-</option>
+                                    {services.map((service) => {
+                                        if (rateCardFinder(
+                                            ratecards,
+                                            addScheduleData?.week,
+                                            service.title,
+                                            addScheduleData?.driver.typeOfDriver
+                                        )) {
+                                            return (
+                                                <option key={service._id} value={service.title}>
+                                                    {service.title}
+                                                </option>
+                                            );
+                                        }
+                                        return null;
+                                    })}
+                                </InputGroup>
+                                <div className="relative group self-end mb-2">
+                                    <NavLink
+                                        to="/rate-card"
+                                        className={'w-fit bg-red-200'}
+                                    >
+                                        <i class="flex items-center fi fi-rr-calculator p-2 text-[1.5rem] hover:bg-gray-300 rounded w-fit text-neutral-500"></i>
+                                    </NavLink>
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap transition duration-300">
+                                        Redirect to Ratecard
+                                    </span>
+                                </div>
+                            </div>
+                        </InputWrapper>
 
                         {addScheduleData?.error && <div className='m-3 text-sm p-1 md:p-2 rounded-md bg-red-200 border border-red-400 text-red-400 flex justify-center items-center gap-3'><div className='text-xs font-bold p-2 flex justify-center items-center bg-red-500 h-3 w-3 text-white rounded-full'>!</div>Ratecard unavailable for selected service</div>}
                     </div>
-
-                    <div className='m-5 flex justify-evenly'>
-                        <button onClick={handleAddSchedule} disabled={addScheduleData?.error} className='text-sm rounded-md border border-green-600 text-white bg-green-600 px-3 py-1 hover:bg-white hover:text-green-600 disabled:bg-stone-300 disabled:text-stone-200 disabled:border-stone-200 disabled:inset-shadow-sm disabled:hover:text-white' >Add</button>
-                        <button className='text-sm rounded-md border border-red-600 text-white bg-red-600 px-3 py-1 hover:bg-white hover:text-red-600' onClick={() => setAddScheduleData(null)}>Cancel</button>
-                    </div>
+                </div>
+                <div className='border-t border-neutral-300 p-3 flex justify-evenly'>
+                    <button onClick={handleAddSchedule} disabled={addScheduleData?.error || !addScheduleData?.service} className='text-sm rounded-md border border-green-600 text-white bg-green-600 px-3 py-1 hover:bg-white hover:text-green-600 disabled:bg-stone-300 disabled:text-stone-200 disabled:border-stone-200 disabled:inset-shadow-sm disabled:hover:text-white' >Add</button>
+                    <button className='text-sm rounded-md border border-red-600 text-white bg-red-600 px-3 py-1 hover:bg-white hover:text-red-600' onClick={() => setAddScheduleData(null)}>Cancel</button>
                 </div>
             </Modal>
         </>

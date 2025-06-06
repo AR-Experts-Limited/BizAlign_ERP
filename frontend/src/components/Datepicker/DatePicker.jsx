@@ -68,7 +68,7 @@ const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, re
                     placeholder="mm/dd/yyyy"
                     required={required}
                     disabled={disabled}
-                    value={date ? new Date(date).toISOString().split('T')[0] : ''} //
+                    value={date ? new Date(date).toLocaleDateString().split('T')[0] : ''} //
                 />
 
 

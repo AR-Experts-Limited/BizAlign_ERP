@@ -10,7 +10,7 @@ import InputWrapper from '../../components/InputGroup/InputWrapper';
 import InputGroup from '../../components/InputGroup/InputGroup';
 
 // Icons
-import { FaLock, FaUnlock } from "react-icons/fa6";
+import { FaChevronUp, FaLock, FaUnlock } from "react-icons/fa6";
 import { FaPoundSign, FaTruck } from 'react-icons/fa';
 
 // Utils and Redux
@@ -18,6 +18,7 @@ import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../util
 import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
 import { fetchServices } from '../../features/services/serviceSlice';
 import { getIncentiveDetails, getDeductionDetails, getInstallmentDetails } from './supportFunctions';
+import TotalBreakdown from './TotalBreakdown';
 
 // Configure moment locale
 moment.updateLocale('en', {
@@ -65,6 +66,7 @@ const Rota = () => {
     const [prevRangeType, setPrevRangeType] = useState(rangeType);
     const [rotaDetail, setRotaDetail] = useState(null);
     const [errors, setErrors] = useState({});
+    const [openTotalBreakdown, setOpenTotalBreakdown] = useState(false)
 
     // Consolidated state objects
     const state = {
@@ -123,7 +125,7 @@ const Rota = () => {
             scheduleMap[key] = sch;
 
             // Build weeklyMap
-            const weekKey = sch.schedule.week;
+            const weekKey = sch.schedule?.week;
             const driverKey = `${sch.driverId}_${weekKey}`;
             weeklyMap[driverKey] = (weeklyMap[driverKey] || 0) + 1;
         });
@@ -182,7 +184,9 @@ const Rota = () => {
         const rateCard = rateCardFinder(ratecards, week, service, typeOfDriver);
         const deductions = await getDeductionDetails(_id, day);
         let installments = await getInstallmentDetails(_id);
+        const incentives = await getIncentiveDetails(service, site, new Date(day))
 
+        console.log(incentives[0])
         installments = installments.map((insta) => {
             const perDayInstallmentRate = Number(
                 parseFloat(insta.spreadRate / weeklyMap[`${_id}_${week}`]).toFixed(2)
@@ -193,8 +197,9 @@ const Rota = () => {
         if (invoice) {
             setRotaDetail({
                 dayInvoice: invoice,
-                installments,
-                deductions,
+                installments: invoice.installmentDetail ? invoice.installmentDetail : installments,
+                deductions: invoice.deductionDetail ? invoice.deductionDetail : deductions,
+                incentiveDetailforMain: invoice.incentiveDetail ? invoice.incentiveDetail : incentives,
                 existingInvoice: true
             });
             return;
@@ -217,6 +222,7 @@ const Rota = () => {
             calculatedMileage: '',
             installmentDetail: installments,
             deductionDetail: deductions,
+            incentiveDetailforMain: incentives[0],
             total: 0,
         };
 
@@ -232,46 +238,89 @@ const Rota = () => {
         if (!rotaDetail) return;
 
         const { serviceWeek, driverVehicleType } = rotaDetail.dayInvoice;
-        let additionalServiceDetails = null;
 
-        if (additionalService) {
-            const additionalServiceRatecard = rateCardFinder(
-                ratecards,
-                serviceWeek,
-                additionalService,
-                driverVehicleType
-            );
+        setRotaDetail((prev) => {
+            const prevAdditionalServiceDetails = prev.dayInvoice.additionalServiceDetails || {};
+            const prevAdditionalServiceTotal =
+                Number((Number(prevAdditionalServiceDetails.serviceRate || 0) +
+                    Number(prevAdditionalServiceDetails.byodRate || 0) +
+                    Number(prevAdditionalServiceDetails.calculatedMileage || 0)).toFixed(2));
 
-            additionalServiceDetails = {
-                service: additionalService,
-                serviceRate: (additionalService === 'Other') ? 0 : additionalServiceRatecard?.serviceRate || 0,
-                byodRate: (additionalService === 'Other') ? 0 : additionalServiceRatecard?.byodRate || 0,
-                mileage: (additionalService === 'Other') ? 0 : additionalServiceRatecard?.mileage || 0,
-                miles: 0,
-            };
-        }
+            let additionalServiceDetails = null;
+            if (additionalService) {
+                const additionalServiceRatecard = rateCardFinder(
+                    ratecards,
+                    serviceWeek,
+                    additionalService,
+                    driverVehicleType
+                );
 
-        setRotaDetail(prev => ({
-            ...prev,
-            dayInvoice: {
-                ...prev.dayInvoice,
-                additionalServiceDetails
+                additionalServiceDetails = {
+                    service: additionalService,
+                    serviceRate: additionalService === 'Other' ? 0 : additionalServiceRatecard?.serviceRate || 0,
+                    byodRate: additionalService === 'Other' ? 0 : additionalServiceRatecard?.byodRate || 0,
+                    mileage: additionalService === 'Other' ? 0 : additionalServiceRatecard?.mileage || 0,
+                    miles: 0,
+                    calculatedMileage: 0,
+                };
             }
-        }));
+
+            const newAdditionalServiceTotal = additionalServiceDetails
+                ? Number((Number(additionalServiceDetails.serviceRate || 0) +
+                    Number(additionalServiceDetails.byodRate || 0) +
+                    Number(additionalServiceDetails.calculatedMileage || 0)).toFixed(2))
+                : 0;
+
+            return {
+                ...prev,
+                dayInvoice: {
+                    ...prev.dayInvoice,
+                    total: Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2)),
+                    additionalServiceDetails,
+                },
+            };
+        });
     };
 
     const handleAdditionalServiceFieldChange = (field, value) => {
-        setRotaDetail(prev => ({
-            ...prev,
-            dayInvoice: {
-                ...prev.dayInvoice,
-                additionalServiceDetails: {
-                    ...prev.dayInvoice.additionalServiceDetails,
-                    [field]: Number(value)
-                }
+        const parsedValue = Number(value) || 0; // Ensure valid number
+        if (parsedValue < 0) return; // Prevent negative values
+
+        setRotaDetail((prev) => {
+            const prevAdditionalServiceDetails = prev.dayInvoice.additionalServiceDetails || {};
+            const prevAdditionalServiceTotal =
+                Number((Number(prevAdditionalServiceDetails.serviceRate || 0) +
+                    Number(prevAdditionalServiceDetails.byodRate || 0) +
+                    Number(prevAdditionalServiceDetails.calculatedMileage || 0)).toFixed(2));
+
+            const updatedAdditionalServiceDetails = {
+                ...prevAdditionalServiceDetails,
+                [field]: parsedValue,
+            };
+
+            // Calculate mileage for additional service if miles or mileage changes
+            if (field === 'miles' || field === 'mileage') {
+                updatedAdditionalServiceDetails.calculatedMileage = Number(
+                    (updatedAdditionalServiceDetails.miles * updatedAdditionalServiceDetails.mileage).toFixed(2)
+                );
             }
-        }));
-        setErrors(prev => ({ ...prev, [field]: false }));
+
+            const newAdditionalServiceTotal =
+                Number((Number(updatedAdditionalServiceDetails.serviceRate || 0) +
+                    Number(updatedAdditionalServiceDetails.byodRate || 0) +
+                    Number(updatedAdditionalServiceDetails.calculatedMileage || 0)).toFixed(2));
+
+            return {
+                ...prev,
+                dayInvoice: {
+                    ...prev.dayInvoice,
+                    total: Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2)),
+                    additionalServiceDetails: updatedAdditionalServiceDetails,
+                },
+            };
+        });
+
+        setErrors((prev) => ({ ...prev, [field]: false }));
     };
 
     const validateFields = () => {
@@ -283,6 +332,10 @@ const Rota = () => {
 
         if (rotaDetail?.dayInvoice?.total < 0) {
             newErrors['total'] = true;
+        }
+
+        if (rotaDetail?.dayInvoice?.additionalServiceDetails && !rotaDetail?.dayInvoice?.additionalServiceDetails?.miles) {
+            newErrors['milesDrivenAdditional'] = true;
         }
 
         if (rotaDetail?.dayInvoice?.additionalServiceDetails?.service === 'Other') {
@@ -311,6 +364,24 @@ const Rota = () => {
         return Object.keys(newErrors).length === 0;
     };
 
+    const updateInstallmentPage = async () => {
+        let dayInvoice = rotaDetail.dayInvoice
+        if (Object.keys(dayInvoice).includes('installmentDetail')) {
+            dayInvoice.installmentDetail.map(async (insta) => {
+                var { _id, tenure, installmentType, installmentPending, installmentRate, spreadRate, perDayInstallmentRate } = insta
+                const newInstallmentRate = installmentPending - perDayInstallmentRate
+                await axios.put(`${API_BASE_URL}/api/installments/`, {
+                    _id,
+                    driverId: dayInvoice.driverId,
+                    tenure: tenure,
+                    installmentType: installmentType,
+                    installmentPending: newInstallmentRate,
+                })
+            })
+        }
+
+    }
+
     const handleAddInvoice = async () => {
         if (!validateFields()) return;
 
@@ -319,7 +390,7 @@ const Rota = () => {
                 `${API_BASE_URL}/api/dayInvoice/`,
                 rotaDetail.dayInvoice
             );
-
+            updateInstallmentPage()
             const dateObj = new Date(rotaDetail.dayInvoice.date);
             const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${rotaDetail.dayInvoice.driverId}`;
@@ -366,20 +437,24 @@ const Rota = () => {
     const makeTotal = (mileValue) => {
         const dayInvoice = { ...rotaDetail.dayInvoice };
         const miles = mileValue ? mileValue : dayInvoice.miles;
-        const calculatedMileage = miles * dayInvoice.mileage;
+        const calculatedMileage = Number((miles * dayInvoice.mileage).toFixed(2));
 
-        const totalPerDayInstallment = dayInvoice.installmentDetail?.reduce((sum, insta) => {
-            return sum + parseFloat(insta.perDayInstallmentRate || 0);
-        }, 0);
+        const totalPerDayInstallment = dayInvoice.installmentDetail?.reduce(
+            (sum, insta) => sum + Number(insta.perDayInstallmentRate || 0),
+            0
+        );
 
-        const totalDeductions = dayInvoice.deductionDetail?.reduce((sum, ded) => {
-            return sum + parseFloat(ded.rate || 0);
-        }, 0);
+        const totalDeductions = dayInvoice.deductionDetail?.reduce(
+            (sum, ded) => sum + Number(ded.rate || 0),
+            0
+        );
+
+        const incentiveDetailforMain = dayInvoice.incentiveDetailforMain ? dayInvoice.incentiveDetailforMain.rate : 0
 
         const additionalServiceTotal = dayInvoice.additionalServiceDetails
-            ? (Number(dayInvoice.additionalServiceDetails.serviceRate || 0) +
+            ? Number((Number(dayInvoice.additionalServiceDetails.serviceRate || 0) +
                 Number(dayInvoice.additionalServiceDetails.byodRate || 0) +
-                Number(dayInvoice.additionalServiceDetails.miles || 0) * Number(dayInvoice.additionalServiceDetails.mileage || 0))
+                Number(dayInvoice.additionalServiceDetails.calculatedMileage || 0)).toFixed(2))
             : 0;
 
         const updatedInvoice = {
@@ -390,16 +465,17 @@ const Rota = () => {
                 (dayInvoice.serviceRateforMain +
                     dayInvoice.byodRate +
                     calculatedMileage +
-                    additionalServiceTotal -
+                    additionalServiceTotal +
+                    incentiveDetailforMain -
                     totalPerDayInstallment -
                     totalDeductions).toFixed(2)
             ),
-            approvalStatus: "Access Requested"
+            approvalStatus: "Access Requested",
         };
 
-        setRotaDetail(prev => ({
+        setRotaDetail((prev) => ({
             ...prev,
-            dayInvoice: updatedInvoice
+            dayInvoice: updatedInvoice,
         }));
     };
 
@@ -416,7 +492,7 @@ const Rota = () => {
         const streak = streaks[driver._id]?.[dateKey] || 0;
         const isToday = dateObj.toDateString() === new Date().toDateString();
         const cellClass = isToday ? 'bg-amber-100/30' : '';
-        const isLocked = schedule?.status !== 'completed';
+        const isLocked = schedule?.status !== 'completed'
 
         if (!schedule) return <td key={day.date} className={cellClass} />;
 
@@ -432,7 +508,7 @@ const Rota = () => {
                             onClick={() => { if (!isLocked) handleShowDetails(schedule, driver, invoice) }}
                             className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
                 ${!isLocked ? 'cursor-pointer' : ''}
-                ${borderColor} 
+                border-l-4 ${borderColor} 
                 ${isLocked && 'border-[1.5px] border-dashed border-gray-400/70 [border-left-style:solid] text-gray-400/70'} 
                 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}
                         >
@@ -476,7 +552,9 @@ const Rota = () => {
                         <h2>Invoice Generation</h2>
                     </div>
 
-                    <div className="px-5 py-3 flex flex-col gap-3 max-h-[35rem] overflow-auto pb-10">
+                    <div className="px-5 py-3 flex flex-col gap-3 max-h-[35rem] overflow-auto pb-35">
+                        <h1 className="text-xl font-bold border-b border-neutral-300 ">Main Service</h1>
+
                         {/* Main Service Section */}
                         <InputGroup
                             label="Service Title - Main"
@@ -526,7 +604,8 @@ const Rota = () => {
                                     label="Miles driven"
                                     type="number"
                                     min={0}
-                                    value={rotaDetail?.dayInvoice.miles}
+                                    step="any"
+                                    value={rotaDetail?.dayInvoice.miles > 0 ? rotaDetail?.dayInvoice.miles : ''}
                                     onChange={(e) => {
                                         makeTotal(e.target.value);
                                         setErrors(prev => ({ ...prev, milesDriven: false, total: false }))
@@ -543,9 +622,17 @@ const Rota = () => {
                                 label="Calculated Mileage"
                                 type="number"
                                 disabled={true}
-                                value={rotaDetail?.dayInvoice.calculatedMileage}
+                                value={rotaDetail?.dayInvoice.calculatedMileage > 0 ? rotaDetail?.dayInvoice.calculatedMileage : ''}
                             />
                         </InputWrapper>
+
+                        {/* Incentives Section */}
+                        {(rotaDetail?.dayInvoice?.incentiveDetailforMain) &&
+                            (<div className='incentive-detail'>
+                                <label></label>
+                                <InputGroup type="text" icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                    iconPosition="left" label={`${rotaDetail?.dayInvoice?.incentiveDetailforMain.type} Incentive`} value={rotaDetail?.dayInvoice?.incentiveDetailforMain.rate} disabled /> </div>)
+                        }
 
                         {/* Installments Section */}
                         {rotaDetail?.installments?.length > 0 && (
@@ -644,144 +731,153 @@ const Rota = () => {
                         )}
 
                         {/* Additional Service Section */}
-                        <div>
-                            <h1 className="text-xl font-bold">Additional Service</h1>
-                            <div className="w-full">
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Services with Ratecard available"
-                                    onChange={(e) => handleAdditionalService(e.target.value)}
-                                >
-                                    <option value=''>-Select service-</option>
-                                    <option value="Other">Other</option>
-                                    {services.map((service) => {
-                                        if (rateCardFinder(
-                                            ratecards,
-                                            rotaDetail?.dayInvoice?.serviceWeek,
-                                            service.title,
-                                            rotaDetail?.dayInvoice?.driverVehicleType
-                                        ) && service.title !== rotaDetail?.dayInvoice?.mainService) {
-                                            return (
-                                                <option key={service._id} value={service.title}>
-                                                    {service.title}
-                                                </option>
-                                            );
-                                        }
-                                        return null;
-                                    })}
-                                </InputGroup>
+                        {rotaDetail?.dayInvoice?.miles > 0 &&
+                            <div>
+                                <h1 className="text-xl font-bold border-b mb-2 border-neutral-300">Additional Service</h1>
+                                <div className="w-full">
+                                    <InputGroup
+                                        type="dropdown"
+                                        label="Services with Ratecard available"
+                                        value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service}
+                                        onChange={(e) => handleAdditionalService(e.target.value)}
+                                    >
+                                        <option value=''>-Select service-</option>
+                                        <option value="Other">Other</option>
+                                        {services.map((service) => {
+                                            if (rateCardFinder(
+                                                ratecards,
+                                                rotaDetail?.dayInvoice?.serviceWeek,
+                                                service.title,
+                                                rotaDetail?.dayInvoice?.driverVehicleType
+                                            ) && service.title !== rotaDetail?.dayInvoice?.mainService) {
+                                                return (
+                                                    <option key={service._id} value={service.title}>
+                                                        {service.title}
+                                                    </option>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+                                    </InputGroup>
 
-                                {rotaDetail?.dayInvoice?.additionalServiceDetails && (
-                                    <>
-                                        <InputWrapper title="Ratecard Details" gridCols={4} colspan={3}>
-                                            <div>
+                                    {rotaDetail?.dayInvoice?.additionalServiceDetails && (
+                                        <>
+                                            <InputWrapper title="Ratecard Details" gridCols={4} colspan={3}>
+                                                <div>
+                                                    <InputGroup
+                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                        iconPosition="left"
+                                                        label="Service Rate"
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other'}
+                                                        type="number"
+                                                        min={0}
+                                                        name="serviceRate"
+                                                        error={errors.serviceRate}
+                                                        value={rotaDetail?.dayInvoice.additionalServiceDetails?.serviceRate > 0 ? rotaDetail?.dayInvoice.additionalServiceDetails?.serviceRate : ''}
+                                                        onChange={(e) => handleAdditionalServiceFieldChange('serviceRate', e.target.value)}
+                                                    />
+                                                    {errors.serviceRate && (
+                                                        <p className="text-sm mt-1 text-red-500">*Enter the service rate</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <InputGroup
+                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                        iconPosition="left"
+                                                        label="Byod Rate"
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other'}
+                                                        type="number"
+                                                        min={0}
+                                                        name="byodRate"
+                                                        error={errors.byodRate}
+                                                        value={rotaDetail?.dayInvoice.additionalServiceDetails?.byodRate > 0 ? rotaDetail?.dayInvoice.additionalServiceDetails?.byodRate : ''}
+                                                        onChange={(e) => handleAdditionalServiceFieldChange('byodRate', e.target.value)}
+                                                    />
+                                                    {errors.byodRate && (
+                                                        <p className="text-sm mt-1 text-red-500">*Enter the BYOD rate</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <InputGroup
+                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                        iconPosition="left"
+                                                        label="Mileage per mile"
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other'}
+                                                        type="number"
+                                                        min={0}
+                                                        name="mileage"
+                                                        error={errors.mileage}
+                                                        value={rotaDetail?.dayInvoice.additionalServiceDetails?.mileage > 0 ? rotaDetail?.dayInvoice.additionalServiceDetails?.mileage : ''}
+                                                        onChange={(e) => handleAdditionalServiceFieldChange('mileage', e.target.value)}
+                                                    />
+                                                    {errors.mileage && (
+                                                        <p className="text-sm mt-1 text-red-500">*Enter the mileage rate</p>
+                                                    )}
+                                                </div>
                                                 <InputGroup
+                                                    icon={<FaTruck className="text-neutral-300" size={20} />}
+                                                    iconPosition="left"
+                                                    label="Vehicle Type"
+                                                    disabled={true}
+                                                    value={rotaDetail?.dayInvoice.driverVehicleType}
+                                                />
+                                            </InputWrapper>
+                                            <InputWrapper title="Calculate Mileage" gridCols={2} colspan={3}>
+                                                <div>
+                                                    <InputGroup
+                                                        required={true}
+                                                        error={errors.milesDrivenAdditional}
+                                                        name="milesDriven-additional"
+                                                        label="Miles driven"
+                                                        type="number"
+                                                        min={0}
+                                                        value={rotaDetail?.dayInvoice?.additionalServiceDetails?.miles > 0 ? rotaDetail?.dayInvoice?.additionalServiceDetails?.miles : ''}
+                                                        onChange={(e) => {
+                                                            handleAdditionalServiceFieldChange('miles', e.target.value);
+                                                            setErrors(prev => ({ ...prev, milesDrivenAdditional: false, total: false }));
+                                                        }}
+                                                    />
+                                                    {errors.milesDrivenAdditional && (
+                                                        <p className="text-sm mt-1 text-red-500">*Enter the miles driven</p>
+                                                    )}
+                                                </div>
+                                                <InputGroup
+                                                    placeholder="Enter miles driven to calculate mileage"
                                                     icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                     iconPosition="left"
-                                                    label="Service Rate"
-                                                    disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other'}
+                                                    label="Calculated Mileage"
                                                     type="number"
-                                                    min={0}
-                                                    name="serviceRate"
-                                                    error={errors.serviceRate}
-                                                    value={rotaDetail?.dayInvoice.additionalServiceDetails?.serviceRate}
-                                                    onChange={(e) => handleAdditionalServiceFieldChange('serviceRate', e.target.value)}
+                                                    disabled={true}
+                                                    value={rotaDetail?.dayInvoice?.additionalServiceDetails?.calculatedMileage > 0 ? rotaDetail?.dayInvoice?.additionalServiceDetails?.calculatedMileage : ''}
                                                 />
-                                                {errors.serviceRate && (
-                                                    <p className="text-sm mt-1 text-red-500">*Enter the service rate</p>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <InputGroup
-                                                    icon={<FaPoundSign className="text-neutral-300" size={20} />}
-                                                    iconPosition="left"
-                                                    label="Byod Rate"
-                                                    disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other'}
-                                                    type="number"
-                                                    min={0}
-                                                    name="byodRate"
-                                                    error={errors.byodRate}
-                                                    value={rotaDetail?.dayInvoice.additionalServiceDetails?.byodRate}
-                                                    onChange={(e) => handleAdditionalServiceFieldChange('byodRate', e.target.value)}
-                                                />
-                                                {errors.byodRate && (
-                                                    <p className="text-sm mt-1 text-red-500">*Enter the BYOD rate</p>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <InputGroup
-                                                    icon={<FaPoundSign className="text-neutral-300" size={20} />}
-                                                    iconPosition="left"
-                                                    label="Mileage per mile"
-                                                    disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other'}
-                                                    type="number"
-                                                    min={0}
-                                                    name="mileage"
-                                                    error={errors.mileage}
-                                                    value={rotaDetail?.dayInvoice.additionalServiceDetails?.mileage}
-                                                    onChange={(e) => handleAdditionalServiceFieldChange('mileage', e.target.value)}
-                                                />
-                                                {errors.mileage && (
-                                                    <p className="text-sm mt-1 text-red-500">*Enter the mileage rate</p>
-                                                )}
-                                            </div>
-                                            <InputGroup
-                                                icon={<FaTruck className="text-neutral-300" size={20} />}
-                                                iconPosition="left"
-                                                label="Vehicle Type"
-                                                disabled={true}
-                                                value={rotaDetail?.dayInvoice.driverVehicleType}
-                                            />
-                                        </InputWrapper>
-                                        <InputWrapper title="Calculate Mileage" gridCols={2} colspan={3}>
-                                            <div>
-                                                <InputGroup
-                                                    required={true}
-                                                    error={errors.milesDriven}
-                                                    name="milesDriven-additional"
-                                                    label="Miles driven"
-                                                    type="number"
-                                                    min={0}
-                                                    value={rotaDetail?.dayInvoice?.additionalServiceDetails?.miles}
-                                                    onChange={(e) => {
-                                                        handleAdditionalServiceFieldChange('miles', e.target.value);
-                                                        makeTotal(rotaDetail?.dayInvoice?.miles);
-                                                        setErrors(prev => ({ ...prev, milesDriven: false, total: false }));
-                                                    }}
-                                                />
-                                                {errors.milesDriven && (
-                                                    <p className="text-sm mt-1 text-red-500">*Enter the miles driven</p>
-                                                )}
-                                            </div>
-                                            <InputGroup
-                                                placeholder="Enter miles driven to calculate mileage"
-                                                icon={<FaPoundSign className="text-neutral-300" size={20} />}
-                                                iconPosition="left"
-                                                label="Calculated Mileage"
-                                                type="number"
-                                                disabled={true}
-                                                value={rotaDetail?.dayInvoice?.additionalServiceDetails?.miles * rotaDetail?.dayInvoice?.additionalServiceDetails?.mileage}
-                                            />
-                                        </InputWrapper>
-                                    </>
-                                )}
-                            </div>
+                                            </InputWrapper>
+                                        </>
+                                    )}
+                                </div>
+                            </div>}
+                    </div>
+                    <div className={`z-7 absolute bottom-21 left-0 w-full md:w-[20.2rem] ${rotaDetail?.dayInvoice?.calculatedMileage ? '-translate-y-0 opacity-100' : 'translate-y-5 opacity-0'} transition-all duration-200`}>
+                        <div className='border-t border-x border-neutral-300 bg-white/70 dark:bg-dark-4/70 backdrop-blur-lg h-6 w-full rounded-t-2xl flex justify-center items-center p-1'><button onClick={() => setOpenTotalBreakdown(prev => !prev)} className={` px-7 py-1 hover:bg-gray-200 rounded-md ${openTotalBreakdown && 'rotate-180'}`}><FaChevronUp size={12} /></button></div>
+                        <div className={`bg-white dark:bg-dark-4 ${openTotalBreakdown ? 'h-[23rem] border' : 'h-0  '}  border-neutral-200 overflow-auto transition-all duration-300`}>
+                            <TotalBreakdown {...rotaDetail?.dayInvoice} />
                         </div>
                     </div>
 
                     {/* Footer with Total and Actions */}
-                    <div className="w-full flex justify-between border-t gap-8 border-neutral-200 dark:border-dark-5 px-5 py-1">
-                        <div className="flex items-center gap-5 mb-3">
+                    <div className="absolute bottom-0 bg-white/80 dark:bg-dark-4/80 backdrop-blur-lg z-10 w-full flex justify-between border-t gap-20 border-neutral-200 dark:border-dark-5 px-5 py-1">
+                        <div className="flex items-center gap-5 mb-3 w-[50%]">
                             <label className="mt-3">Total:</label>
-                            <div>
+                            <div className='w-full'>
                                 <InputGroup
                                     name="total"
                                     error={errors.total}
                                     icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                     iconPosition="left"
                                     type="number"
+                                    className='w-full'
                                     disabled={true}
-                                    value={rotaDetail?.dayInvoice?.total}
+                                    placeholder="Enter miles to calculate total"
+                                    value={(rotaDetail?.dayInvoice?.total > 0) ? rotaDetail?.dayInvoice?.total : ''}
                                 />
                                 {errors.total && (
                                     <p className="text-sm mt-1 text-red-500">*The total cannot be a negative value</p>
@@ -793,6 +889,7 @@ const Rota = () => {
                                 className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600"
                                 onClick={() => {
                                     setRotaDetail(null);
+                                    setOpenTotalBreakdown(false);
                                     setErrors({});
                                 }}
                             >

@@ -29,7 +29,7 @@ const TableStructure = ({ title, state, setters, tableData }) => {
             let standbydriversList = driversList.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
 
             if (selectedSite !== '')
-                driversList = driversBySite[selectedSite]
+                driversList = driversBySite[selectedSite] || []
             if (searchDriver !== '')
                 driversList = driversList.filter((driver) => String(driver.firstName + ' ' + driver.lastName).toLowerCase().includes(searchDriver.toLowerCase()))
 
