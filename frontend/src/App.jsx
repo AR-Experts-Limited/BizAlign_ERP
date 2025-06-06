@@ -10,6 +10,7 @@ import './App.scss'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import Navbar from './Components/NavBar/NavBar'
 import Sidebar from './Components/Sidebar/Sidebar';
+import LandingPage from './pages/LandingPage/LandingPage'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard';
 import Ratecard from './pages/Ratecard/Ratecard';
@@ -56,7 +57,10 @@ function App() {
 
   ];
 
-  return (
+  return (<>
+    <Routes>
+      <Route path='/' element={<LandingPage />} />
+    </Routes>
     <div className="app fixed bg-stone-100 dark:bg-dark-4 w-screen h-screen flex flex-col">
 
       {!hideLayout && <Navbar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} />}
@@ -84,6 +88,7 @@ function App() {
         </Routes>
       </div>
     </div >
+  </>
   );
 }
 

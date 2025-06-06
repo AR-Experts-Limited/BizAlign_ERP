@@ -1,0 +1,107 @@
+.privacy-container {
+  margin: auto;
+  padding: 50px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+.privacy-title {
+  font-size: 36px;
+  color: #047ba4;
+  text-align: left;
+  margin-top: 50px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.privacy-header {
+  text-align: left;
+  color: #666;
+  font-size: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+
+.privacy-content {
+  line-height: 1.7;
+  color: #333;
+  font-size: 16px;
+  margin-top: 20px;
+}
+
+
+.privacy-card {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 25px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  transition: transform 0.3s ease-in-out;
+}
+
+.privacy-card:hover {
+  transform: scale(1.02);
+}
+
+.privacy-card h2 {
+  color: #047ba4;
+  margin-bottom: 15px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.privacy-card h3 {
+  color: #488b15;
+  margin-top: 15px;
+  font-size: 20px;
+}
+
+.privacy-card ul {
+  margin-left: 20px;
+  padding-left: 10px;
+}
+
+.privacy-card ul li {
+  margin-bottom: 10px;
+}
+
+.privacy-card p {
+  text-align: justify;
+  margin: 5px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .privacy-container {
+      padding: 30px 15px;
+  }
+
+  .privacy-title {
+      font-size: 30px;
+  }
+
+  .privacy-card {
+      padding: 20px;
+  }
+
+  .privacy-card h2 {
+      font-size: 22px;
+  }
+
+  .privacy-card h3 {
+      font-size: 18px;
+  }
+
+  .privacy-card p {
+      font-size: 14px;
+  }
+}
