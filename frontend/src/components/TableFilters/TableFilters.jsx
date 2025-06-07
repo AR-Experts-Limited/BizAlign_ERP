@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../features/sites/siteSlice';
 import InputGroup from '../InputGroup/InputGroup';
+
 import moment from 'moment';
 moment.updateLocale('en', {
     week: {
@@ -9,11 +10,15 @@ moment.updateLocale('en', {
     },
 });
 import WeekFilter from '../Calendar/WeekFilter';
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaEye } from "react-icons/fa";
+import { MdOutlineDelete } from 'react-icons/md';
 
 
 const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoices, handleSelectAll }) => {
     const dispatch = useDispatch();
+    const summaryFileRef = useRef(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
 
     const { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver } = state
@@ -159,7 +164,7 @@ const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoice
 
 
     return (
-        <div className={`grid grid-cols-2 ${title === 'Manage Summary' && selectedInvoices.length > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`} >
+        <div className={`grid grid-cols-2 ${title === 'Manage Summary' && selectedInvoices.length > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} p-3 gap-2 md:gap-5  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`} >
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Search Personnel Name:</label>
                 <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
@@ -191,15 +196,40 @@ const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoice
                     <option value="biweekly">Bi-weekly</option>
                     <option value="monthly">Monthly</option>
                 </select>
-            </div> : <InputGroup type='file' onChange={(e) => handleFileChange(e)} />}
+            </div> :
+                <div className='relative'>
+                    <InputGroup
+                        name='summary-file'
+                        inputStyles='!pr-10'
+                        type='file'
+                        onChange={(e) => { handleFileChange(e); setSelectedFile(e.target.files[0]) }}
+                        ref={summaryFileRef}
 
-            {title === 'Manage Summary' && selectedInvoices.length > 0 &&
-                <div className='w-fit flex items-center gap-2 rounded-md border-[1.5px] border-neutral-300 p-3 mt-2.5'>
-                    <button name='selectAll' onClick={(e) => handleSelectAll(e)} className='text-sm rounded-md bg-primary-500 px-2 py-1'>Select All</button>
-                    <button name='clear' onClick={(e) => handleSelectAll(e)} className='text-white text-sm rounded-md bg-red-500 px-2 py-1'>Clear</button>
+                    />
+                    {selectedFile &&
+                        <div className='absolute top-6.5 right-2 flex gap-2'>
+                            <button
+                                onClick={() => {
+                                    summaryFileRef.current.value = "";
+                                    setSelectedFile(null)
+                                    handleFileChange()
+                                }}
+                                className=' bg-red-200 text-red-700 rounded-full p-1'
+                            >
+                                <MdOutlineDelete size={18} />
+                            </button>
+                        </div>}
+                </div >}
+
+            {
+                title === 'Manage Summary' && selectedInvoices.length > 0 &&
+                <div className='w-fit flex items-center gap-2 rounded-md border-[1.5px] border-neutral-300 px-2 mt-2.5 '>
+                    <button name='selectAll' className='text-white text-xs rounded-md bg-primary-500 px-2 py-1 break-keep'>Grant Access</button>
+                    <button name='selectAll' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-primary-500 px-2 py-1'>Select All</button>
+                    <button name='clear' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-red-500 px-2 py-1'>Clear</button>
                 </div>
             }
-        </div>
+        </div >
     );
 };
 

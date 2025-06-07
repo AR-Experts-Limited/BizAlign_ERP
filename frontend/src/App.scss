@@ -33,6 +33,18 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  .calendar-table {
+    th {
+      padding: 0.1rem;
+    }
+
+    td {
+      padding: 0.5rem;
+    }
+  }
+}
+
 .table-general {
   table-layout: auto;
   width: 100%;

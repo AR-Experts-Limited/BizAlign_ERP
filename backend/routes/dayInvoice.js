@@ -452,7 +452,11 @@ router.put('/updateApprovalStatusBatch', async (req, res) => {
     }));
 
     const result = await DayInvoice.bulkWrite(bulkOps);
-    res.status(200).json({ message: 'Invoices updated successfully', result });
+
+    // Fetch updated documents after bulkWrite
+    const updatedDocs = await DayInvoice.find({ _id: { $in: updates.map(({ id, updateData }) => id) } });
+
+    res.status(200).json({ message: 'Invoices updated successfully', result, updated: updatedDocs });
     sendToClients(
       req.db, {
       type: 'approvalStatusUpdated', // Custom event to signal data update

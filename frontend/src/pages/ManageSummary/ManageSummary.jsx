@@ -19,7 +19,7 @@ const stageIcons = {
     "Access Requested": <FcHighPriority size={22} />,
     "Under Edit": <i class="flex items-center text-amber-500 fi fi-rr-pen-square"></i>,
     "Under Approval": <i class="flex items-center text-sky-500 fi fi-rs-memo-circle-check"></i>,
-    "Invoice Generation": <FcClock size={22} />,
+    "Invoice Generation": <FcClock className='!text-primary-500' size={25} />,
     "completed": <BsCheckCircleFill className="text-green-600 text-xl" />
 };
 
@@ -96,8 +96,16 @@ const ManageSummary = () => {
                 invoice,
                 matchedCsv,
             };
+
+            {/*Comment this when testing with erp_rainaltd */ }
+            if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
+                const match = (Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance'])) ? true : false
+                if (match) {
+                    let invoiceMatch = { ...invoice, approvalStatus: 'Under Approval' }
+                    updateInvoiceApprovalStatus({ invoice: invoiceMatch, matchedCsv })
+                }
+            }
         });
-        console.log(map)
         setInvoiceMap(map);
     }, [invoices, csvData]);
 
@@ -110,6 +118,10 @@ const ManageSummary = () => {
     }, [rangeOptions]);
 
     const handleFileChange = (e) => {
+        if (!e) {
+            setCsvData({})
+            return
+        }
         const requiredColumns = ["Date", "Station", "Delivery Associate", "Service Type", "Total Distance Allowance"];
         const file = e.target.files[0];
         const reader = new FileReader();
@@ -141,8 +153,6 @@ const ManageSummary = () => {
                         const key = `${csvDate}_${csvName}_${csvService}`;
                         csvLookup[key] = csv;
                     })
-                    // console.log(filteredData)
-                    console.log(csvLookup)
                     setCsvData(csvLookup);
                 },
                 error: (error) => {
@@ -157,10 +167,10 @@ const ManageSummary = () => {
     const handleSelectAll = (e) => {
         let allSelectedInvoices = []
         if (e.target.name === 'selectAll') {
-            const selectedApprovalStatus = invoiceMap[selectedSchedules[0]]?.approvalStatus
+            const selectedApprovalStatus = invoiceMap[selectedSchedules[0]]?.invoice.approvalStatus
             allSelectedInvoices.push(selectedSchedules[0])
             Object.keys(invoiceMap).map((invKey) => {
-                if (invoiceMap[invKey]?.approvalStatus === selectedApprovalStatus) {
+                if (invoiceMap[invKey]?.invoice.approvalStatus === selectedApprovalStatus) {
                     allSelectedInvoices.push(invKey)
                 }
             })
@@ -201,7 +211,16 @@ const ManageSummary = () => {
                 updates: updatedInvoice,
                 site: selectedSite
             });
-            console.log("Invoice updated successfully:", response.data);
+            console.log("Invoice updated successfully:", response.data.updated);
+            const updatedInvoices = response.data.updated;
+
+            setInvoices(prev =>
+                prev.map((im) => {
+                    const updated = updatedInvoices.find(u => u._id === im._id);
+                    return updated ? updated : im;
+                })
+            );
+            setCurrentInvoice(null)
 
         } catch (error) {
             console.error("Failed to update invoice:", error);
@@ -236,24 +255,28 @@ const ManageSummary = () => {
                                                 if (!matchedCsv || disabledSelection) return;
 
                                                 if (e.metaKey || e.ctrlKey) {
-                                                    // Cmd/Ctrl + click: multi-select toggle, don't open modal
                                                     setSelectedSchedules(prev =>
                                                         prev.includes(key)
                                                             ? prev.filter(k => k !== key)
                                                             : [...prev, key]
                                                     );
-                                                } else {
-                                                    // Simple click: open modal
+                                                }
+                                                else if (selectedSchedules.some((k) => k === key)) {
+                                                    setSelectedSchedules(prev =>
+                                                        prev.filter(k => k !== key)
+                                                    );
+                                                }
+                                                else {
                                                     setCurrentInvoice({ ...invoiceMap[key], misMatch });
                                                 }
                                             }}
-                                            className={`relative z-6 w-full h-full flex flex gap-1 cursor-pointer items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
+                                            className={`relative z-6 w-full h-full flex flex gap-1  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
                                             ${disabledSelection && '!text-gray-300 !pointers-event-none'}
                                             ${!matchedCsv
                                                     ? 'border-dashed border-gray-300'
                                                     : selectedSchedules.includes(key)
                                                         ? 'border-2 border-primary-700'
-                                                        : 'border-gray-300 dark:border-dark-5'} 
+                                                        : 'border-gray-300 dark:border-dark-5  cursor-pointer'} 
                                              rounded-md text-sm p-2 `}
                                         >
                                             <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService}</div>
@@ -280,20 +303,45 @@ const ManageSummary = () => {
             <Modal isOpen={currentInvoice} onHide={() => setCurrentInvoice(null)}>
                 <h2 className="text-lg px-4 py-2 border-b border-neutral-300">Invoice Comparison</h2>
                 <div className="p-6">
-                    <p><strong>Driver Name:</strong> {currentInvoice?.invoice?.driverName}</p>
-                    <p><strong>Date:</strong> {new Date(currentInvoice?.invoice?.date).toLocaleDateString()}</p>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <h3 className="font-medium text-gray-700">Invoice Data</h3>
+                    <div className='grid grid-cols-2 '>
+                        <strong>Driver Name:</strong>
+                        <p>{currentInvoice?.invoice?.driverName}</p>
+                        <strong>Date:</strong>
+                        <p className='text-left'> {new Date(currentInvoice?.invoice?.date).toLocaleDateString()}</p>
+                    </div>
+                    <div className="w-full my-8 ">
+                        <table className="w-full table-auto border border-gray-300 rounded-md overflow-hidden text-sm">
+                            <thead className="bg-gray-300 text-left text-gray-700">
+                                <tr>
+                                    <th className="px-4 py-2 border-r border-gray-300">Field</th>
+                                    <th className="px-4 py-2 border-r border-gray-300">Invoice Data</th>
+                                    <th className="px-4 py-2">CSV Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr className="border-b border-gray-200">
+                                    <td className="px-4 py-2 font-medium text-gray-700">Service</td>
+                                    <td className="px-4 py-2">{currentInvoice?.invoice?.mainService}</td>
+                                    <td className="px-4 py-2">{currentInvoice?.matchedCsv["Service Type"]}</td>
+                                </tr>
+                                <tr className="border-b border-gray-200">
+                                    <td className="px-4 py-2 font-medium text-gray-700">Miles / Distance</td>
+                                    <td
+                                        className={`px-4 py-2 ${currentInvoice?.misMatch ? 'text-red-500' : 'text-green-600'
+                                            }`}
+                                    >
+                                        {currentInvoice?.invoice?.miles}
+                                    </td>
+                                    <td
+                                        className={`px-4 py-2 ${currentInvoice?.misMatch ? 'text-red-500' : 'text-green-600'
+                                            }`}
+                                    >
+                                        {currentInvoice?.matchedCsv["Total Distance Allowance"]}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                            <p><strong>Service:</strong> {currentInvoice?.invoice?.mainService}</p>
-                            <p className={`${currentInvoice?.misMatch ? 'text-red-500' : 'text-green-600'}`}><strong className='!text-gray-700'>Miles:</strong> {currentInvoice?.invoice?.miles}</p>
-                        </div>
-                        <div>
-                            <h3 className="font-medium text-gray-700">CSV Data</h3>
-                            <p><strong>Service Type:</strong> {currentInvoice?.matchedCsv["Service Type"]}</p>
-                            <p className={`${currentInvoice?.misMatch ? 'text-red-500' : 'text-green-600'}`}><strong className='!text-gray-700'>Total Distance Allowance:</strong> {currentInvoice?.matchedCsv["Total Distance Allowance"]}</p>
-                        </div>
                     </div>
                     {(() => {
                         const stages = [

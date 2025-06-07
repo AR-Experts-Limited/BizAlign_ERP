@@ -59,12 +59,12 @@ function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {!hideLayout && (
-          <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-60' : 'w-0 md:w-18'}`}>
+          <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-45 md:w-60' : 'w-0 md:w-18'}`}>
             <Sidebar sidebarIsOpen={sidebarIsOpen} />
           </div>
         )}
 
-        <div className="flex-1 overflow-auto">
+        <div className={`flex-1 overflow-auto ${sidebarIsOpen && 'max-sm:blur-xs max-sm:pointer-events-none '}`} >
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
@@ -83,7 +83,7 @@ function App() {
           </Routes>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 

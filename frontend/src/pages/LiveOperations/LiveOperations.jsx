@@ -119,8 +119,8 @@ const LiveOperations = () => {
                                                         return (
                                                             <svg className='w-6 h-6' viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
                                                                 <polyline points="0,25 20,25 30,05 40,40 50,10 60,25 100,25"
-                                                                    stroke="orange" stroke-width="7" fill="none"
-                                                                    class="ecg-path" />
+                                                                    className="ecg-path stroke-orange-500 stroke-[7] fill-none"
+                                                                />
                                                             </svg>
                                                         )
                                                     }

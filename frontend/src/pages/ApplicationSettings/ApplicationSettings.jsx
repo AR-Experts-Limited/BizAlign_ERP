@@ -40,6 +40,11 @@ export default function ApplicationSettings() {
 
     };
 
+    const handleResetClick = () => {
+        applyTheme(getComputedStyle(document.documentElement).getPropertyValue('--default-primary').trim())
+        window.location.reload();
+    }
+
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5'>
             <h1 className="text-xl font-bold mb-2">Application Settings</h1>
@@ -62,12 +67,20 @@ export default function ApplicationSettings() {
                                 className="w-16 h-10  border-none outline-none cursor-pointer"
                             />
                             <br />
-                            <button
-                                onClick={handleChangeClick}
-                                className="mt-2 px-4 py-2 bg-[var(--color-primary-600)] text-white rounded hover:opacity-90 transition"
-                            >
-                                Change
-                            </button>
+                            <div className='flex gap-3'>
+                                <button
+                                    onClick={handleChangeClick}
+                                    className="mt-2 px-4 py-2 bg-[var(--color-primary-600)] text-white rounded hover:opacity-90 transition"
+                                >
+                                    Change
+                                </button>
+                                <button
+                                    onClick={handleResetClick}
+                                    className="mt-2 px-4 py-2 bg-gray-500 text-white rounded hover:opacity-90 transition"
+                                >
+                                    Reset
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

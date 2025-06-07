@@ -1,6 +1,6 @@
 import { cn } from "../../lib/utils";
 import { useId } from "react";
-import React, { useState } from "react";
+import React, { useState, forwardRef } from "react";
 import PhoneInput from "react-country-phone-input";
 import "react-country-phone-input/lib/plain.css";
 
@@ -27,7 +27,7 @@ import "react-country-phone-input/lib/plain.css";
  * @returns {JSX.Element} Input group component
  * @author Sanjaykumar Ramachandran
  */
-const InputGroup = ({
+const InputGroup = forwardRef(({
   className,
   label,
   type,
@@ -50,8 +50,9 @@ const InputGroup = ({
   withIcon,
   backgroundSize,
   min,
-  step
-}) => {
+  step,
+  inputStyles,
+}, ref) => {
   const id = useId();
 
   // Function to render the correct input based on type
@@ -168,6 +169,7 @@ const InputGroup = ({
       default:
         return (
           <input
+            ref={ref}
             id={id}
             type={type}
             name={name}
@@ -184,7 +186,7 @@ const InputGroup = ({
                 : "px-5.5 py-3 text-dark placeholder:text-dark-6 dark:text-white",
               iconPosition === "left" && "pl-12.5",
               height === "sm" && "py-2.5",
-              error ? "border-[1.5px] border-red animate-pulse" : "",
+              error ? "border-[1.5px] border-red animate-pulse" : "", inputStyles
             )}
             required={required}
             disabled={disabled}
@@ -209,7 +211,7 @@ const InputGroup = ({
       <div
         className={cn(
           "relative mt-3 [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2",
-          iconPosition === "left" ? "[&_svg]:left-4.5" : "[&_svg]:right-4.5"
+          iconPosition === "left" ? "[&_svg]:left-4.5" : "[&_svg]:right-4.5",
         )}
       >
         {renderInput()}
@@ -218,7 +220,7 @@ const InputGroup = ({
       </div>
     </div>
   );
-};
+});
 
 export default InputGroup;
 

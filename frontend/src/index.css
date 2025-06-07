@@ -13,6 +13,7 @@
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #d64545;
+  --default-primary: #0a6a01;
   --primary: #0a6a01;
   --primary-50: oklch(0.979 0.021 166.113);
   --primary-100: oklch(0.95 0.052 163.051);
