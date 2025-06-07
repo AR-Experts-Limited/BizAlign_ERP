@@ -74,7 +74,7 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                 <div className="flex flex-col md:gap-1 group">
                     <p className="text-xs hidden md:block">{userDetails?.userName}</p>
                     <div className="flex gap-1 items-center justify-between">
-                        <span className="hidden md:block text-xs bg-primary-300 text-white rounded-md px-1.5 py-0.5">{userDetails?.role}</span>
+                        <span className="hidden md:block text-xs bg-primary-500 text-white rounded-md px-1.5 py-0.5">{userDetails?.role}</span>
                         <button onClick={() => setUserOptionsOpen(prev => !prev)} className={`rounded-md p-1 hover:bg-neutral-200 hover:text-white`}>
                             <IoChevronDown className={`transform transition duration-500 ${userOptionsOpen ? 'rotate-180' : ''}`} size={15} />
                         </button>

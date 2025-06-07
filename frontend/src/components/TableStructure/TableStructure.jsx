@@ -47,11 +47,11 @@ const TableStructure = ({ title, state, setters, tableData, handleFileChange, se
                     <table className='calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4'>
                         <thead>
                             <tr className='text-white'>
-                                <th className='sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-700 font-medium max-sm:!max-w-20 max-sm:!whitespace-normal'>
+                                <th className='sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-500 font-medium max-sm:!max-w-20 max-sm:!whitespace-normal'>
                                     Personnels List
                                 </th>
                                 {days.map((day) => (
-                                    <th className={`sticky top-0 z-10  bg-primary-800 border-r-[1.5px] border-primary-700 font-light ${rangeType === 'daily' ? '!max-w-35' : ''}`} key={day.date}>
+                                    <th className={`sticky top-0 z-10  bg-primary-800 border-r-[1.5px] border-primary-500 font-light ${rangeType === 'daily' ? '!max-w-35' : ''}`} key={day.date}>
                                         <div className='flex flex-col gap-1 items-center '>
                                             <div>{day.date}</div>
                                             {rangeType === 'biweekly' && <div className='font-medium text-gray-600 w-fit px-1 py-0.5 text-[0.55rem] bg-stone-100 rounded-sm'>
