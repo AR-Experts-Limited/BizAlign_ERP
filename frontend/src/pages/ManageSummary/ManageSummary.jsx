@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { NavLink } from "react-router-dom";
+import { useSelector, useDispatch } from 'react-redux';
 import TableStructure from '../../components/TableStructure/TableStructure';
 import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
 import moment from 'moment';
@@ -40,10 +41,27 @@ const ManageSummary = () => {
     const [currentInvoice, setCurrentInvoice] = useState(null)
     const [selectedInvoices, setSelectedInvoices] = useState([]);
     const originalMilesRef = useRef(null);
-
+    const events = useSelector((state) => state.sse.events);
+    const error = useSelector((state) => state.sse.error);
+    const connected = useSelector((state) => state.sse.connected);
 
     const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
     const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList };
+
+
+    useEffect(() => {
+        if (events && (events.type === "approvalStatusUpdated")) {
+            console.log("Approval updated! Refetching...");
+            const updatedInvoices = events.data;
+
+            setInvoices(prev =>
+                prev.map((im) => {
+                    const updated = updatedInvoices.find(u => u._id === im._id);
+                    return updated ? updated : im;
+                })
+            );
+        }
+    }, [events]);
 
     useEffect(() => {
         if (driversList.length > 0 && rangeOptions) {
@@ -235,7 +253,6 @@ const ManageSummary = () => {
                 updates: updatedInvoice,
                 site: selectedSite
             });
-            console.log("Invoice updated successfully:", response.data.updated);
             const updatedInvoices = response.data.updated;
 
             setInvoices(prev =>

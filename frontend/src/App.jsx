@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   BrowserRouter as Router,
   Route,
@@ -6,6 +6,9 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import { useSelector, useDispatch } from 'react-redux';
+import { startSSE, stopSSE } from './features/sse/sseSlice';
+
 import './App.scss'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import Navbar from './Components/NavBar/NavBar'
@@ -33,6 +36,17 @@ function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
   const location = useLocation();
   const hideLayout = location.pathname === '/login' || location.pathname === '/';
+  const dispatch = useDispatch();
+
+
+  useEffect(() => {
+    dispatch(startSSE());
+
+    return () => {
+      dispatch(stopSSE());
+    };
+  }, [dispatch]);
+
 
   const routes = [
     { path: "/dashboard", name: "Dashboard", component: Dashboard },

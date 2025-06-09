@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from "react-router-dom";
+import { useSelector, useDispatch } from 'react-redux';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { BiStation } from "react-icons/bi";
 
@@ -8,6 +9,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
     const location = useLocation();
     const itemRefs = useRef({});
     const containerRef = useRef(null);
+    const { accessDetails } = useSelector((state) => state.auth);
 
     useEffect(() => {
         let timeout;
@@ -67,9 +69,9 @@ const Sidebar = ({ sidebarIsOpen }) => {
             ${delayedPointerEnabled ? 'pointer-events-none' : ''}`}
         >
             <div className='mb-12'>
-                <div className="flex flex-col h-full gap-5 m-2">
+                <div className="flex flex-col justify-center gap-5 m-2">
                     <Tooltip.Provider delayDuration={500}>
-                        {menuItems.map((item) => (
+                        {menuItems.filter(item => accessDetails.includes(item.name)).map((item) => (
                             <Tooltip.Root key={item.path}>
                                 <Tooltip.Trigger asChild>
                                     <div ref={(el) => (itemRefs.current[item.path] = el)}>

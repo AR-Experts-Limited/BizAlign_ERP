@@ -9,6 +9,7 @@ import serviceReducer from './features/services/serviceSlice';
 import scheduleReducer from './features/schedules/scheduleSlice';
 import standbydriverReducer from './features/standbydrivers/standbydriverSlice';
 import authReducer from './features/auth/authSlice';
+import sseReducer from './features/sse/sseSlice'
 
 const rootReducer = combineReducers({
     auth: authReducer,
@@ -18,6 +19,8 @@ const rootReducer = combineReducers({
     services: serviceReducer,
     schedules: scheduleReducer,
     standbydrivers: standbydriverReducer,
+    sse: sseReducer,
+
 });
 
 const persistConfig = {
