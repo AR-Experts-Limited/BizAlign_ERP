@@ -33,7 +33,8 @@ router.post('/', async (req, res) => {
     if (!["unavailable", "dayoff"].includes(newSchedule.service)) {
       sendToClients(
         req.db, {
-        type: 'scheduleUpdated', // Custom event to signal data update
+        type: 'scheduleAdded', // Custom event to signal data update
+        data: newSchedule
       });
 
 
@@ -256,9 +257,9 @@ router.delete('/', async (req, res) => {
   try {
     const { Schedule } = getModels(req);
     await Schedule.deleteMany({ driverId, day: { $in: daysArray.map(day => new Date(day)) } });
-    sendToClients(req.db, {
-      type: 'scheduleUpdated', // Custom event to signal data update
-    });
+    // sendToClients(req.db, {
+    //   type: 'scheduleDeleted', // Custom event to signal data update
+    // });
     res.json({ message: 'Schedule deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting schedule', error: error.message });
@@ -269,9 +270,10 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const { Schedule } = getModels(req);
-    await Schedule.findByIdAndDelete(req.params.id)
+    const deletedSchedule = await Schedule.findByIdAndDelete(req.params.id)
     sendToClients(req.db, {
-      type: 'scheduleUpdated', // Custom event to signal data update
+      type: 'scheduleDeleted', // Custom event to signal data update
+      data: deletedSchedule
     });
     res.json({ message: 'Schedule deleted' });
   } catch (error) {

@@ -52,10 +52,28 @@ const SchedulePlanner = () => {
     const [prevRangeType, setPrevRangeType] = useState(rangeType)
 
     const [addScheduleData, setAddScheduleData] = useState(null)
+    const events = useSelector((state) => state.sse.events);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
 
+    useEffect(() => {
+        if (events && (events.type === "scheduleAdded")) {
+            console.log("Schedule Updated ! Refetching...");
+            const addedSchedule = events.data;
+
+            setSchedules(prev => [...prev, addedSchedule])
+
+        }
+
+        if (events && (events.type === "scheduleDeleted")) {
+            console.log("Schedule Deleted ! Refetching...");
+            const deletedSchedule = events.data;
+
+            setSchedules(prev => prev.filter((item) => item._id !== deletedSchedule._id))
+
+        }
+    }, [events]);
 
     useEffect(() => {
         if (serviceStatus === 'idle') dispatch(fetchServices());
