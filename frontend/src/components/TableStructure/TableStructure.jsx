@@ -6,7 +6,7 @@ import { fetchStandbyDrivers } from '../../features/standbydrivers/standbydriver
 import moment from 'moment';
 
 
-const TableStructure = ({ title, state, setters, tableData, handleFileChange, selectedInvoices, handleSelectAll }) => {
+const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus }) => {
     const dispatch = useDispatch();
     const { driverStatus } = useSelector((state) => state.drivers);
     const driversBySite = useSelector((state) => state.drivers.bySite);
@@ -42,7 +42,7 @@ const TableStructure = ({ title, state, setters, tableData, handleFileChange, se
         <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white'>
             <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>{title}</h2>
             <div className='flex flex-col gap-3 w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-3 shadow overflow-hidden'>
-                <TableFilters title={title} state={state} setters={setters} handleFileChange={handleFileChange} selectedInvoices={selectedInvoices} handleSelectAll={handleSelectAll} />
+                <TableFilters title={title} state={state} setters={setters} invoiceMap={invoiceMap} handleFileChange={handleFileChange} selectedInvoices={selectedInvoices} handleSelectAll={handleSelectAll} updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} />
                 <div className="relative rounded-t-lg flex-1 overflow-auto">
                     <table className='calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4'>
                         <thead>

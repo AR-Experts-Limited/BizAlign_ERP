@@ -460,6 +460,7 @@ router.put('/updateApprovalStatusBatch', async (req, res) => {
     sendToClients(
       req.db, {
       type: 'approvalStatusUpdated', // Custom event to signal data update
+      data: updatedDocs
     });
   } catch (error) {
     res.status(500).json({ message: 'Error updating invoices', error: error.message });

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../features/sites/siteSlice';
 import InputGroup from '../InputGroup/InputGroup';
+import { RenderStageButton } from '../../pages/ManageSummary/renderStageButton';
 
 import moment from 'moment';
 moment.updateLocale('en', {
@@ -14,15 +15,16 @@ import { FaChevronLeft, FaChevronRight, FaEye } from "react-icons/fa";
 import { MdOutlineDelete } from 'react-icons/md';
 
 
-const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoices, handleSelectAll }) => {
+const TableFilters = ({ title, state, setters, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus }) => {
     const dispatch = useDispatch();
     const summaryFileRef = useRef(null);
     const [selectedFile, setSelectedFile] = useState(null);
-
+    const { userDetails } = useSelector((state) => state.auth);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
 
     const { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver } = state
     const { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver } = setters
+    const giveManageSummaryOptions = title === "Manage Summary" && userDetails.role !== 'OSM'
 
     useEffect(() => {
         if (siteStatus === 'idle') dispatch(fetchSites())
@@ -31,7 +33,10 @@ const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoice
 
     useEffect(() => {
         if (sites.length > 0) {
-            setSelectedSite(sites[0].siteKeyword)
+            if (userDetails?.site)
+                setSelectedSite(userDetails?.site)
+            else
+                setSelectedSite(sites[0].siteKeyword)
         }
     }, [sites])
 
@@ -164,14 +169,14 @@ const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoice
 
 
     return (
-        <div className={`grid grid-cols-2 ${title === 'Manage Summary' && selectedInvoices.length > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} p-3 gap-2 md:gap-5  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`} >
+        <div className={`grid grid-cols-2 ${giveManageSummaryOptions && selectedInvoices.length > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} p-3 gap-2 md:gap-5  bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`} >
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Search Personnel Name:</label>
                 <input type="text" onChange={(e) => setSearchDriver(e.target.value)} className='dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200' placeholder="Personnel name" />
             </div>
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Select Site:</label>
-                <select className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
+                <select disabled={userDetails?.site} className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5 disabled:border-gray-200 disabled:text-gray-500" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
                     {sites.map((site) => (
                         <option value={site.siteKeyword}>{site.siteName}</option>
                     ))}
@@ -188,15 +193,16 @@ const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoice
                     <button name="next" onClick={() => handleForwardOrBackward('next')} className='dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5'><FaChevronRight size={14} /></button>
                 </div>
             </div>
-            {title !== 'Manage Summary' ? <div className='flex flex-col gap-1'>
-                <label className='text-xs font-semibold'>Timeframe: </label>
-                <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:bg-dark-3 dark:border-dark-5" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Bi-weekly</option>
-                    <option value="monthly">Monthly</option>
-                </select>
-            </div> :
+            {
+                title !== 'Manage Summary' ? <div className='flex flex-col gap-1'>
+                    <label className='text-xs font-semibold'>Timeframe: </label>
+                    <select className="bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:bg-dark-3 dark:border-dark-5" value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div> : giveManageSummaryOptions &&
                 <div className='relative'>
                     <InputGroup
                         name='summary-file'
@@ -219,13 +225,14 @@ const TableFilters = ({ title, state, setters, handleFileChange, selectedInvoice
                                 <MdOutlineDelete size={18} />
                             </button>
                         </div>}
-                </div >}
+                </div >
+            }
 
             {
                 title === 'Manage Summary' && selectedInvoices.length > 0 &&
-                <div className='w-fit flex items-center gap-2 rounded-md border-[1.5px] border-neutral-300 px-2 mt-2.5 '>
-                    <button name='selectAll' className='text-white text-xs rounded-md bg-primary-500 px-2 py-1 break-keep'>Grant Access</button>
-                    <button name='selectAll' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-primary-500 px-2 py-1'>Select All</button>
+                <div className='w-full flex items-center justify-around gap-1 rounded-md border-[1.5px] max-sm:col-span-2 border-neutral-300 py-1 px-1 mt-2.5 overflow-auto'>
+                    <div className=' text-xs'><RenderStageButton currentInvoice={invoiceMap[selectedInvoices[0]]} updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} /></div>
+                    <button name='selectAll' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-primary-500 px-2 py-1 whitespace-nowrap'>Select All</button>
                     <button name='clear' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-red-500 px-2 py-1'>Clear</button>
                 </div>
             }

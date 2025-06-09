@@ -7,7 +7,7 @@ import axios from 'axios';
 import Modal from '../../components/Modal/Modal'
 import InputWrapper from '../../components/InputGroup/InputWrapper';
 import Papa from "papaparse";
-import { renderStageButton } from './renderStageButton';
+import { RenderStageButton } from './renderStageButton';
 import InputGroup from '../../components/InputGroup/InputGroup';
 import { FcApproval, FcClock, FcTodoList, FcHighPriority, FcCheckmark } from "react-icons/fc";
 import { BsCheckCircleFill } from "react-icons/bs";
@@ -38,7 +38,8 @@ const ManageSummary = () => {
     const [prevRangeType, setPrevRangeType] = useState(rangeType);
     const [csvData, setCsvData] = useState([])
     const [currentInvoice, setCurrentInvoice] = useState(null)
-    const [selectedSchedules, setSelectedSchedules] = useState([]);
+    const [selectedInvoices, setSelectedInvoices] = useState([]);
+    const originalMilesRef = useRef(null);
 
 
     const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
@@ -70,6 +71,7 @@ const ManageSummary = () => {
             }
         }
     }, [rangeOptions, driversList]);
+
 
     useEffect(() => {
         const map = {};
@@ -167,15 +169,15 @@ const ManageSummary = () => {
     const handleSelectAll = (e) => {
         let allSelectedInvoices = []
         if (e.target.name === 'selectAll') {
-            const selectedApprovalStatus = invoiceMap[selectedSchedules[0]]?.invoice.approvalStatus
-            allSelectedInvoices.push(selectedSchedules[0])
+            const selectedApprovalStatus = invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus
+            allSelectedInvoices.push(selectedInvoices[0])
             Object.keys(invoiceMap).map((invKey) => {
                 if (invoiceMap[invKey]?.invoice.approvalStatus === selectedApprovalStatus) {
                     allSelectedInvoices.push(invKey)
                 }
             })
         }
-        setSelectedSchedules(allSelectedInvoices)
+        setSelectedInvoices(allSelectedInvoices)
     }
 
     const updateInvoiceApprovalStatus = async (currentInvoice) => {
@@ -184,7 +186,7 @@ const ManageSummary = () => {
             "Under Edit",
             "Under Approval",
             "Invoice Generation",
-            "Completed"
+            "completed"
         ];
 
         const { invoice, matchedCsv } = currentInvoice
@@ -196,15 +198,37 @@ const ManageSummary = () => {
             return;
         }
 
+        let updatedInvoice = []
+        if (selectedInvoices.length > 0) {
+            updatedInvoice = selectedInvoices.map((sinvoiceKey) => {
+                const invoice = invoiceMap[sinvoiceKey].invoice
+                const matchedCsv = invoiceMap[sinvoiceKey]?.matchedCsv || null
+                const nextStatusIndex = stages.indexOf(invoice.approvalStatus) + 1;
+                return ({
+                    id: invoice._id,
+                    updateData: {
+                        miles: invoice.miles,
+                        calculatedMileage: Number((invoice.miles * invoice.mileage).toFixed(2)),
+                        total: invoice.total - invoice.calculatedMileage + Number((invoice.miles * invoice.mileage).toFixed(2)),
+                        approvalStatus: stages[nextStatusIndex],
+                        csvData: matchedCsv
 
-        const updatedInvoice = [{
-            id: invoice._id,
-            updateData: {
-                approvalStatus: stages[nextStatusIndex],
-                csvData: matchedCsv
+                    }
+                })
+            })
+        }
+        else
+            updatedInvoice = [{
+                id: invoice._id,
+                updateData: {
+                    miles: invoice.miles,
+                    calculatedMileage: Number((invoice.miles * invoice.mileage).toFixed(2)),
+                    total: invoice.total - invoice.calculatedMileage + Number((invoice.miles * invoice.mileage).toFixed(2)),
+                    approvalStatus: stages[nextStatusIndex],
+                    csvData: matchedCsv
 
-            }
-        }];
+                }
+            }];
 
         try {
             const response = await axios.put(`${API_BASE_URL}/api/dayInvoice/updateApprovalStatusBatch`, {
@@ -237,8 +261,7 @@ const ManageSummary = () => {
             const matchedCsv = invoiceMap[key]?.matchedCsv;
             const isToday = dateObj.toDateString() === new Date().toDateString();
             const cellClass = isToday ? 'bg-amber-100/30' : '';
-            const misMatch = (Number(invoice?.miles) !== Number(matchedCsv?.['Total Distance Allowance'])) ? true : false
-            const disabledSelection = (invoice && selectedSchedules.length > 0 && key !== selectedSchedules[0] && invoiceMap[selectedSchedules[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
+            const disabledSelection = (invoice && selectedInvoices.length > 0 && key !== selectedInvoices[0] && invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
 
 
             return (
@@ -255,26 +278,27 @@ const ManageSummary = () => {
                                                 if (!matchedCsv || disabledSelection) return;
 
                                                 if (e.metaKey || e.ctrlKey) {
-                                                    setSelectedSchedules(prev =>
+                                                    setSelectedInvoices(prev =>
                                                         prev.includes(key)
                                                             ? prev.filter(k => k !== key)
                                                             : [...prev, key]
                                                     );
                                                 }
-                                                else if (selectedSchedules.some((k) => k === key)) {
-                                                    setSelectedSchedules(prev =>
+                                                else if (selectedInvoices.some((k) => k === key)) {
+                                                    setSelectedInvoices(prev =>
                                                         prev.filter(k => k !== key)
                                                     );
                                                 }
                                                 else {
-                                                    setCurrentInvoice({ ...invoiceMap[key], misMatch });
+                                                    setCurrentInvoice({ ...invoiceMap[key] });
+                                                    originalMilesRef.current = invoiceMap[key]?.invoice?.miles
                                                 }
                                             }}
                                             className={`relative z-6 w-full h-full flex flex gap-1  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
                                             ${disabledSelection && '!text-gray-300 !pointers-event-none'}
                                             ${!matchedCsv
                                                     ? 'border-dashed border-gray-300'
-                                                    : selectedSchedules.includes(key)
+                                                    : selectedInvoices.includes(key)
                                                         ? 'border-2 border-primary-700'
                                                         : 'border-gray-300 dark:border-dark-5  cursor-pointer'} 
                                              rounded-md text-sm p-2 `}
@@ -299,99 +323,122 @@ const ManageSummary = () => {
 
     return (
         <>
-            <TableStructure title={'Manage Summary'} state={state} setters={setters} tableData={tableData} handleFileChange={handleFileChange} selectedInvoices={selectedSchedules} handleSelectAll={handleSelectAll} />
+            <TableStructure title={'Manage Summary'}
+                state={state}
+                setters={setters}
+                tableData={tableData}
+                invoiceMap={invoiceMap}
+                handleFileChange={handleFileChange}
+                selectedInvoices={selectedInvoices}
+                handleSelectAll={handleSelectAll}
+                updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} />
             <Modal isOpen={currentInvoice} onHide={() => setCurrentInvoice(null)}>
-                <h2 className="text-lg px-4 py-2 border-b border-neutral-300">Invoice Comparison</h2>
-                <div className="p-6">
-                    <div className='grid grid-cols-2 '>
-                        <strong>Driver Name:</strong>
-                        <p>{currentInvoice?.invoice?.driverName}</p>
-                        <strong>Date:</strong>
-                        <p className='text-left'> {new Date(currentInvoice?.invoice?.date).toLocaleDateString()}</p>
-                    </div>
-                    <div className="w-full my-8 ">
-                        <table className="w-full table-auto border border-gray-300 rounded-md overflow-hidden text-sm">
-                            <thead className="bg-gray-300 text-left text-gray-700">
-                                <tr>
-                                    <th className="px-4 py-2 border-r border-gray-300">Field</th>
-                                    <th className="px-4 py-2 border-r border-gray-300">Invoice Data</th>
-                                    <th className="px-4 py-2">CSV Data</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr className="border-b border-gray-200">
-                                    <td className="px-4 py-2 font-medium text-gray-700">Service</td>
-                                    <td className="px-4 py-2">{currentInvoice?.invoice?.mainService}</td>
-                                    <td className="px-4 py-2">{currentInvoice?.matchedCsv["Service Type"]}</td>
-                                </tr>
-                                <tr className="border-b border-gray-200">
-                                    <td className="px-4 py-2 font-medium text-gray-700">Miles / Distance</td>
-                                    <td
-                                        className={`px-4 py-2 ${currentInvoice?.misMatch ? 'text-red-500' : 'text-green-600'
-                                            }`}
-                                    >
-                                        {currentInvoice?.invoice?.miles}
-                                    </td>
-                                    <td
-                                        className={`px-4 py-2 ${currentInvoice?.misMatch ? 'text-red-500' : 'text-green-600'
-                                            }`}
-                                    >
-                                        {currentInvoice?.matchedCsv["Total Distance Allowance"]}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                {(() => {
+                    const misMatch = (Number(currentInvoice?.invoice?.miles)) !== Number(currentInvoice?.matchedCsv?.['Total Distance Allowance']) ? true : false
 
-                    </div>
-                    {(() => {
-                        const stages = [
-                            "Access Requested",
-                            "Under Edit",
-                            "Under Approval",
-                            "Invoice Generation",
-                        ];
-                        const stage = stages.findIndex(status => status === currentInvoice?.invoice?.approvalStatus);
+                    return (<>
+                        <h2 className="text-lg px-4 py-2 border-b border-neutral-300">Invoice Comparison</h2>
+                        <div className="p-6">
+                            <div className='grid grid-cols-2 '>
+                                <strong>Driver Name:</strong>
+                                <p>{currentInvoice?.invoice?.driverName}</p>
+                                <strong>Date:</strong>
+                                <p className='text-left'> {new Date(currentInvoice?.invoice?.date).toLocaleDateString()}</p>
+                            </div>
+                            <div className="w-full my-8 ">
+                                <table className="w-full table-auto border border-gray-300 rounded-md overflow-hidden text-sm">
+                                    <thead className="bg-gray-300 text-left text-gray-700">
+                                        <tr>
+                                            <th className="px-4 py-2 border-r border-gray-300">Field</th>
+                                            <th className="px-4 py-2">CSV Data</th>
+                                            <th className="px-4 py-2 border-r border-gray-300">Invoice Data</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className="border-b border-gray-200">
+                                            <td className="px-4 py-2 font-medium text-gray-700">Service</td>
+                                            <td className="px-4 py-2">{currentInvoice?.matchedCsv["Service Type"]}</td>
+                                            <td className="px-4 py-2">{currentInvoice?.invoice?.mainService}</td>
+                                        </tr>
+                                        <tr className="border-b border-gray-200">
+                                            <td className="px-4 py-2 font-medium text-gray-700">Miles / Distance</td>
+                                            <td
+                                                className={`px-4 py-2 ${misMatch ? 'text-red-500' : 'text-green-600'
+                                                    }`}
+                                            >
+                                                {currentInvoice?.matchedCsv["Total Distance Allowance"]}
+                                            </td>
+                                            <td
+                                                className={`px-4 py-2 ${misMatch ? 'text-red-500' : 'text-green-600'
+                                                    }`}
+                                            >
+                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' ?
+                                                    <InputGroup type='dropdown' onChange={(e) => setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, miles: e.target.value } }))}>
+                                                        <option value={originalMilesRef.current}>{originalMilesRef.current}</option>
+                                                        <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>
+                                                    </InputGroup> :
+                                                    currentInvoice?.invoice?.miles}
+                                            </td>
 
-                        return (<div className="flex items-center justify-center space-x-4 my-4">
-                            {stages.map((status, index) => {
-                                const isActive = stage === index;
-                                const isComplete = stage > index;
+                                        </tr>
+                                    </tbody>
+                                </table>
 
-                                let bgColor = isActive
-                                    ? "bg-primary-600/50 text-primary-800"
-                                    : isComplete
-                                        ? "bg-primary-600 text-white"
-                                        : "bg-gray-200 text-gray-500";
+                            </div>
+                            {(() => {
+                                const stages = [
+                                    "Access Requested",
+                                    "Under Edit",
+                                    "Under Approval",
+                                    "Invoice Generation",
+                                    "completed"
+                                ];
+                                const stage = stages.findIndex(status => status === currentInvoice?.invoice?.approvalStatus);
 
-                                return (
-                                    <div key={status} className="flex items-center space-x-2">
-                                        <div className={`px-4 py-2 rounded-full text-sm font-medium ${bgColor}`}>
-                                            {isActive
-                                                ? status
-                                                : isComplete
-                                                    ? status.replace("Under", "").trim() + " ✓"
-                                                    : status}
-                                        </div>
-                                        {index < stages.length - 1 && (
-                                            <div className="w-6 h-1 bg-gray-300" />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>)
-                    })()}
+                                return (<div className="flex items-center justify-center space-x-4 my-4">
+                                    {stages.map((status, index) => {
+                                        const isActive = stage === index;
+                                        const isComplete = stage > index;
 
-                </div>
+                                        let bgColor = isActive
+                                            ? "bg-primary-600/30 text-primary-800 border border-dashed border-primary-800"
+                                            : isComplete
+                                                ? "bg-primary-600 text-white"
+                                                : "bg-gray-200 text-gray-500";
+                                        if (status !== 'completed') {
+                                            return (
+                                                <div key={status} className="flex items-center space-x-2">
+                                                    <div className={`px-4 py-2 rounded-full text-sm font-medium ${bgColor}`}>
+                                                        {isActive
+                                                            ? status
+                                                            : isComplete
+                                                                ? status.replace("Under", "").trim() + " ✓"
+                                                                : status}
+                                                    </div>
+                                                    {index < stages.length - 2 && (
+                                                        <div className="w-6 h-1 bg-gray-300" />
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+                                    })}
+                                </div>)
+                            })()}
 
-                <div className='flex justify-end w-full px-4 py-2 border-t border-neutral-300 gap-3'>
-                    {renderStageButton(currentInvoice, updateInvoiceApprovalStatus)}
-                    <button
-                        onClick={() => setCurrentInvoice(null)}
-                        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                    >
-                        Close
-                    </button>
-                </div>
+                        </div>
+
+                        <div className='flex justify-end w-full px-4 py-2 border-t border-neutral-300 gap-3'>
+                            <RenderStageButton currentInvoice={currentInvoice} updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} />
+                            <button
+                                onClick={() => setCurrentInvoice(null)}
+                                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </>)
+                }
+                )()}
 
             </Modal>
 

@@ -1,43 +1,84 @@
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from 'react-redux';
 
-export const renderStageButton = (currentInvoice, updateInvoiceApprovalStatus) => {
-    const navigate = useNavigate()
+export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus }) => {
+    // const navigate = useNavigate()
+    const { userDetails } = useSelector((state) => state.auth);
+
     switch (currentInvoice?.invoice?.approvalStatus) {
         case "Access Requested":
             return (
                 <button
                     onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
                 >
                     Grant Access
                 </button>
             );
         case "Under Edit":
+            if (userDetails.role !== 'OSM')
+                return (
+                    <button
+                        disabled
+                        className="bg-gray-300 text-gray-700 px-2 py-1 rounded !cursor-not-allowed "
+                    >
+                        Awaiting OSM Action
+                    </button>
+                );
+            else
+                return (
+                    <button
+                        onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
+                        className="bg-primary-300 text-white px-2 py-1 rounded  "
+                    >
+                        Submit Edit
+                    </button>
+                );
         case "Invoice Generation":
-            return (
-                <button
-                    disabled
-                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded !cursor-not-allowed"
-                >
-                    Awaiting OSM Action
-                </button>
-            );
+            if (userDetails.role !== 'OSM')
+                return (
+                    <button
+                        disabled
+                        className="bg-gray-300 text-gray-700 px-2 py-1 rounded !cursor-not-allowed "
+                    >
+                        Awaiting OSM Action
+                    </button>
+                );
+            else
+                return (
+                    <button
+                        onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
+                        className="bg-primary-300 text-white px-2 py-1 rounded  "
+                    >
+                        Generate Invoice
+                    </button>
+                );
+
         case "Under Approval":
-            return (
-                <button
-                    onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                >
-                    Approve Invoice
-                </button>
-            );
+            if (userDetails.role !== 'OSM')
+                return (
+                    <button
+                        onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
+                        className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                    >
+                        Approve Invoice
+                    </button>
+                );
+            else
+                return (
+                    <button
+                        disabled
+                        className="bg-gray-300 text-gray-700 px-2 py-1 rounded !cursor-not-allowed "
+                    >
+                        Awaiting Admin Action
+                    </button>
+                );
         case "completed":
             return (
                 <button
-                    onClick={() => navigate(`/manage-payments`)}
-                    className="flex gap-2 bg-green-200 text-green-700 px-4 py-2 rounded border border-green-400"
+                    // onClick={() => navigate(`/manage-payments`)}
+                    className="flex gap-1 bg-green-200 text-green-700 px-2 py-1 rounded border border-green-400 whitespace-nowrap !cursor-not-allowed"
                 >
-                    <i class="flex items-center fi fi-rr-money-bill-wave hover:text-primary-800 text-[1.2rem]" ></i>
                     Invoice Generated
                 </button>
             );
