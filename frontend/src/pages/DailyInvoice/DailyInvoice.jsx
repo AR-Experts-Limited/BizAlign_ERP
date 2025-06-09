@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import TableStructure from '../../components/TableStructure/TableStructure';
+import { useSelector, useDispatch } from 'react-redux';
 import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
 import moment from 'moment';
 import axios from 'axios';
 import Modal from '../../components/Modal/Modal'
 import { FcApproval } from "react-icons/fc";
+import { jsPDF } from "jspdf";
 import InputWrapper from '../../components/InputGroup/InputWrapper';
+import { PrintableContent } from './PrintContent';
+import { fetchDrivers } from '../../features/drivers/driverSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const DailyInvoice = () => {
+    const dispatch = useDispatch()
+    const contentRef = useRef(null);
     const [rangeType, setRangeType] = useState('weekly');
     const [rangeOptions, setRangeOptions] = useState({});
     const [selectedRangeIndex, setSelectedRangeIndex] = useState();
@@ -22,11 +28,20 @@ const DailyInvoice = () => {
     const [invoiceMap, setInvoiceMap] = useState({});
     const [cacheRangeOption, setCacheRangeOption] = useState(null);
     const [prevRangeType, setPrevRangeType] = useState(rangeType);
-
+    const [isPrintReady, setIsPrintReady] = useState(null)
+    const [driverDetails, setDriverDetails] = useState({})
     const [currentInvoice, setCurrentInvoice] = useState(null)
+
+    const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
 
     const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
     const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList };
+
+
+    useEffect(() => {
+        if (driverStatus === 'idle') dispatch(fetchDrivers());
+        // if (siteStatus === 'idle') dispatch(fetchSites())
+    }, [driverStatus, dispatch]);
 
     useEffect(() => {
         if (driversList.length > 0 && rangeOptions) {
@@ -71,6 +86,63 @@ const DailyInvoice = () => {
             setPrevRangeType(rangeType);
         }
     }, [rangeOptions]);
+
+    const handlePrint = async () => {
+        setDriverDetails(driversBySite[currentInvoice.site].find((driver) => driver._id === currentInvoice?.driverId))
+        setIsPrintReady(true);
+    };
+
+    useEffect(() => {
+        if (currentInvoice && isPrintReady) {
+            generatePDF(contentRef.current,
+                currentInvoice?.driverName,
+                currentInvoice?.serviceWeek);
+
+            setIsPrintReady(false);
+        }
+    }, [isPrintReady]);
+
+    const generatePDF = (invoiceContent, driverName, serviceWeek) => {
+        const tempDiv = document.createElement("div");
+
+        // A4 portrait size in pixels at 96 DPI is ~794x1123
+        tempDiv.style.width = "794px";
+        tempDiv.style.height = "1123px";
+        tempDiv.style.minWidth = "794px";
+        tempDiv.style.minHeight = "1123px";
+        tempDiv.style.maxWidth = "794px";
+        tempDiv.style.maxHeight = "1123px";
+
+        const clone = invoiceContent.cloneNode(true);
+        tempDiv.appendChild(clone);
+        document.body.appendChild(tempDiv);
+
+        const doc = new jsPDF('portrait', 'mm', 'a4');
+
+        doc.html(tempDiv, {
+            image: { type: 'jpeg', quality: 0.98 },
+
+            html2canvas: {
+                scale: 0.262,
+                useCORS: true,
+                logging: true,
+                allowTaint: false,
+            },
+            callback: function (doc) {
+                const pdfFileName = `invoice-${driverName}-${serviceWeek}.pdf`;
+                document.body.removeChild(tempDiv);
+
+                const pdfBlob = doc.output('blob');
+                const reader = new FileReader();
+                reader.readAsDataURL(pdfBlob);
+                reader.onloadend = function () {
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    window.open(pdfUrl); // opens in new tab for preview/print
+                };
+            }
+        });
+    };
+
 
     const tableData = (driver) => {
         return days.map((day) => {
@@ -234,7 +306,11 @@ const DailyInvoice = () => {
                             {/* Total */}
                             <div className="mt-6">
                                 <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">Total</h3>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">£{currentInvoice.total}</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white">£{currentInvoice.serviceRateforMain +
+                                    currentInvoice.byodRate +
+                                    currentInvoice.calculatedMileage +
+                                    (currentInvoice.serviceRateforAdditional || 0) +
+                                    (currentInvoice.incentiveDetail?.rate || 0)}</p>
                             </div>
 
                         </div>
@@ -248,15 +324,28 @@ const DailyInvoice = () => {
                                 Close
                             </button>
                             <button
+                                onClick={() => {
+                                    handlePrint()
+                                }}
                                 className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600"
                             >
                                 Print Daily Invoice
                             </button>
 
                         </div>
+
                     </>
                 )}
             </Modal>
+            <div style={{
+                visibility: 'hidden',
+                position: 'absolute',
+                left: '-9999px'
+            }}>
+
+                {currentInvoice && (<PrintableContent ref={contentRef} invoice={currentInvoice} driverDetails={driverDetails} />)}
+
+            </div>
         </>
     );
 };
