@@ -57,7 +57,7 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                 size={20}
             /></button></div>
             <div className="justify-self-start">
-                <img className="h-45 w-45 md:h-65 md:w-65" src="/bizalign.png" />
+                <img className="h-45 w-45" src="/bizalign.png" />
             </div>
 
             <div className="relative flex-1 flex gap-1 md:gap-3 items-center justify-end">

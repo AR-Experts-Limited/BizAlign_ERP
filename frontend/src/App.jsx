@@ -27,7 +27,8 @@ import Incentives from './pages/Incentives/Incentives';
 import ManageUsers from './pages/ManageUsers/ManageUsers';
 import ManagePersonnels from './pages/ManagePersonnels/ManagePersonnels'
 import Approvals from './pages/Approvals/Approvals';
-import DailyInvoice from './pages/DailyInvoice/DailyInvoice';
+import DailyInvoice from './pages/Invoice/DailyInvoice/DailyInvoice';
+import WeeklyInvoice from './pages/Invoice/WeeklyInvoice/WeeklyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
 
@@ -62,6 +63,7 @@ function App() {
     { path: "/incentives", name: "Incentives", component: Incentives },
     { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
+    { path: "/print-invoices", name: "Print Invoices", component: WeeklyInvoice },
     { path: "/manage-users", name: "Manage Users", component: ManageUsers },
     { path: "/settings", name: "Application Settings", component: ApplicationSettings },
 

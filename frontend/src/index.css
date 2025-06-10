@@ -146,7 +146,10 @@ button {
 .flatpickr-day.endRange.prevMonthDay,
 .flatpickr-day.selected.nextMonthDay,
 .flatpickr-day.startRange.nextMonthDay,
-.flatpickr-day.endRange.nextMonthDay {
+.flatpickr-day.endRange.nextMonthDay,
+.flatpickr-monthSelect-month.selected,
+.flatpickr-monthSelect-month.startRange,
+.flatpickr-monthSelect-month.endRange {
   background: var(--color-primary-500) !important;
   border-color: var(--color-primary-500) !important;
 }

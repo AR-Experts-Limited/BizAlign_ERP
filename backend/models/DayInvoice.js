@@ -39,4 +39,7 @@ const dayInvoiceSchema = new mongoose.Schema({
 
 const DayInvoice = mongoose.model('DayInvoice', dayInvoiceSchema);
 
+dayInvoiceSchema.index({ driverId: 1, date: 1 });
+dayInvoiceSchema.index({ site: 1, serviceWeek: 1 });
+
 module.exports = DayInvoice;

@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import TableStructure from '../../components/TableStructure/TableStructure';
+import TableStructure from '../../../components/TableStructure/TableStructure';
 import { useSelector, useDispatch } from 'react-redux';
-import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../utils/scheduleCalculations';
+import { calculateAllWorkStreaks, checkAllContinuousSchedules } from '../../../utils/scheduleCalculations';
 import moment from 'moment';
 import axios from 'axios';
-import Modal from '../../components/Modal/Modal'
+import Modal from '../../../components/Modal/Modal'
 import { FcApproval } from "react-icons/fc";
 import { jsPDF } from "jspdf";
-import InputWrapper from '../../components/InputGroup/InputWrapper';
+import InputWrapper from '../../../components/InputGroup/InputWrapper';
 import { PrintableContent } from './PrintContent';
-import { fetchDrivers } from '../../features/drivers/driverSlice';
+import { fetchDrivers } from '../../../features/drivers/driverSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -68,7 +68,7 @@ const DailyInvoice = () => {
                 setCacheRangeOption(rangeOptions);
             }
         }
-    }, [rangeOptions, driversList]);
+    }, [rangeOptions, driversList, selectedSite]);
 
     useEffect(() => {
         let map = {};

@@ -146,7 +146,7 @@ const Login = () => {
                         <div className='w-full'>
                             <div className='relative w-full'>
                                 <input onChange={(e) => { setErrors(prev => ({ ...prev, password: false })); setCredentials(prev => ({ ...prev, password: e.target.value })) }} className={`w-full  dark:bg-dark-4/60 dark:border-dark-4 bg-white/80 rounded-lg border border-neutral-300 p-4 outline-none ${error.password ? 'animate-pulse border-2 border-red-300' : ''}`} type={showPass ? 'text' : 'password'} placeholder='Enter your password' />
-                                <div className='cursor-pointer absolute text-stone-300 bottom-[1.2rem] right-5' onClick={() => setShowPass(prev => !prev)}>{showPass ? <IoEyeOff size={20} /> : <IoEye size={20} />}</div>
+                                <div className='cursor-pointer absolute text-stone-400 bottom-[1.2rem] right-5' onClick={() => setShowPass(prev => !prev)}>{showPass ? <IoEyeOff size={20} /> : <IoEye size={20} />}</div>
                             </div>
                             {error?.password && <div className='text-sm text-red-400'>*please enter your password</div>}
                         </div>
@@ -165,7 +165,7 @@ const Login = () => {
 
     return (
         <div >
-            <div className='dark:bg-dark-1 p-5 h-screen w-screen relative flex justify-center items-center '>
+            <div className='dark:bg-dark-1 h-screen w-screen relative flex justify-center items-center overflow-hidden '>
 
                 <div className='z-0 dark:hidden absolute -top-25 -right-30 bg-[#006173]/30 h-160 w-160 blur-[90rem] rounded-full'></div>
                 <div className='z-0 dark:hidden absolute -bottom-55 -left-55 bg-[#89CA38]/30 h-180 w-180 blur-[90rem] rounded-full'></div>

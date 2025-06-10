@@ -97,7 +97,7 @@ router.get('/siteandweek', async (req, res) => {
   const query = {};
 
   if (site) query.site = site;
-  if (serviceWeek) query.serviceWeek = serviceWeek;
+  if (serviceWeek) query.serviceWeek = { $in: serviceWeek };
   if (startDate && endDate) {
     query.date = {
       $gte: new Date(startDate),
