@@ -54,6 +54,13 @@ const DailyInvoice = () => {
                         enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
+                const response2 = await axios.post(`${API_BASE_URL}/api/dayinvoice/weekly-invoices`,
+                    {
+                        driverIds: driversList.map((driver) => driver._id),
+                        startdate: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
+                        enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
+                    }
+                )
                 setInvoices(response.data);
             };
 

@@ -7,15 +7,11 @@ const TotalBreakdown = ({
     serviceRateforMain,
     byodRate,
     additionalServiceDetails,
-    installmentDetail,
     deductionDetail,
     incentiveDetailforMain,
     total,
 }) => {
 
-    const totalPerDayInstallment = installmentDetail?.reduce((sum, insta) => {
-        return sum + parseFloat(insta.perDayInstallmentRate || 0);
-    }, 0);
 
     const totalDeductions = deductionDetail?.reduce((sum, ded) => {
         return sum + parseFloat(ded.rate || 0);
@@ -59,11 +55,7 @@ const TotalBreakdown = ({
                         <span>+£</span>
                         <span className="text-right">{incentiveDetailforMain.rate}</span>
                     </div>}
-                <div className="grid grid-cols-[6fr_1fr_1fr] text-red-600">
-                    <span>Installment Deductions:</span>
-                    <span>-£</span>
-                    <span className="text-right">{totalPerDayInstallment}</span>
-                </div>
+
                 <div className="grid grid-cols-[6fr_1fr_1fr] text-red-600">
                     <span>Other Deductions:</span>
                     <span>-£</span>

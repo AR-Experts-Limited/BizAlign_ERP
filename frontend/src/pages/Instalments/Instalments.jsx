@@ -31,6 +31,9 @@ const Instalments = () => {
     const [newInstalment, setNewInstalment] = useState(clearInstalment);
     const [instalments, setInstalments] = useState([])
     const [isUploadingFile, setIsUploadingFile] = useState({});
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+
 
     const [errors, setErrors] = useState({
         driverId: false,
@@ -42,6 +45,7 @@ const Instalments = () => {
 
     const fileInputRefs = useRef({});
     const uploadButtonsRefs = useRef({});
+
 
     const instalmentTypes = ['Security Deposit', 'Vehicle Repair Cost'];
 
@@ -232,32 +236,57 @@ const Instalments = () => {
 
                             {/* Driver selection */}
                             <div>
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Select Personnel"
-                                    icon={<FaUser className='text-neutral-200' size={20} />}
-                                    iconPosition="left"
-                                    required={true}
-                                    className={`${newInstalment.driverId === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        const selectedDriver = (driversBySite[newInstalment.site] || []).find(driver => driver._id === e.target.value);
-                                        setNewInstalment({
-                                            ...newInstalment,
-                                            driverId: e.target.value,
-                                            driverName: selectedDriver ? `${selectedDriver.firstName} ${selectedDriver.lastName}` : ''
-                                        });
-                                        setErrors({ ...errors, driverId: false });
-                                    }}
-                                    error={errors.driverId}
-                                    value={newInstalment.driverId}
-                                >
-                                    <option value="">-Select Personnel-</option>
-                                    {(driversBySite[newInstalment.site] || []).map((driver) => (
-                                        <option key={driver._id} value={driver._id}>
-                                            {driver.firstName} {driver.lastName}
-                                        </option>
-                                    ))}
-                                </InputGroup>
+                                <div className="relative">
+                                    <label className="text-body-sm font-medium text-black dark:text-white">
+                                        Select Personnel<span className="ml-1 text-red select-none">*</span>
+                                    </label>
+
+                                    <div className="relative mt-3">
+                                        <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
+
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            disabled={newInstalment.site === ''}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onFocus={() => setDropdownOpen(true)}
+                                            onBlur={() => setTimeout(() => setDropdownOpen(false), 100)} // delay to allow item click
+                                            placeholder="-Select Personnel-"
+                                            className={`w-full rounded-lg border-[1.5px] ${errors.driverId ? "border-red animate-pulse" : "border-neutral-300"
+                                                } bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
+                                        />
+
+                                        {dropdownOpen && (
+                                            <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
+                                                {(driversBySite[newInstalment.site] || [])
+                                                    .filter((driver) =>
+                                                        `${driver.firstName} ${driver.lastName}`
+                                                            .toLowerCase()
+                                                            .includes(searchTerm.toLowerCase())
+                                                    )
+                                                    .map((driver) => (
+                                                        <li
+                                                            key={driver._id}
+                                                            className="cursor-pointer px-4 py-2 hover:bg-primary-100/50 dark:hover:bg-dark-2 text-sm"
+                                                            onMouseDown={() => {
+                                                                setNewInstalment({
+                                                                    ...newInstalment,
+                                                                    driverId: driver._id,
+                                                                    driverName: `${driver.firstName} ${driver.lastName}`,
+                                                                });
+                                                                setSearchTerm(`${driver.firstName} ${driver.lastName}`);
+                                                                setErrors({ ...errors, driverId: false });
+                                                                setDropdownOpen(false);
+                                                            }}
+                                                        >
+                                                            {driver.firstName} {driver.lastName}
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {errors.driverId && <p className="text-red-400 text-sm mt-1">* Personnel is required</p>}
                             </div>
 

@@ -34,6 +34,8 @@ const Deductions = () => {
     const [deductions, setDeductions] = useState([])
     const [isUploadingFile, setIsUploadingFile] = useState({});
     const [vatValue, setVatValue] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
 
     const [errors, setErrors] = useState({
         driverId: false,
@@ -256,21 +258,6 @@ const Deductions = () => {
 
                             {/* Date selection */}
                             <div>
-                                {/* <Flatpickr
-                                        id='deductionDate'
-                                        value={newDeduction.date}
-                                        onChange={([date]) => {
-                                            const formattedDate = date.toISOString().split('T')[0];
-                                            setNewDeduction({ ...newDeduction, date: formattedDate });
-                                            setErrors({ ...errors, date: false });
-                                        }}
-                                        options={{
-                                            dateFormat: 'Y-m-d',
-                                            altFormat: 'F j, Y',
-                                        }}
-                                        className={`relative w-full pl-12 p-3 border-[1.5px] rounded-md ${errors.date ? 'border-red-400' : 'border-neutral-300'} focus:outline-none focus:border-2 focus:border-primary-500`}
-                                    />
-                                    <div className='absolute left-4 top-3 '><span className='text-neutral-100 font-bold'><MdOutlineDelete size={14} /></span></div> */}
                                 <DatePicker iconPosition={'left'} value={newDeduction.date}
                                     label={'Date'}
                                     required={true}
@@ -284,34 +271,62 @@ const Deductions = () => {
 
                             {/* Driver selection */}
                             <div>
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Select Personnel"
-                                    required={true}
-                                    icon={<FaUser className='text-neutral-200' size={18} />}
-                                    iconPosition="left"
-                                    className={`${newDeduction.driverId === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        const selectedDriver = (driversBySite[newDeduction.site] || []).find(driver => driver._id === e.target.value);
-                                        setNewDeduction({
-                                            ...newDeduction,
-                                            driverId: e.target.value,
-                                            driverName: selectedDriver ? `${selectedDriver.firstName} ${selectedDriver.lastName}` : ''
-                                        });
-                                        setErrors({ ...errors, driverId: false });
-                                        handleVatCheck(newDeduction.serviceType, e.target.value);
-                                    }}
-                                    error={errors.driverId}
-                                    value={newDeduction.driverId}
-                                >
-                                    <option value="">-Select Personnel-</option>
-                                    {(driversBySite[newDeduction.site] || []).map((driver) => (
-                                        <option key={driver._id} value={driver._id}>
-                                            {driver.firstName} {driver.lastName}
-                                        </option>
-                                    ))}
-                                </InputGroup>
-                                {errors.driverId && <p className="text-red-400 text-sm mt-1">* Personnel is required</p>}
+                                <div className="relative">
+                                    <label className="text-body-sm font-medium text-black dark:text-white">
+                                        Select Personnel<span className="ml-1 text-red select-none">*</span>
+                                    </label>
+
+                                    <div className="relative mt-3">
+                                        <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
+
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            disabled={newDeduction.site === ''}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onFocus={() => setDropdownOpen(true)}
+                                            onBlur={() => setTimeout(() => setDropdownOpen(false), 100)} // delay to allow click
+                                            placeholder="-Select Personnel-"
+                                            className={`w-full rounded-lg border-[1.5px] ${errors.driverId ? "border-red animate-pulse" : "border-neutral-300"
+                                                } bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
+                                        />
+
+                                        {dropdownOpen && (
+                                            <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
+                                                {(driversBySite[newDeduction.site] || [])
+                                                    .filter((driver) =>
+                                                        `${driver.firstName} ${driver.lastName}`
+                                                            .toLowerCase()
+                                                            .includes(searchTerm.toLowerCase())
+                                                    )
+                                                    .map((driver) => (
+                                                        <li
+                                                            key={driver._id}
+                                                            className="cursor-pointer px-4 py-2 hover:bg-primary-100/50 dark:hover:bg-dark-2 text-sm"
+                                                            onMouseDown={() => {
+                                                                const fullName = `${driver.firstName} ${driver.lastName}`;
+                                                                setNewDeduction({
+                                                                    ...newDeduction,
+                                                                    driverId: driver._id,
+                                                                    driverName: fullName,
+                                                                });
+                                                                setSearchTerm(fullName);
+                                                                setErrors({ ...errors, driverId: false });
+                                                                handleVatCheck(newDeduction.serviceType, driver._id);
+                                                            }}
+                                                        >
+                                                            {driver.firstName} {driver.lastName}
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                        )}
+                                    </div>
+
+                                    {errors.driverId && (
+                                        <p className="text-red-400 text-sm mt-1">* Personnel is required</p>
+                                    )}
+                                </div>
+
                             </div>
 
                             {/* Service type */}

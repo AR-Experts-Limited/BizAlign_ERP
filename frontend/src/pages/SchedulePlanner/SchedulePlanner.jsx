@@ -136,7 +136,8 @@ const SchedulePlanner = () => {
             return { streaks: {}, continuousStatus: {} };
         }
 
-        const streaks = calculateAllWorkStreaks(driversList, schedules);
+        const sortedSchedules = [...schedules].sort((a, b) => new Date(a.day) - new Date(b.day));
+        const streaks = calculateAllWorkStreaks(driversList, sortedSchedules);
         const continuousStatus = checkAllContinuousSchedules(driversList, schedules, days.map((day) => day.date));
 
         return { streaks, continuousStatus };
@@ -164,13 +165,13 @@ const SchedulePlanner = () => {
             site: selectedSite,
             acknowledged: false,
         }))
-        setSchedules(prev => [...prev, newSchedule.payload])
+        // setSchedules(prev => [...prev, newSchedule.payload])
         setAddScheduleData(null)
     }
 
     const handleDeleteSchedule = async (id) => {
         await axios.delete(`${API_BASE_URL}/api/schedule/${id}`);
-        setSchedules(prev => prev.filter((item) => item._id !== id))
+        // setSchedules(prev => prev.filter((item) => item._id !== id))
     }
 
     const tableData = (driver, disabledDriver, standbyDriver) => {

@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const multerS3 = require('multer-s3');
 const { sendToClients } = require('../utils/sseService');
 const s3 = require('./aws'); // Optional: To delete files from file system
+const moment = require('moment')
 
 const upload = multer({
   storage: multerS3({
@@ -26,6 +27,7 @@ const upload = multer({
 // Helper function to get models from req.db
 const getModels = (req) => ({
   Installment: req.db.model('Installment', require('../models/installments').schema),
+  WeeklyInvoice: req.db.model('WeeklyInvoice', require('../models/weeklyInvoice').schema),
   Driver: req.db.model('Driver', require('../models/Driver').schema),
   DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
   User: req.db.model('User', require('../models/User').schema),
@@ -123,7 +125,7 @@ router.post('/', upload.any(), async (req, res) => {
   // addedBy = JSON.parse(addedBy);
 
   try {
-    const { Installment, User, Notification } = getModels(req);
+    const { Installment, User, Notification, WeeklyInvoice } = getModels(req);
     const doc = req.files[0]?.location || '';
 
     const newInstallment = new Installment({
@@ -160,6 +162,17 @@ router.post('/', upload.any(), async (req, res) => {
         console.error('Error sending push notification:', notificationError.message);
       }
     }
+
+    const updatedWeeklyInvoice = await WeeklyInvoice.findOneAndUpdate(
+      { driverId },
+      {
+        $addToSet: { installments: newInstallment._id }, // Add Installment _id to installments array
+        $set: {
+          unsigned: !signed || undefined, // Update unsigned if installment is not signed
+        },
+      },
+      { new: true } // Return updated document
+    );
 
     // Save notification
     const notification = {
@@ -225,43 +238,64 @@ router.post('/deleteupload', async (req, res) => {
 // DELETE an installment by ID
 router.delete('/:id', async (req, res) => {
   try {
-    const { Installment, DayInvoice } = getModels(req);
-    const installment = await Installment.findById(req.params.id);
-    const dayInvoices = await DayInvoice.find({ driverId: installment.driverId, 'installmentDetail._id': req.params.id });
+    const { Installment, WeeklyInvoice, DayInvoice } = getModels(req);
+    const installmentId = req.params.id;
 
-    const updateDayInvoices = async () => {
-      await Promise.all(
-        dayInvoices.map(async (dayInvoice) => {
-          const installmentDetail = dayInvoice.installmentDetail.find(
-            (detail) => detail._id == req.params.id
-          );
+    const installment = await Installment.findById(installmentId);
+    if (!installment) {
+      return res.status(404).json({ message: 'Installment not found' });
+    }
 
-          await DayInvoice.updateOne(
-            { _id: dayInvoice._id },
-            {
-              $set: {
-                total: dayInvoice.total + parseFloat(installmentDetail.perDayInstallmentRate),
-              },
-              $pull: {
-                installmentDetail: { _id: req.params.id },
-              },
-            }
-          );
-        })
+    // Step 1: Find all WeeklyInvoices that include this installment
+    const weeklyInvoices = await WeeklyInvoice.find({ installments: installmentId });
+
+    for (const weekly of weeklyInvoices) {
+      // Step 2: Remove the installment ID from the 'installments' array
+      weekly.installments = weekly.installments.filter(id => id.toString() !== installmentId);
+
+      // Step 3: Remove the installment's detail object from 'installmentDetail'
+      weekly.installmentDetail = (weekly.installmentDetail || []).filter(
+        detail => detail._id?.toString() !== installmentId
       );
-    };
 
-    await updateDayInvoices();
-    await Installment.findByIdAndDelete(req.params.id);
-    sendToClients(
-      req.db, {
-      type: 'installmentUpdated', // Custom event to signal data update
+      // Step 4: Recalculate the total
+      const relatedDayInvoices = await DayInvoice.find({
+        _id: { $in: weekly.invoices }
+      });
+
+      const calculateTotal = (inv) =>
+        (inv.serviceRateforMain || 0) +
+        (inv.byodRate || 0) +
+        (inv.calculatedMileage || 0) +
+        (inv.incentiveDetailforMain?.rate || 0);
+
+      const weeklyRawTotal = relatedDayInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0);
+      const totalInstallmentDeduction = weekly.installmentDetail.reduce(
+        (sum, inst) => sum + (inst.deductionAmount || 0),
+        0
+      );
+      const finalTotal = Math.max(0, weeklyRawTotal - totalInstallmentDeduction);
+
+      weekly.total = finalTotal;
+      weekly.unsigned = weekly.installmentDetail.some(d => !d.signed);
+
+      await weekly.save();
+    }
+
+    // Step 5: Delete the Installment document itself
+    await Installment.findByIdAndDelete(installmentId);
+
+    // Step 6: Notify clients
+    sendToClients(req.db, {
+      type: 'installmentUpdated',
     });
-    res.json({ message: 'Installment deleted successfully' });
+
+    res.json({ message: 'Installment deleted successfully and WeeklyInvoices updated.' });
   } catch (error) {
     console.error('Error deleting installment:', error);
     res.status(500).json({ message: 'Error deleting installment', error: error.message });
   }
 });
+
 
 module.exports = router;

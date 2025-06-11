@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../../features/sites/siteSlice';
 import moment from 'moment';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPoundSign } from 'react-icons/fa';
 import Flatpickr from 'react-flatpickr';
 import monthSelectPlugin from "flatpickr/dist/plugins/monthSelect";
 import "flatpickr/dist/plugins/monthSelect/style.css";
 import { fetchDrivers } from '../../../features/drivers/driverSlice';
 import axios from 'axios'
+import Modal from '../../../components/Modal/Modal'
+import { getInstallmentDetails } from '../../Rota/supportFunctions';
+import InputWrapper from '../../../components/InputGroup/InputWrapper'
+import InputGroup from '../../../components/InputGroup/InputGroup'
+
+
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 moment.updateLocale('en', {
@@ -32,6 +38,7 @@ const WeeklyInvoice = () => {
     const [standbydriversList, setStandbydriversList] = useState([]);
     const [invoices, setInvoices] = useState([])
     const [groupedInvoices, setGroupedInvoices] = useState([])
+    const [currentInvoice, setCurrentInvoice] = useState(null)
 
     useEffect(() => {
         if (siteStatus === 'idle') dispatch(fetchSites());
@@ -51,15 +58,14 @@ const WeeklyInvoice = () => {
             if (driversList.length > 0 && weeks.length > 0) {
                 const serviceWeeks = weeks.map((week) => week.week)
 
-                const response = await axios.get(`${API_BASE_URL}/api/dayinvoice/siteandweek`, {
+                const response = await axios.get(`${API_BASE_URL}/api/weeklyInvoice`, {
                     params: {
-                        site: selectedSite,
-                        serviceWeek: serviceWeeks,
-
+                        driverIds: driversList.map((driver) => driver._id),
+                        serviceWeeks: serviceWeeks,
                     }
                 })
 
-                setInvoices(response.data);
+                setInvoices(response.data.data);
             };
 
         }
@@ -67,38 +73,13 @@ const WeeklyInvoice = () => {
     }, [driversList, weeks]);
 
     useEffect(() => {
-        let groupedInvoices = []
-        if (invoices.length > 0) {
-            groupedInvoices = invoices.reduce((acc, invoice) => {
-                const key = `${invoice.driverId}-${invoice.serviceWeek}`;
-                // const addOns = additionalCharges.filter((addon) => (addon.driverId == invoice.driverId && addon.week == invoice.serviceWeek && addon.site == invoice.site))
+        let map = {}
+        invoices?.forEach(inv => {
+            const key = `${inv.driverId._id}_${inv.serviceWeek}`;
+            map[key] = inv;
+        });
 
-                if (!acc[key]) {
-                    acc[key] = {
-                        driverId: invoice.driverId,
-                        driverEmail: invoice.driverEmail,
-                        driverVehicleType: invoice.driverVehicleType,
-                        driverName: invoice.driverName,
-                        serviceWeek: invoice.serviceWeek,
-                        site: invoice.site,
-                        invoices: [],
-                        count: 0,
-                        invoiceGeneratedBy: invoice.invoiceGeneratedBy,
-                        invoiceGeneratedOn: invoice.invoiceGeneratedOn,
-                        standbyService: invoice.standbyService,
-                        referenceNumber: invoice.referenceNumber,
-                        // addOns: addOns,
-                    };
-                }
-                const unsignedDeductions = invoice.deductionDetail?.filter((dd) => !dd.signed);
-                const unsignedInstallment = invoice.installmentDetail?.filter((id) => !id.signed);
-                if (unsignedDeductions?.length > 0 || unsignedInstallment?.length > 0) acc[key].unsigned = true;
-                acc[key].invoices.push(invoice);
-                acc[key].count++;
-                return acc;
-            }, {});
-        }
-        setGroupedInvoices(groupedInvoices)
+        setGroupedInvoices(map)
     }, [invoices])
 
     useEffect(() => {
@@ -151,11 +132,30 @@ const WeeklyInvoice = () => {
         setSelectedMonth(newMonth);
     };
 
+
+    const handleShowDetails = async (invoice) => {
+        console.log("Invoice:", invoice)
+        const instalments = await getInstallmentDetails(invoice.driverId._id)
+        console.log("Installments:", instalments)
+        setCurrentInvoice({ invoice, instalments })
+    }
+
+    const calculateTotal = (invoice) => {
+
+        return (
+            invoice.serviceRateforMain +
+            invoice.byodRate +
+            invoice.calculatedMileage +
+            (invoice.incentiveDetailforMain?.rate || 0)
+        );
+    };
+
+
     const tableData = (driver) => {
         return weeks.map((week) => {
-            const key = `${driver._id}-${week.week}`;
+            const key = `${driver._id}_${week.week}`;
             const invoice = groupedInvoices[key];
-            console.log(key, invoice, groupedInvoices)
+            console.log(key, groupedInvoices)
             const isToday = moment(week, 'week').format('YYYY-[W]ww') === moment().format('YYYY-[W]ww')
             const cellClass = isToday ? 'bg-amber-100/30' : '';
             const allCompleted = invoice?.count === invoice?.invoices.filter((inv) => inv.approvalStatus === 'completed').length
@@ -167,7 +167,7 @@ const WeeklyInvoice = () => {
                             return (
                                 <div className={`relative flex justify-center h-full w-full `}>
                                     <div className='relative max-w-40 w-full'>
-                                        <div className={`${!allCompleted || !invoice.unsigned && 'border-dashed border-gray-300'} relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
+                                        <div onClick={() => { if (allCompleted || !invoice.unsigned) handleShowDetails(invoice) }} className={`${!allCompleted || invoice.unsigned && 'border-dashed border-gray-300'} relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                             <div className='grid grid-cols-[3fr_1fr] w-full'>
                                                 <strong className='text-xs'>Total Invoice count:</strong>
                                                 <div className='text-xs overflow-auto max-h-[4rem] w-full text-center'> {invoice?.count}</div>
@@ -301,7 +301,262 @@ const WeeklyInvoice = () => {
                     </table>
                 </div>
             </div>
-        </div>
+            <Modal isOpen={currentInvoice} >
+                <h2 className="text-xl font-semibold px-2 md:px-6 py-2 text-gray-800 dark:text-white border-b border-neutral-300">
+                    Weekly Invoice Details
+                </h2>
+                <div className="p-2 md:p-6 mx-auto max-h-[40rem] overflow-auto">
+                    {/* Driver Information */}
+                    <div className="mb-6">
+                        <InputWrapper title={'Driver Information'}>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                                        {currentInvoice?.invoice.driverId.firstName + ' ' + currentInvoice?.invoice.driverId.lastName}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                                        {currentInvoice?.invoice.driverId.Email}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">User ID</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                                        {currentInvoice?.invoice.driverId.user_ID}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Vehicle Type</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                                        {currentInvoice?.invoice.driverId.typeOfDriver}
+                                    </p>
+                                </div>
+
+                                {currentInvoice?.invoice.driverId.vatDetails?.vatNo && (
+                                    <>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Driver VAT Number</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">
+                                                {currentInvoice.invoice.driverId.vatDetails.vatNo}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Effective Date</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">
+                                                {new Date(currentInvoice.invoice.driverId.vatDetails.vatEffectiveDate).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                                {currentInvoice?.invoice.driverId.companyVatDetails?.vatNo && (
+                                    <>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Company VAT Number</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">
+                                                {currentInvoice.invoice.driverId.companyVatDetails.vatNo}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Effective Date</p>
+                                            <p className="text-base font-medium text-gray-900 dark:text-white">
+                                                {new Date(currentInvoice.invoice.driverId.companyVatDetails.companyVatEffectiveDate).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </InputWrapper>
+
+                    </div>
+
+                    {/* Invoice Summary */}
+                    <div className="mb-6">
+                        <InputWrapper title={'Invoice Summary'}>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Service Week</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice?.invoice.serviceWeek}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Site</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice?.invoice.driverId.siteSelection}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Reference Number</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice?.invoice.referenceNumber}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Invoices</p>
+                                    <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice?.invoice.count}</p>
+                                </div>
+                            </div>
+                        </InputWrapper>
+                    </div>
+                    {/* Installments Section */}
+                    {currentInvoice?.invoice.installmentDetail?.length > 0 && (
+                        <InputWrapper title="Instalments">
+                            {currentInvoice?.invoice.installmentDetail?.map((insta) => (
+                                <div key={insta._id} className="flex max-sm:flex-col items-center gap-5 justify-between">
+                                    <input
+                                        type="checkbox"
+                                        className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
+                                        checked={true}
+                                        disabled={true}
+                                        onChange={(e) => {
+                                            const isChecked = e.target.checked;
+                                            const updatedInstallments = isChecked
+                                                ? [...(currentInvoice?.invoice.installments || []), insta]
+                                                : currentInvoice?.invoice.installments?.filter(i => i._id !== insta._id);
+
+                                            setCurrentInvoice(prev => {
+                                                return {
+                                                    ...prev,
+                                                    invoice: {
+                                                        ...prev.invoice,
+                                                        installments: updatedInstallments,
+                                                    }
+                                                };
+                                            });
+                                        }}
+                                    />
+                                    <div className="grid grid-cols-2 md:grid-cols-4 space-x-7">
+                                        <InputGroup disabled={true} label="Instalment Type" value={insta.installmentType} />
+                                        <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Instalment Total" value={insta.installmentRate} />
+                                        <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Deducted Amount" value={insta.deductionAmount} />
+                                        <div className="flex items-center justify-center self-end mb-4 text-xs w-15">
+                                            {insta.signed ? (
+                                                <p className="bg-green-400/30 text-green-700 px-2 py-1 rounded-md">Signed</p>
+                                            ) : (
+                                                <p className="bg-yellow-400/30 text-yellow-700 px-2 py-1 rounded-md">Unsigned</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                </div>
+                            ))}
+                        </InputWrapper>
+                    )}
+
+                    {/* Daily Invoices */}
+                    <div className="mb-6">
+                        <InputWrapper title={'Invoices'}>
+                            <div className="overflow-x-auto rounded-lg">
+                                <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 mb-2">
+                                    <thead>
+                                        <tr className="bg-primary-800  !text-white">
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Invoice Number</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Date</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Main Service</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Service Rate</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">BYOD Rate</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Miles</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Mileage Rate</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Calculated Mileage</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
+                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentInvoice?.invoice.invoices
+                                            .sort((a, b) => new Date(a.date) - new Date(b.date))
+                                            .map((invoice, index) => {
+                                                const hasDriverVat = currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== "" &&
+                                                    new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate);
+
+                                                const hasCompanyVat = currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== "" &&
+                                                    new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate);
+                                                return (
+                                                    <tr key={invoice._id} className={index % 2 === 0 ? 'bg-white dark:bg-dark-3' : 'bg-gray-50 dark:bg-dark-4'}>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{invoice.invoiceNumber}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{new Date(invoice.date).toLocaleDateString('en-UK')}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{invoice.mainService}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.serviceRateforMain}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.byodRate}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{invoice.miles}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.mileage}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.calculatedMileage}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.incentiveDetailforMain?.rate || 0}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{(hasDriverVat || hasCompanyVat ? '20%' : '-')}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{calculateTotal(invoice)}</td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        <tr>
+                                            <td colSpan={8}>
+                                            </td>
+                                            <td
+                                                className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"
+                                            >
+                                                Subtotal:
+                                            </td>
+                                            <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"
+                                            >
+                                                £{currentInvoice?.invoice.vatTotal}
+                                            </td>
+                                            <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                £{currentInvoice?.invoice.invoices.reduce((sum, inv) => calculateTotal(inv) + sum || 0, 0)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Installment Info Table */}
+                            {currentInvoice?.invoice.installmentDetail?.length > 0 && (
+                                <div className='rounded-lg overflow-hidden'>
+                                    <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
+                                        <thead>
+                                            <tr className="bg-primary-800 text-white">
+                                                <th className="text-xs px-4 py-2 border-r border-primary-600">Instalment Type</th>
+                                                <th className="text-xs px-4 py-2 border-r border-primary-600">Deducted Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {currentInvoice.invoice.installmentDetail.map(insta => (
+                                                <tr key={insta._id} className="bg-gray-50 dark:bg-dark-4">
+                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{insta.installmentType}</td>
+                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{insta.deductionAmount}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                        </InputWrapper>
+                    </div>
+
+
+                    {/* Weekly Total */}
+                    <div className="mt-6">
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">Weekly Total</h3>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                            £{currentInvoice?.invoice.total}
+                        </p>
+                    </div>
+                </div >
+                <div className="border-t border-neutral-300 flex px-2 md:px-6 py-2 justify-end gap-2 items-center">
+                    <button
+                        className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600"
+                        onClick={() => setCurrentInvoice(null)}
+                    >
+                        Close
+                    </button>
+                    <button
+                        onClick={() => {
+                            // handlePrint()
+                        }}
+                        className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600"
+                    >
+                        Print Weekly Invoice
+                    </button>
+                </div>
+            </Modal >
+        </div >
     );
 };
 

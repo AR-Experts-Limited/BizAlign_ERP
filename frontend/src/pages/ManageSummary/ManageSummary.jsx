@@ -13,6 +13,7 @@ import InputGroup from '../../components/InputGroup/InputGroup';
 import { FcApproval, FcClock, FcTodoList, FcHighPriority, FcCheckmark } from "react-icons/fc";
 import { BsCheckCircleFill } from "react-icons/bs";
 import { AiOutlineClockCircle } from "react-icons/ai";
+import { cosineSimilarityFromText } from './similarity'
 {/* <AiOutlineClockCircle className="text-yellow-500 text-xl" />, */ }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -102,7 +103,7 @@ const ManageSummary = () => {
 
             let matchedCsv = null
 
-            const key = `${invoiceDate}_${invoiceName}_${invoiceService}`;
+            const key = `${invoiceDate}_${invoiceName}`;
             if (existingCsvData)
                 matchedCsv = existingCsvData
 
@@ -119,6 +120,8 @@ const ManageSummary = () => {
 
             {/*Comment this when testing with erp_rainaltd */ }
             if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
+                const similarity = cosineSimilarityFromText(invoice.mainService, matchedCsv?.['Service Type'])
+                console.log(similarity)
                 const match = (Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance'])) ? true : false
                 if (match) {
                     let invoiceMatch = { ...invoice, approvalStatus: 'Under Approval' }
@@ -170,7 +173,7 @@ const ManageSummary = () => {
                         const csvName = csv['Delivery Associate']?.trim();
                         const csvService = csv['Service Type']?.trim();
 
-                        const key = `${csvDate}_${csvName}_${csvService}`;
+                        const key = `${csvDate}_${csvName}`;
                         csvLookup[key] = csv;
                     })
                     setCsvData(csvLookup);

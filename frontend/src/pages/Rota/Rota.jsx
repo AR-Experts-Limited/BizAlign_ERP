@@ -67,6 +67,7 @@ const Rota = () => {
     const [rotaDetail, setRotaDetail] = useState(null);
     const [errors, setErrors] = useState({});
     const [openTotalBreakdown, setOpenTotalBreakdown] = useState(false)
+    const [loading, setLoading] = useState(true)
 
     // Consolidated state objects
     const state = {
@@ -132,6 +133,7 @@ const Rota = () => {
 
         setScheduleMap(scheduleMap);
         setWeeklyMap(weeklyMap);
+        setLoading(false)
     }, [schedules]);
 
     // Fetch schedules when range or drivers change
@@ -183,21 +185,12 @@ const Rota = () => {
 
         const rateCard = rateCardFinder(ratecards, week, service, typeOfDriver);
         const deductions = await getDeductionDetails(_id, day);
-        let installments = await getInstallmentDetails(_id);
         const incentives = await getIncentiveDetails(service, site, new Date(day))
 
-        console.log(incentives[0])
-        installments = installments.map((insta) => {
-            const perDayInstallmentRate = Number(
-                parseFloat(insta.spreadRate / weeklyMap[`${_id}_${week}`]).toFixed(2)
-            );
-            return { ...insta, perDayInstallmentRate };
-        });
 
         if (invoice) {
             setRotaDetail({
                 dayInvoice: invoice,
-                installments: invoice.installmentDetail ? invoice.installmentDetail : installments,
                 deductions: invoice.deductionDetail ? invoice.deductionDetail : deductions,
                 incentiveDetailforMain: invoice.incentiveDetail ? invoice.incentiveDetail : incentives,
                 existingInvoice: true
@@ -220,7 +213,6 @@ const Rota = () => {
             mileage: rateCard?.mileage || 0,
             miles: '',
             calculatedMileage: '',
-            installmentDetail: installments,
             deductionDetail: deductions,
             incentiveDetailforMain: incentives[0],
             total: 0,
@@ -228,7 +220,6 @@ const Rota = () => {
 
         setRotaDetail({
             dayInvoice,
-            installments,
             deductions,
             existingInvoice: false
         });
@@ -364,23 +355,6 @@ const Rota = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const updateInstallmentPage = async () => {
-        let dayInvoice = rotaDetail.dayInvoice
-        if (Object.keys(dayInvoice).includes('installmentDetail')) {
-            dayInvoice.installmentDetail.map(async (insta) => {
-                var { _id, tenure, installmentType, installmentPending, installmentRate, spreadRate, perDayInstallmentRate } = insta
-                const newInstallmentRate = installmentPending - perDayInstallmentRate
-                await axios.put(`${API_BASE_URL}/api/installments/`, {
-                    _id,
-                    driverId: dayInvoice.driverId,
-                    tenure: tenure,
-                    installmentType: installmentType,
-                    installmentPending: newInstallmentRate,
-                })
-            })
-        }
-
-    }
 
     const handleAddInvoice = async () => {
         if (!validateFields()) return;
@@ -390,7 +364,6 @@ const Rota = () => {
                 `${API_BASE_URL}/api/dayInvoice/`,
                 rotaDetail.dayInvoice
             );
-            updateInstallmentPage()
             const dateObj = new Date(rotaDetail.dayInvoice.date);
             const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${rotaDetail.dayInvoice.driverId}`;
@@ -412,8 +385,7 @@ const Rota = () => {
         try {
             await axios.delete(`${API_BASE_URL}/api/dayInvoice/`, {
                 data: {
-                    driverId: rotaDetail.dayInvoice.driverId,
-                    date: rotaDetail.dayInvoice.date,
+                    _id: rotaDetail.dayInvoice._id
                 }
             });
 
@@ -439,10 +411,6 @@ const Rota = () => {
         const miles = mileValue ? mileValue : dayInvoice.miles;
         const calculatedMileage = Number((miles * dayInvoice.mileage).toFixed(2));
 
-        const totalPerDayInstallment = dayInvoice.installmentDetail?.reduce(
-            (sum, insta) => sum + Number(insta.perDayInstallmentRate || 0),
-            0
-        );
 
         const totalDeductions = dayInvoice.deductionDetail?.reduce(
             (sum, ded) => sum + Number(ded.rate || 0),
@@ -467,7 +435,6 @@ const Rota = () => {
                     calculatedMileage +
                     additionalServiceTotal +
                     incentiveDetailforMain -
-                    totalPerDayInstallment -
                     totalDeductions).toFixed(2)
             ),
             approvalStatus: "Access Requested",
@@ -499,34 +466,43 @@ const Rota = () => {
         const borderColor = streak < 3 ? 'border-l-green-500/60' :
             streak < 5 ? 'border-l-yellow-500/60' :
                 'border-l-red-400';
+        if (loading) {
+            return (
+                <td key={day.date} className={cellClass}>
 
-        return (
-            <td key={day.date} className={cellClass}>
-                <div className="relative flex justify-center h-full w-full">
-                    <div className="relative max-w-40">
-                        <div
-                            onClick={() => { if (!isLocked) handleShowDetails(schedule, driver, invoice) }}
-                            className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
+                    <div className="cursor-pointer flex h-full w-full justify-center items-center">
+                        <div className="h-full w-40 max-w-40 rounded-md bg-gradient-to-r from-stone-200 via-stone-100 to-stone-200 animate-[shimmer_1.5s_infinite] bg-[length:200%_100%]" />
+                    </div>
+                </td>)
+        }
+        else
+            return (
+                <td key={day.date} className={cellClass}>
+                    <div className="relative flex justify-center h-full w-full">
+                        <div className="relative max-w-40">
+                            <div
+                                onClick={() => { if (!isLocked) handleShowDetails(schedule, driver, invoice) }}
+                                className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
                 ${!isLocked ? 'cursor-pointer' : ''}
                 border-l-4 ${borderColor} 
                 ${isLocked && 'border-[1.5px] border-dashed border-gray-400/70 [border-left-style:solid] text-gray-400/70'} 
                 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}
-                        >
-                            <div className="overflow-auto max-h-[4rem]">{schedule?.service}</div>
-                            <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px]">
-                                {invoice ? (
-                                    <i className="flex items-center text-sky-500 fi fi-rr-paper-plane"></i>
-                                ) : isLocked ? (
-                                    <FaLock size={17} />
-                                ) : (
-                                    <FaUnlock className="text-orange-400" size={17} />
-                                )}
+                            >
+                                <div className="overflow-auto max-h-[4rem]">{schedule?.service}</div>
+                                <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px]">
+                                    {invoice ? (
+                                        <i className="flex items-center text-sky-500 fi fi-rr-paper-plane"></i>
+                                    ) : isLocked ? (
+                                        <FaLock size={17} />
+                                    ) : (
+                                        <FaUnlock className="text-orange-400" size={17} />
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </td>
-        );
+                </td>
+            );
     };
 
     /**
@@ -633,55 +609,6 @@ const Rota = () => {
                                 <InputGroup type="text" icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                     iconPosition="left" label={`${rotaDetail?.dayInvoice?.incentiveDetailforMain.type} Incentive`} value={rotaDetail?.dayInvoice?.incentiveDetailforMain.rate} disabled /> </div>)
                         }
-
-                        {/* Installments Section */}
-                        {rotaDetail?.installments?.length > 0 && (
-                            <InputWrapper title="Instalments">
-                                {rotaDetail?.installments?.map((insta) => (
-                                    <div key={insta._id} className="flex items-center gap-5 justify-between">
-                                        <input
-                                            type="checkbox"
-                                            className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
-                                            checked={rotaDetail?.dayInvoice?.installmentDetail?.some(i => i._id === insta._id)}
-                                            onChange={(e) => {
-                                                const isChecked = e.target.checked;
-                                                const updatedInstallments = isChecked
-                                                    ? [...(rotaDetail?.dayInvoice?.installmentDetail || []), insta]
-                                                    : rotaDetail?.dayInvoice?.installmentDetail?.filter(i => i._id !== insta._id);
-
-                                                setRotaDetail(prev => {
-                                                    const currentTotal = Number(prev.dayInvoice?.total || 0);
-                                                    const rate = Number(insta?.perDayInstallmentRate || 0);
-                                                    const newTotal = isChecked ? currentTotal - rate : currentTotal + rate;
-
-                                                    return {
-                                                        ...prev,
-                                                        dayInvoice: {
-                                                            ...prev.dayInvoice,
-                                                            installmentDetail: updatedInstallments,
-                                                            total: Number(newTotal.toFixed(2))
-                                                        }
-                                                    };
-                                                });
-                                            }}
-                                        />
-                                        <div className="grid grid-cols-4 space-x-3">
-                                            <InputGroup disabled={true} label="Instalment Type" value={insta.installmentType} />
-                                            <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Instalment Total" value={insta.installmentRate} />
-                                            <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Instalment Rate" value={insta.spreadRate} />
-                                            <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Instalment Deducted" value={insta.perDayInstallmentRate} />
-                                        </div>
-                                        <div className="flex items-center justify-end self-end mb-4 text-xs w-15">
-                                            {insta.signed ? (
-                                                <p className="bg-green-400/30 text-green-700 px-2 py-1 rounded-md">Signed</p>
-                                            ) : (
-                                                <p className="bg-yellow-400/30 text-yellow-700 px-2 py-1 rounded-md">Unsigned</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </InputWrapper>
-                        )}
 
                         {/* Deductions Section */}
                         {rotaDetail?.deductions?.length > 0 && (
