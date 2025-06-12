@@ -625,7 +625,7 @@ const Rota = () => {
                             <InputWrapper title="Deductions">
                                 {rotaDetail?.deductions?.map((ded) => (
                                     <div key={ded._id} className="flex items-center gap-5 justify-between">
-                                        <input
+                                        {/* <input
                                             className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
                                             type="checkbox"
                                             checked={rotaDetail?.dayInvoice?.deductionDetail?.some((d) => d._id === ded._id)}
@@ -650,7 +650,7 @@ const Rota = () => {
                                                     };
                                                 });
                                             }}
-                                        />
+                                        /> */}
                                         <div className="flex-1 grid grid-cols-2 space-x-3">
                                             <InputGroup disabled={true} label="Deduction Type" value={ded.serviceType} />
                                             <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Deduction amount" value={ded.rate} />
