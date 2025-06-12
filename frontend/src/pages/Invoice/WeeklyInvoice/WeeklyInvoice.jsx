@@ -167,7 +167,7 @@ const WeeklyInvoice = () => {
                             return (
                                 <div className={`relative flex justify-center h-full w-full `}>
                                     <div className='relative max-w-40 w-full'>
-                                        <div onClick={() => { if (allCompleted || !invoice.unsigned) handleShowDetails(invoice) }} className={`${!allCompleted || invoice.unsigned && 'border-dashed border-gray-300'} relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
+                                        <div onClick={() => { handleShowDetails(invoice) }} className={`${!allCompleted || invoice.unsigned && 'border-dashed border-gray-300'} relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                             <div className='grid grid-cols-[3fr_1fr] w-full'>
                                                 <strong className='text-xs'>Total Invoice count:</strong>
                                                 <div className='text-xs overflow-auto max-h-[4rem] w-full text-center'> {invoice?.count}</div>
@@ -192,7 +192,7 @@ const WeeklyInvoice = () => {
     }
 
     return (
-        <div className="w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white">
+        <div className="w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white rounded-xl">
             <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>Weekly Invoice</h2>
             <div className="flex flex-col gap-3 w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-3 shadow overflow-hidden">
                 <div className="grid grid-cols-2 md:grid-cols-4 p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
@@ -447,8 +447,7 @@ const WeeklyInvoice = () => {
                             <div className="overflow-x-auto rounded-lg">
                                 <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 mb-2">
                                     <thead>
-                                        <tr className="bg-primary-800  !text-white">
-                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Invoice Number</th>
+                                        <tr className="bg-primary-800 !text-white">
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Date</th>
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Main Service</th>
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Service Rate</th>
@@ -456,8 +455,29 @@ const WeeklyInvoice = () => {
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Miles</th>
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Mileage Rate</th>
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Calculated Mileage</th>
+                                            {currentInvoice?.invoice.invoices.some(
+                                                (invoice) =>
+                                                    invoice.additionalServiceDetails?.service || invoice.additionalServiceApproval === 'Requested'
+                                            ) && (
+                                                    <>
+                                                        <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">
+                                                            Additional Service Type
+                                                        </th>
+                                                        <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">
+                                                            Additional Service Total
+                                                        </th>
+                                                    </>
+                                                )}
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>
-                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
+                                            {currentInvoice?.invoice.invoices.some(
+                                                (invoice) =>
+                                                    (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
+                                                    (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate))
+                                            ) && (
+                                                    <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
+                                                )}
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total</th>
                                         </tr>
                                     </thead>
@@ -465,41 +485,103 @@ const WeeklyInvoice = () => {
                                         {currentInvoice?.invoice.invoices
                                             .sort((a, b) => new Date(a.date) - new Date(b.date))
                                             .map((invoice, index) => {
-                                                const hasDriverVat = currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== "" &&
+                                                const hasDriverVat =
+                                                    currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate);
-
-                                                const hasCompanyVat = currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== "" &&
+                                                const hasCompanyVat =
+                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate);
                                                 return (
                                                     <tr key={invoice._id} className={index % 2 === 0 ? 'bg-white dark:bg-dark-3' : 'bg-gray-50 dark:bg-dark-4'}>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{invoice.invoiceNumber}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{new Date(invoice.date).toLocaleDateString('en-UK')}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{invoice.mainService}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.serviceRateforMain}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.byodRate}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{invoice.miles}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.mileage}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.calculatedMileage}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{invoice.incentiveDetailforMain?.rate || 0}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{(hasDriverVat || hasCompanyVat ? '20%' : '-')}</td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">£{calculateTotal(invoice)}</td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            {new Date(invoice.date).toLocaleDateString('en-UK')}
+                                                        </td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            {invoice.mainService}
+                                                        </td>
+                                                        <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            £{invoice.serviceRateforMain}
+                                                        </td>
+                                                        <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            £{invoice.byodRate}
+                                                        </td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            {invoice.miles}
+                                                        </td>
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            £{invoice.mileage}
+                                                        </td>
+                                                        <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            £{invoice.calculatedMileage}
+                                                        </td>
+                                                        {currentInvoice?.invoice.invoices.some(
+                                                            (inv) => inv.additionalServiceDetails?.service || inv.additionalServiceApproval === 'Requested'
+                                                        ) && (
+                                                                <>
+                                                                    <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                        {invoice.additionalServiceApproval === 'Requested' ? (
+                                                                            <div className="bg-red-200/40 text-red-400 text-xs px-2 py-1 rounded">Waiting for approval</div>
+                                                                        ) : (
+                                                                            invoice.additionalServiceDetails?.service || '-'
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="text-sm font-medium dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                        {invoice.additionalServiceApproval === 'Requested' ? (
+                                                                            <div className="bg-red-200/40 text-red-400 text-xs px-2 py-1 rounded">Waiting for approval</div>
+                                                                        ) : (
+                                                                            invoice.serviceRateforAdditional ? <p className='text-sm font-medium text-green-600'>£ {invoice.serviceRateforAdditional}</p> : '-'
+                                                                        )}
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            £{invoice.incentiveDetailforMain?.rate || 0}
+                                                        </td>
+                                                        {currentInvoice?.invoice.invoices.some(
+                                                            (inv) =>
+                                                                (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
+                                                                    new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
+                                                                (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                                    new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate))
+                                                        ) && (
+                                                                <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                    {hasDriverVat || hasCompanyVat ? '20%' : '-'}
+                                                                </td>
+                                                            )}
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            £{invoice.total}
+                                                        </td>
                                                     </tr>
-                                                )
+                                                );
                                             })}
                                         <tr>
-                                            <td colSpan={8}>
-                                            </td>
                                             <td
-                                                className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"
-                                            >
+                                                colSpan={
+                                                    7 +
+                                                    (currentInvoice?.invoice.invoices.some(
+                                                        (invoice) =>
+                                                            invoice.additionalServiceDetails?.service || invoice.additionalServiceApproval === 'Requested'
+                                                    )
+                                                        ? 2
+                                                        : 0)
+                                                }
+                                            ></td>
+                                            <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                 Subtotal:
                                             </td>
-                                            <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"
-                                            >
-                                                £{currentInvoice?.invoice.vatTotal}
-                                            </td>
+                                            {currentInvoice?.invoice.invoices.some(
+                                                (invoice) =>
+                                                    (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
+                                                    (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate))
+                                            ) && (
+                                                    <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                        £{currentInvoice?.invoice.vatTotal}
+                                                    </td>
+                                                )}
                                             <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                £{currentInvoice?.invoice.invoices.reduce((sum, inv) => calculateTotal(inv) + sum || 0, 0)}
+                                                £{currentInvoice?.invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0)}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -519,7 +601,7 @@ const WeeklyInvoice = () => {
                                             {currentInvoice.invoice.installmentDetail.map(insta => (
                                                 <tr key={insta._id} className="bg-gray-50 dark:bg-dark-4">
                                                     <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{insta.installmentType}</td>
-                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{insta.deductionAmount}</td>
+                                                    <td className="text-sm text-red-700 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{insta.deductionAmount}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

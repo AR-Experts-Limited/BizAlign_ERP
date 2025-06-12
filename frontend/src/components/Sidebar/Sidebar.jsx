@@ -64,7 +64,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
     return (
         <div
             ref={containerRef}
-            className={`h-full bg-neutral-300/60 dark:bg-dark-3 border-r border-stone-400/40 overflow-auto transition-all duration-300 origin-left
+            className={`h-full bg-neutral-200/50 dark:bg-dark-3 border-r border-stone-400/40 overflow-auto transition-all duration-300 origin-left
             ${sidebarIsOpen ? 'w-45 md:w-60' : 'w-0 md:w-18'}
             ${delayedPointerEnabled ? 'pointer-events-none' : ''}`}
         >

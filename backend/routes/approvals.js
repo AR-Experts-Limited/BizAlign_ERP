@@ -5,7 +5,10 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     const Approval = req.db.model('Approval', require('../models/Approvals').schema);
     try {
-        const approval = await Approval.find().sort({ createdAt: -1 });;
+        const approval = await Approval.find().populate({
+            path: 'reqData.dayInvoiceId',
+            model: 'DayInvoice',
+        }).sort({ createdAt: -1 });;
         res.json(approval);
     }
     catch (error) {

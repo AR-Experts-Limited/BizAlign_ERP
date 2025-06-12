@@ -7,6 +7,7 @@ const TotalBreakdown = ({
     serviceRateforMain,
     byodRate,
     additionalServiceDetails,
+    additionalServiceApproval,
     deductionDetail,
     incentiveDetailforMain,
     total,
@@ -44,7 +45,7 @@ const TotalBreakdown = ({
                     <span>£</span>
                     <span className="text-right">{calculatedMileage}</span>
                 </div>
-                {additionalServiceDetails && <div className="grid grid-cols-[7fr_1fr_1fr]">
+                {additionalServiceDetails && additionalServiceApproval === 'Approved' && <div className="grid grid-cols-[7fr_1fr_1fr]">
                     <span>Additional Services:</span>
                     <span>£</span>
                     <span className="text-right">{additionalServiceTotal}</span>

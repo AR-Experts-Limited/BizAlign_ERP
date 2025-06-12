@@ -46,8 +46,8 @@ const Approvals = () => {
                 break;
             case 'additionalService':
                 let additionalServiceApproval = decision === 'Approved' ? 'Approved' : '';
-                let dayInvoice = approval.reqData.dayInvoiceFiltered;
-                const additionalServiceDetails = approval.reqData.additionalServiceDetails;
+                let dayInvoice = approval.reqData.dayInvoiceId;
+                const additionalServiceDetails = additionalServiceApproval === 'Approved' ? approval.reqData.additionalServiceDetails : null;
 
                 if (decision === 'Approved') {
                     dayInvoice = {
@@ -58,20 +58,16 @@ const Approvals = () => {
                             additionalServiceDetails.calculatedMileage +
                             (additionalServiceDetails?.incentiveDetailforAdditional ?? 0)
                         ),
-                        total: parseInt(
-                            dayInvoice.serviceRateforMain +
+                        total: parseFloat(
+                            dayInvoice.total +
                             additionalServiceDetails.serviceRate +
                             additionalServiceDetails.byodRate +
-                            additionalServiceDetails.calculatedMileage
-                        )
+                            additionalServiceDetails.calculatedMileage +
+                            (additionalServiceDetails?.incentiveDetailforAdditional ?? 0))
                     };
-                    await axios.put(`${API_BASE_URL}/api/dayInvoice/`, { ...dayInvoice, additionalServiceDetails });
                 }
+                await axios.put(`${API_BASE_URL}/api/dayInvoice/${dayInvoice._id}`, { ...dayInvoice, additionalServiceDetails, additionalServiceApproval });
 
-                await axios.put(`${API_BASE_URL}/api/dayInvoice/additionalserviceapproval`, {
-                    id: approval.reqData.dayInvoiceId,
-                    additionalServiceApproval
-                });
                 await axios.put(`${API_BASE_URL}/api/approvals`, {
                     id: approval._id,
                     userDetails: `${userDetails.firstName} ${userDetails.lastName}`,
@@ -116,10 +112,10 @@ const Approvals = () => {
                     />
                 </div>
 
-                <div className="overflow-auto max-h-[42rem]">
+                <div className="overflow-auto flex-1">
                     <table className="min-w-full text-sm table-general">
                         <thead>
-                            <tr className="sticky uppercase top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
+                            <tr className="sticky  top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
                                 <th className='max-w-10' >#</th>
                                 <th >Details</th>
                                 <th className='' >Approve/Deny</th>

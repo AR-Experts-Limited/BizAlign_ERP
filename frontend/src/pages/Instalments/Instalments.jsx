@@ -105,7 +105,7 @@ const Instalments = () => {
             });
             data.append('signed', false)
             const response = await axios.post(`${API_BASE_URL}/api/installments`, data);
-            setInstalments([...instalments, response.data]);
+            setInstalments([...instalments, response.data.installment]);
             setNewInstalment(clearInstalment)
         } catch (error) {
             console.error('Error adding deduction:', error);
