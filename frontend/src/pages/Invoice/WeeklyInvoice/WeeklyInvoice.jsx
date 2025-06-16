@@ -39,6 +39,7 @@ const WeeklyInvoice = () => {
     const [invoices, setInvoices] = useState([])
     const [groupedInvoices, setGroupedInvoices] = useState([])
     const [currentInvoice, setCurrentInvoice] = useState(null)
+    const [changed, setChanged] = useState(false)
 
     useEffect(() => {
         if (siteStatus === 'idle') dispatch(fetchSites());
@@ -140,6 +141,12 @@ const WeeklyInvoice = () => {
         setCurrentInvoice({ invoice, instalments })
     }
 
+    const handleUpdateInvoice = async (currentInvoice) => {
+        const response = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/update`, { weeklyInvoiceId: currentInvoice.invoice._id, installmentDetail: currentInvoice.invoice.installmentDetail, weeklyTotal: currentInvoice.invoice.total, instalments: currentInvoice.instalments })
+        console.log(response.data)
+        setChanged(false)
+    }
+
     const calculateTotal = (invoice) => {
 
         return (
@@ -155,7 +162,6 @@ const WeeklyInvoice = () => {
         return weeks.map((week) => {
             const key = `${driver._id}_${week.week}`;
             const invoice = groupedInvoices[key];
-            console.log(key, groupedInvoices)
             const isToday = moment(week, 'week').format('YYYY-[W]ww') === moment().format('YYYY-[W]ww')
             const cellClass = isToday ? 'bg-amber-100/30' : '';
             const allCompleted = invoice?.count === invoice?.invoices.filter((inv) => inv.approvalStatus === 'completed').length
@@ -409,18 +415,13 @@ const WeeklyInvoice = () => {
                                 );
 
                                 const currentTotal = currentInvoice?.invoice?.total ?? 0;
-
-                                // Compute installmentPending from installmentDetail or instalment data
-                                const installmentPending = matchedDetail
-                                    ? insta.installmentRate - (matchedDetail.deductionAmount || 0) // Compute pending as total - deducted
-                                    : insta.installmentRate; // If no detail exists, use full installmentRate
-
-                                // Use backend-provided deductionAmount if available, otherwise calculate
                                 const deductionAmount = matchedDetail
-                                    ? matchedDetail.deductionAmount
-                                    : Math.max(0, Math.min(insta.spreadRate, currentTotal, installmentPending));
-
-                                const isDisabled = deductionAmount === 0 && !isChecked;
+                                    ? matchedDetail.deductionAmount.toFixed(2)
+                                    : Math.max(
+                                        0,
+                                        Math.min(insta.spreadRate, currentTotal, insta.installmentPending)
+                                    ).toFixed(2);
+                                const isDisabled = Number(deductionAmount) === 0 && !isChecked;
 
                                 return (
                                     <div
@@ -433,6 +434,7 @@ const WeeklyInvoice = () => {
                                             checked={isChecked}
                                             disabled={isDisabled}
                                             onChange={(e) => {
+                                                setChanged(true)
                                                 const checked = e.target.checked;
                                                 setCurrentInvoice((prev) => {
                                                     const prevInvoice = prev.invoice || {};
@@ -440,91 +442,130 @@ const WeeklyInvoice = () => {
                                                     const toggledId = insta._id.toString();
 
                                                     if (!checked) {
-                                                        // UNCHECK logic
-                                                        const restoredTotal =
-                                                            (prevInvoice.total ?? 0) + prevDetails.reduce((sum, d) => sum + d.deductionAmount, 0);
-                                                        const remainingIds = prevDetails.map((d) => d._id.toString()).filter((id) => id !== toggledId);
+                                                        // UNCHECK LOGIC with reset
+                                                        const uncheckedDetail = prevDetails.find(
+                                                            (d) => d._id.toString() === toggledId
+                                                        );
+                                                        const uncheckedDeduction = uncheckedDetail?.deductionAmount ?? 0;
+
+                                                        // Restore total from all deductions
+                                                        let restoredTotal = (prevInvoice.total ?? 0) + prevDetails.reduce(
+                                                            (sum, d) => sum + d.deductionAmount,
+                                                            0
+                                                        );
+
+                                                        restoredTotal = parseFloat(restoredTotal.toFixed(2));
+
+                                                        // Recompute only with remaining checked items (excluding this one)
+                                                        const remainingIds = prevDetails
+                                                            .map((d) => d._id.toString())
+                                                            .filter((id) => id !== toggledId);
+
                                                         let newTotal = restoredTotal;
                                                         const newInstallmentDetail = [];
 
-                                                        for (const installment of prev.instalments || []) {
-                                                            const id = installment._id.toString();
-                                                            if (remainingIds.includes(id)) {
-                                                                const existingDetail = prevDetails.find((d) => d._id.toString() === id);
-                                                                const pending = existingDetail
-                                                                    ? installment.installmentRate - (existingDetail.deductionAmount || 0)
-                                                                    : installment.installmentRate;
-                                                                const deduction = Math.max(0, Math.min(installment.spreadRate, newTotal, pending));
-                                                                if (deduction > 0) {
-                                                                    newTotal -= deduction;
-                                                                    newInstallmentDetail.push({
-                                                                        _id: installment._id,
-                                                                        installmentType: installment.installmentType,
-                                                                        deductionAmount: deduction,
-                                                                    });
-                                                                }
-                                                            }
-                                                        }
+                                                        const updatedInstalments = (prev.instalments || []).map((item) => {
+                                                            const id = item._id.toString();
 
-                                                        // Calculate updated installmentPending for all instalments based on new details
-                                                        const newInstalments = (prev.instalments || []).map((instaItem) => {
-                                                            const matchedDetail = newInstallmentDetail.find(
-                                                                (d) => d._id.toString() === instaItem._id.toString()
-                                                            );
-                                                            const deduction = matchedDetail ? matchedDetail.deductionAmount : 0;
-                                                            const newPendingAmount = instaItem.installmentRate - deduction;
-                                                            return {
-                                                                ...instaItem,
-                                                                installmentPending: newPendingAmount >= 0 ? newPendingAmount : 0,
-                                                            };
+                                                            if (remainingIds.includes(id)) {
+                                                                const deduction = Math.max(
+                                                                    0,
+                                                                    Math.min(item.spreadRate, newTotal, item.installmentPending + (prevDetails.find(d => d._id.toString() === id)?.deductionAmount || 0))
+                                                                );
+                                                                const roundedDeduction = parseFloat(deduction.toFixed(2));
+
+                                                                newTotal = parseFloat((newTotal - roundedDeduction).toFixed(2));
+
+                                                                newInstallmentDetail.push({
+                                                                    _id: item._id,
+                                                                    installmentType: item.installmentType,
+                                                                    deductionAmount: roundedDeduction,
+                                                                });
+
+                                                                return {
+                                                                    ...item,
+                                                                    installmentPending: parseFloat(
+                                                                        (
+                                                                            Math.min(
+                                                                                item.installmentPending +
+                                                                                (prevDetails.find(d => d._id.toString() === id)?.deductionAmount || 0),
+                                                                                item.installmentRate
+                                                                            ) - roundedDeduction
+                                                                        ).toFixed(2)
+                                                                    ),
+                                                                };
+                                                            }
+
+                                                            // If this was the one just unchecked, restore its pending fully
+                                                            if (id === toggledId) {
+                                                                return {
+                                                                    ...item,
+                                                                    installmentPending: parseFloat(
+                                                                        (
+                                                                            Math.min(
+                                                                                item.installmentPending + uncheckedDeduction,
+                                                                                item.installmentRate
+                                                                            )
+                                                                        ).toFixed(2)
+                                                                    ),
+                                                                };
+                                                            }
+
+                                                            return item;
                                                         });
 
                                                         return {
                                                             ...prev,
                                                             invoice: {
                                                                 ...prev.invoice,
-                                                                total: newTotal < 0 ? 0 : newTotal,
+                                                                total: newTotal,
                                                                 installmentDetail: newInstallmentDetail,
                                                             },
-                                                            instalments: newInstalments,
+                                                            instalments: updatedInstalments,
                                                         };
                                                     } else {
-                                                        // CHECK logic
-                                                        const isAlreadySelected = prevDetails.some((d) => d._id.toString() === toggledId);
+                                                        // CHECK LOGIC - apply deduction directly
+                                                        const isAlreadySelected = prevDetails.some(
+                                                            (d) => d._id.toString() === toggledId
+                                                        );
                                                         if (isAlreadySelected) return prev;
 
                                                         const newTotal = prevInvoice.total ?? 0;
-                                                        const deduction = Math.max(0, Math.min(insta.spreadRate, newTotal, installmentPending));
-                                                        if (deduction === 0) return prev;
+                                                        const deduction = Math.max(
+                                                            0,
+                                                            Math.min(insta.spreadRate, newTotal, insta.installmentPending)
+                                                        );
+                                                        const roundedDeduction = parseFloat(deduction.toFixed(2));
+                                                        if (roundedDeduction === 0) return prev;
 
-                                                        // Add the new detail
                                                         const newInstallmentDetail = [
                                                             ...prevDetails,
                                                             {
                                                                 _id: insta._id,
                                                                 installmentType: insta.installmentType,
-                                                                deductionAmount: deduction,
+                                                                deductionAmount: roundedDeduction,
                                                             },
                                                         ];
 
-                                                        // Update installmentPending on instalments
                                                         const newInstalments = (prev.instalments || []).map((instaItem) => {
                                                             if (instaItem._id.toString() === toggledId) {
-                                                                const newPendingAmount = instaItem.installmentRate - deduction;
                                                                 return {
                                                                     ...instaItem,
-                                                                    installmentPending: newPendingAmount >= 0 ? newPendingAmount : 0,
+                                                                    installmentPending: parseFloat(
+                                                                        (
+                                                                            instaItem.installmentPending - roundedDeduction
+                                                                        ).toFixed(2)
+                                                                    ),
                                                                 };
-                                                            } else {
-                                                                return instaItem;
                                                             }
+                                                            return instaItem;
                                                         });
 
                                                         return {
                                                             ...prev,
                                                             invoice: {
                                                                 ...prev.invoice,
-                                                                total: newTotal - deduction,
+                                                                total: parseFloat((newTotal - roundedDeduction).toFixed(2)),
                                                                 installmentDetail: newInstallmentDetail,
                                                             },
                                                             instalments: newInstalments,
@@ -532,7 +573,6 @@ const WeeklyInvoice = () => {
                                                     }
                                                 });
                                             }}
-
                                         />
 
                                         <div className="grid grid-cols-2 md:grid-cols-4 space-x-7">
@@ -546,7 +586,7 @@ const WeeklyInvoice = () => {
                                                 icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                 iconPosition="left"
                                                 label="Instalment Total"
-                                                value={insta.installmentRate}
+                                                value={insta.installmentRate.toFixed(2)}
                                             />
                                             <InputGroup
                                                 disabled={true}
@@ -572,6 +612,9 @@ const WeeklyInvoice = () => {
                             })}
                         </InputWrapper>
                     )}
+
+
+
 
 
                     {console.log("Invoice:", currentInvoice?.instalments)}
@@ -608,6 +651,8 @@ const WeeklyInvoice = () => {
                                                 )}
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>
                                             {currentInvoice?.invoice.invoices.some(
+                                                (invoice) => invoice.deductionDetail.length > 0) && <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Deductions</th>}
+                                            {currentInvoice?.invoice.invoices.some(
                                                 (invoice) =>
                                                     (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                         new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
@@ -616,6 +661,7 @@ const WeeklyInvoice = () => {
                                             ) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
                                                 )}
+
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total</th>
                                         </tr>
                                     </thead>
@@ -623,6 +669,9 @@ const WeeklyInvoice = () => {
                                         {currentInvoice?.invoice.invoices
                                             .sort((a, b) => new Date(a.date) - new Date(b.date))
                                             .map((invoice, index) => {
+                                                const totalDeductions = invoice.deductionDetail?.reduce((sum, ded) => {
+                                                    return sum + parseFloat(ded.rate || 0);
+                                                }, 0);
                                                 const hasDriverVat =
                                                     currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate);
@@ -675,6 +724,9 @@ const WeeklyInvoice = () => {
                                                         <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             £{invoice.incentiveDetailforMain?.rate || 0}
                                                         </td>
+                                                        {totalDeductions > 0 && <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                            -£{totalDeductions}
+                                                        </td>}
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (inv) =>
                                                                 (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
@@ -686,6 +738,7 @@ const WeeklyInvoice = () => {
                                                                     {hasDriverVat || hasCompanyVat ? '20%' : '-'}
                                                                 </td>
                                                             )}
+
                                                         <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             £{invoice.total}
                                                         </td>
@@ -696,6 +749,8 @@ const WeeklyInvoice = () => {
                                             <td
                                                 colSpan={
                                                     7 +
+                                                    (currentInvoice?.invoice.invoices.some(
+                                                        (invoice) => invoice.deductionDetail.length > 0) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(
                                                         (invoice) =>
                                                             invoice.additionalServiceDetails?.service || invoice.additionalServiceApproval === 'Requested'
@@ -767,10 +822,18 @@ const WeeklyInvoice = () => {
                         Close
                     </button>
                     <button
+                        disabled={!changed}
+                        className="px-2 py-1 h-fit bg-amber-500 rounded-md text-white hover:bg-amber-600 disabled:bg-gray-300"
+                        onClick={() => handleUpdateInvoice(currentInvoice)}
+                    >
+                        Update
+                    </button>
+                    <button
+                        disabled={changed}
                         onClick={() => {
                             // handlePrint()
                         }}
-                        className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600"
+                        className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                     >
                         Print Weekly Invoice
                     </button>

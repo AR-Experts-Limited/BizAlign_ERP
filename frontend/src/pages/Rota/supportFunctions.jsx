@@ -25,7 +25,7 @@ export const getDeductionDetails = async (driverId, date) => {
 
 export const getInstallmentDetails = async (driverId) => {
     const installmentDetail = await axios.get(`${API_BASE_URL}/api/installments/${encodeURIComponent(driverId)}`)
-    return installmentDetail.data.filter((insta) => (insta.installmentPending > 0))
+    return installmentDetail.data
 }
 
 

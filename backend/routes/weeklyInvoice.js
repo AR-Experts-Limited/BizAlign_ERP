@@ -36,4 +36,54 @@ router.get('/', async (req, res) => {
     }
 });
 
+// PUT route to update weekly invoice and associated installments
+router.put('/update', async (req, res) => {
+    try {
+        const { WeeklyInvoice, Installment } = getModels(req);
+        const { weeklyInvoiceId, installmentDetail, weeklyTotal, instalments } = req.body;
+
+        // if (!weeklyInvoiceId || !installmentDetail || !weeklyTotal || !instalments) {
+        //     return res.status(400).json({ message: 'Missing required fields in request body' });
+        // }
+
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(weeklyInvoiceId)) {
+            return res.status(400).json({ message: 'Invalid weeklyInvoiceId format' });
+        }
+
+        // Update the WeeklyInvoice document
+        const updatedWeeklyInvoice = await WeeklyInvoice.findByIdAndUpdate(
+            weeklyInvoiceId,
+            {
+                installmentDetail,
+                total: weeklyTotal,
+                installments: installmentDetail.map((d) => d._id), // just the IDs
+            },
+            { new: true }
+        );
+
+        if (!updatedWeeklyInvoice) {
+            return res.status(404).json({ message: 'Weekly invoice not found' });
+        }
+
+        // Update each corresponding Installment document
+        const installmentUpdatePromises = instalments.map((insta) => {
+            if (!mongoose.Types.ObjectId.isValid(insta._id)) return null;
+            return Installment.findByIdAndUpdate(insta._id, insta, { new: true });
+        });
+
+        const updatedInstallments = await Promise.all(installmentUpdatePromises);
+
+        res.status(200).json({
+            message: 'Weekly invoice and installments updated successfully',
+            weeklyInvoice: updatedWeeklyInvoice,
+            updatedInstallments,
+        });
+    } catch (error) {
+        console.error('Error updating weekly invoice:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 module.exports = router;
