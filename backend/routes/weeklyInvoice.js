@@ -19,7 +19,6 @@ router.get('/', async (req, res) => {
         if (driverIds && driverIds.length > 0) {
             query.driverId = { $in: driverIds.map(id => new mongoose.Types.ObjectId(id)) };
         }
-        console.log(query.driverId)
         if (serviceWeeks) query.serviceWeek = { $in: serviceWeeks };
         if (site) query.site = site;
 

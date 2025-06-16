@@ -49,6 +49,323 @@ const getModels = (req) => ({
 //  }
 //});
 
+// POST a new deduction
+router.post('/', upload.any(), async (req, res) => {
+  const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, week } = req.body;
+  let { addedBy } = req.body;
+
+  try {
+    const { Deduction, DayInvoice, WeeklyInvoice, Installment, User, Notification, Driver } = getModels(req);
+    const doc = req.files[0]?.location || '';
+
+    // Step 1: Create and save Deduction
+    const newDeduction = new Deduction({
+      site,
+      driverId,
+      user_ID,
+      driverName,
+      serviceType,
+      rate: +(+rate).toFixed(2),
+      date,
+      signed,
+      deductionDocument: doc,
+      addedBy,
+      week
+    });
+    await newDeduction.save();
+
+    // Step 2: Attach deduction to DayInvoice
+    const dayInvoice = await DayInvoice.findOne({ driverId, date, site });
+
+    dayInvoice.deductionDetail = dayInvoice.deductionDetail || [];
+    dayInvoice.deductionDetail.push({
+      _id: newDeduction._id,
+      driverId,
+      user_ID,
+      date,
+      driverName,
+      site,
+      serviceType: newDeduction.serviceType,
+      rate: newDeduction.rate,
+      signed: newDeduction.signed,
+      deductionDocument: newDeduction.deductionDocument
+    });
+    dayInvoice.total = +Math.max(0, (+dayInvoice.total - newDeduction.rate).toFixed(2));
+    await dayInvoice.save();
+
+    // Step 3: Update WeeklyInvoice
+    const { serviceWeek } = dayInvoice;
+    const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
+    if (weeklyInvoice) {
+      const allDayInvoices = await DayInvoice.find({
+        _id: { $in: weeklyInvoice.invoices },
+      }).lean();
+      const driver = await Driver.findById(driverId);
+
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      const isVatApplicable = (date) => {
+        return (
+          (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
+          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      for (const inv of allDayInvoices) {
+        const invBaseTotal = +(+inv.total || 0).toFixed(2);
+        weeklyBaseTotal += invBaseTotal;
+        if (isVatApplicable(new Date(inv.date))) {
+          weeklyVatTotal += +(+invBaseTotal * 0.2).toFixed(2);
+        }
+      }
+
+      weeklyBaseTotal = +weeklyBaseTotal.toFixed(2);
+      weeklyVatTotal = +weeklyVatTotal.toFixed(2);
+      const weeklyTotalBeforeInstallments = +(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
+
+      // ✅ Step 4: Restore only previously used installments
+      const installmentIds = weeklyInvoice.installments || [];
+      const allInstallments = await Installment.find({ _id: { $in: installmentIds } });
+
+      for (const detail of weeklyInvoice.installmentDetail || []) {
+        const inst = allInstallments.find(i => i._id.toString() === detail._id?.toString());
+        if (inst && detail.deductionAmount > 0) {
+          inst.installmentPending = +(+inst.installmentPending + detail.deductionAmount).toFixed(2);
+          await inst.save();
+        }
+      }
+
+      // ✅ Step 5: Recalculate deduction only for installments in `weeklyInvoice.installments`
+      const installmentMap = new Map();
+      let remainingTotal = weeklyTotalBeforeInstallments;
+
+      for (const inst of allInstallments) {
+        const instId = inst._id.toString();
+        if (inst.installmentPending <= 0) continue;
+
+        const deduction = Math.min(
+          +(+inst.spreadRate).toFixed(2),
+          +(+inst.installmentPending).toFixed(2),
+          remainingTotal
+        );
+        if (deduction <= 0) continue;
+
+        inst.installmentPending = +(+inst.installmentPending - deduction).toFixed(2);
+        await inst.save();
+
+        installmentMap.set(instId, {
+          _id: inst._id,
+          installmentRate: inst.installmentRate,
+          installmentType: inst.installmentType,
+          installmentDocument: inst.installmentDocument,
+          installmentPending: inst.installmentPending,
+          deductionAmount: +deduction.toFixed(2),
+          signed: inst.signed,
+        });
+
+        remainingTotal = +(+remainingTotal - deduction).toFixed(2);
+      }
+
+      const mergedInstallments = Array.from(installmentMap.values());
+      const totalInstallmentDeduction = +mergedInstallments.reduce(
+        (sum, inst) => sum + (inst.deductionAmount || 0),
+        0
+      ).toFixed(2);
+
+      const finalWeeklyTotal = +Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2);
+      const unsigned = mergedInstallments.some((inst) => !inst.signed);
+
+      // Step 6: Update WeeklyInvoice
+      weeklyInvoice.total = finalWeeklyTotal;
+      weeklyInvoice.vatTotal = weeklyVatTotal;
+      weeklyInvoice.installmentDetail = mergedInstallments;
+      weeklyInvoice.unsigned = unsigned;
+      await weeklyInvoice.save();
+    }
+
+    // Step 7: Notify user
+    const user = await User.findOne({ user_ID });
+    if (user?.expoPushTokens) {
+      const expo = new Expo();
+      const message = {
+        to: user.expoPushTokens,
+        title: 'New Deduction Added',
+        body: `A new deduction has been added for ${driverName} at ${site}`,
+        data: { deductionId: newDeduction._id },
+        isRead: false,
+      };
+
+      try {
+        await expo.sendPushNotificationsAsync([message]);
+      } catch (notificationError) {
+        console.error('Push notification failed:', notificationError.message);
+      }
+    }
+
+    // Step 8: Save notification
+    const notification = new Notification({
+      notification: {
+        title: 'New Deduction Added',
+        user_ID,
+        body: `A new deduction has been added for ${driverName} at ${site}`,
+        data: { deductionId: newDeduction._id },
+        isRead: false,
+      },
+      targetDevice: 'app',
+    });
+    await notification.save();
+
+    // Step 9: Notify frontend
+    sendToClients(req.db, { type: 'deductionUpdated' });
+
+    res.status(201).json(newDeduction);
+  } catch (error) {
+    console.error('Error adding deduction:', error);
+    res.status(500).json({ message: 'Error adding deduction', error: error.message });
+  }
+});
+
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const { Deduction, DayInvoice, WeeklyInvoice, Installment, Driver } = getModels(req);
+    const deductionId = req.params.id;
+
+    const deduction = await Deduction.findById(deductionId);
+    if (!deduction) {
+      return res.status(404).json({ message: 'Deduction not found' });
+    }
+
+    // Step 1: Remove deduction from DayInvoice and restore its amount
+    const dayInvoice = await DayInvoice.findOne({
+      driverId: deduction.driverId,
+      date: deduction.date,
+      'deductionDetail._id': new mongoose.Types.ObjectId(deductionId),
+    });
+
+    if (!dayInvoice) {
+      await Deduction.findByIdAndDelete(deductionId);
+      return res.status(200).json({ message: 'Deduction deleted, no DayInvoice found' });
+    }
+
+    // Remove deduction and update total
+    dayInvoice.deductionDetail = dayInvoice.deductionDetail.filter(
+      d => d._id?.toString() !== deductionId
+    );
+    dayInvoice.total = +(+dayInvoice.total + deduction.rate).toFixed(2);
+    await dayInvoice.save();
+
+    // Step 2: Recalculate WeeklyInvoice
+    const { driverId, serviceWeek } = dayInvoice;
+    const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
+    if (!weeklyInvoice) {
+      await Deduction.findByIdAndDelete(deductionId);
+      return res.status(200).json({ message: 'Deduction deleted, no WeeklyInvoice found' });
+    }
+
+    // Step 3: Recalculate totals from all DayInvoices in this week
+    const allDayInvoices = await DayInvoice.find({
+      _id: { $in: weeklyInvoice.invoices },
+    }).lean();
+
+    const driver = await Driver.findById(driverId);
+    let weeklyBaseTotal = 0;
+    let weeklyVatTotal = 0;
+
+    const isVatApplicable = (date) => {
+      return (
+        (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
+        (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+      );
+    };
+
+    for (const inv of allDayInvoices) {
+      const base = +(+inv.total || 0).toFixed(2);
+      weeklyBaseTotal += base;
+      if (isVatApplicable(new Date(inv.date))) {
+        weeklyVatTotal += +(+base * 0.2).toFixed(2);
+      }
+    }
+
+    weeklyBaseTotal = +weeklyBaseTotal.toFixed(2);
+    weeklyVatTotal = +weeklyVatTotal.toFixed(2);
+    const weeklyTotalBeforeInstallments = +(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
+
+    // ✅ Step 4: Restore only installments that were previously used
+    const installmentIds = weeklyInvoice.installments || [];
+    const usedInstallments = await Installment.find({ _id: { $in: installmentIds } });
+
+    for (const detail of weeklyInvoice.installmentDetail || []) {
+      const inst = usedInstallments.find(i => i._id.toString() === detail._id?.toString());
+      if (inst && detail.deductionAmount > 0) {
+        inst.installmentPending = +(+inst.installmentPending + detail.deductionAmount).toFixed(2);
+        await inst.save();
+      }
+    }
+
+    // ✅ Step 5: Recalculate installment deductions only for used ones
+    const installmentMap = new Map();
+    let remainingTotal = weeklyTotalBeforeInstallments;
+
+    for (const inst of usedInstallments) {
+      const instId = inst._id.toString();
+      if (inst.installmentPending <= 0) continue;
+
+      const deduction = Math.min(
+        +(+inst.spreadRate).toFixed(2),
+        +(+inst.installmentPending).toFixed(2),
+        remainingTotal
+      );
+      if (deduction <= 0) continue;
+
+      inst.installmentPending = +(+inst.installmentPending - deduction).toFixed(2);
+      await inst.save();
+
+      installmentMap.set(instId, {
+        _id: inst._id,
+        installmentRate: inst.installmentRate,
+        installmentType: inst.installmentType,
+        installmentDocument: inst.installmentDocument,
+        installmentPending: inst.installmentPending,
+        deductionAmount: +deduction.toFixed(2),
+        signed: inst.signed,
+      });
+
+      remainingTotal = +(+remainingTotal - deduction).toFixed(2);
+    }
+
+    const mergedInstallments = Array.from(installmentMap.values());
+    const totalInstallmentDeduction = +mergedInstallments.reduce(
+      (sum, inst) => sum + (inst.deductionAmount || 0),
+      0
+    ).toFixed(2);
+
+    const finalWeeklyTotal = +Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2);
+    const unsigned = mergedInstallments.some((inst) => !inst.signed);
+
+    // Step 6: Update WeeklyInvoice
+    weeklyInvoice.total = finalWeeklyTotal;
+    weeklyInvoice.vatTotal = weeklyVatTotal;
+    weeklyInvoice.installmentDetail = mergedInstallments;
+    weeklyInvoice.unsigned = unsigned;
+    await weeklyInvoice.save();
+
+    // Step 7: Finally delete the deduction
+    await Deduction.findByIdAndDelete(deductionId);
+
+    // Step 8: Notify frontend
+    sendToClients(req.db, { type: 'deductionUpdated' });
+
+    res.status(200).json({ message: 'Deduction deleted and installments recalculated' });
+  } catch (error) {
+    console.error('Error deleting deduction:', error);
+    res.status(500).json({ message: 'Error deleting deduction', error: error.message });
+  }
+});
+
+
+
 //Get Deductions where Driver is not Disabled
 router.get('/', async (req, res) => {
   const { site } = req.query; // Optional site filter
@@ -153,137 +470,6 @@ router.get('/driverspecific', async (req, res) => {
   }
 });
 
-// POST a new deduction
-router.post('/', upload.any(), async (req, res) => {
-  const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, week } = req.body;
-  let { addedBy } = req.body;
-
-  try {
-    const { Deduction, DayInvoice, WeeklyInvoice, Installment, User, Notification } = getModels(req);
-    const doc = req.files[0]?.location || '';
-
-    // Step 1: Create and save Deduction
-    const newDeduction = new Deduction({
-      site,
-      driverId,
-      user_ID,
-      driverName,
-      serviceType,
-      rate: parseFloat(rate),
-      date,
-      signed,
-      deductionDocument: doc,
-      addedBy,
-      week
-    });
-    await newDeduction.save();
-
-    // Step 2: Attach deduction to the corresponding DayInvoice
-    const dayInvoice = await DayInvoice.findOne({ driverId, date, site });
-    if (dayInvoice) {
-
-
-      // Add deduction and subtract rate from total
-      dayInvoice.deductionDetail.push(newDeduction);
-      dayInvoice.total = +(dayInvoice.total - newDeduction.rate).toFixed(2);
-      await dayInvoice.save();
-
-      // Step 3: Update related WeeklyInvoice
-      const { serviceWeek } = dayInvoice;
-      const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
-      if (weeklyInvoice) {
-        // Step 4: Recalculate based on updated DayInvoices
-        const allDayInvoices = await DayInvoice.find({ driverId, serviceWeek, site });
-        const weeklyRawTotal = allDayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-        // Step 5: Restore old installment deductions
-        for (const detail of weeklyInvoice.installmentDetail || []) {
-          const inst = await Installment.findById(detail._id);
-          if (!inst) continue;
-          inst.installmentPending += detail.deductionAmount || 0;
-          await inst.save();
-        }
-
-        // Step 6: Recalculate installments
-        const allInstallments = await Installment.find({ driverId });
-        let remainingTotal = weeklyRawTotal;
-        const updatedInstallmentDetail = [];
-
-        for (const inst of allInstallments) {
-          if (inst.installmentPending <= 0) continue;
-
-          const deductionAmount = Math.min(inst.spreadRate, inst.installmentPending, remainingTotal);
-          if (deductionAmount <= 0) continue;
-
-          inst.installmentPending -= deductionAmount;
-          remainingTotal -= deductionAmount;
-          await inst.save();
-
-          updatedInstallmentDetail.push({
-            _id: inst._id,
-            installmentRate: inst.installmentRate,
-            installmentType: inst.installmentType,
-            installmentDocument: inst.installmentDocument,
-            deductionAmount,
-            signed: inst.signed,
-          });
-        }
-
-        const totalInstallmentDeduction = updatedInstallmentDetail.reduce(
-          (sum, i) => sum + (i.deductionAmount || 0),
-          0
-        );
-        const finalTotal = Math.max(0, weeklyRawTotal - totalInstallmentDeduction);
-
-        // Step 7: Update WeeklyInvoice
-        weeklyInvoice.total = finalTotal;
-        weeklyInvoice.installmentDetail = updatedInstallmentDetail;
-        weeklyInvoice.unsigned = updatedInstallmentDetail.some(i => !i.signed);
-        await weeklyInvoice.save();
-      }
-    }
-    // Step 8: Notify user with push notification
-    const user = await User.findOne({ user_ID });
-    if (user?.expoPushTokens) {
-      const expo = new Expo();
-      const message = {
-        to: user.expoPushTokens,
-        title: 'New Deduction Added',
-        body: `A new deduction has been added for ${driverName} at ${site}`,
-        data: { deductionId: newDeduction._id },
-        isRead: false,
-      };
-
-      try {
-        await expo.sendPushNotificationsAsync([message]);
-      } catch (notificationError) {
-        console.error('Push notification failed:', notificationError.message);
-      }
-    }
-
-    // Step 9: Save notification
-    const notification = new Notification({
-      title: 'New Deduction Added',
-      user_ID,
-      body: `A new deduction has been added for ${driverName} at ${site}`,
-      data: { deductionId: newDeduction._id },
-      isRead: false,
-      targetDevice: 'app',
-    });
-    await notification.save();
-
-    // Step 10: Notify frontend
-    sendToClients(req.db, {
-      type: 'deductionUpdated',
-    });
-
-    res.status(201).json(newDeduction);
-  } catch (error) {
-    console.error('Error adding deduction:', error);
-    res.status(500).json({ message: 'Error adding deduction', error: error.message });
-  }
-});
-
 // POST upload deduction document
 router.post('/docupload', upload.any(), async (req, res) => {
   const { _id } = req.body;
@@ -325,100 +511,7 @@ router.post('/deleteupload', async (req, res) => {
   }
 });
 
-// DELETE a deduction by ID
-router.delete('/:id', async (req, res) => {
-  try {
-    const { Deduction, DayInvoice, WeeklyInvoice, Installment } = getModels(req);
-    const deductionId = req.params.id;
 
-    const deduction = await Deduction.findById(deductionId);
-    if (!deduction) {
-      return res.status(404).json({ message: 'Deduction not found' });
-    }
-
-    // Step 1: Update DayInvoice (remove deduction and restore its value to total)
-    const dayInvoice = await DayInvoice.findOne({
-      driverId: deduction.driverId,
-      date: deduction.date,
-      'deductionDetail._id': new mongoose.Types.ObjectId(deductionId),
-    });
-
-    if (!dayInvoice) {
-      await Deduction.findByIdAndDelete(deductionId);
-      return res.status(200).json({ message: 'Deduction deleted, no DayInvoice found' });
-    }
-
-    dayInvoice.deductionDetail = dayInvoice.deductionDetail.filter(
-      d => d._id?.toString() !== deductionId
-    );
-    dayInvoice.total = +(dayInvoice.total + deduction.rate).toFixed(2);
-    await dayInvoice.save();
-
-    // Step 2: Get related WeeklyInvoice
-    const { driverId, serviceWeek, site } = dayInvoice;
-    const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
-    if (!weeklyInvoice) {
-      await Deduction.findByIdAndDelete(deductionId);
-      return res.status(200).json({ message: 'Deduction deleted. No weekly invoice to update' });
-    }
-
-    // Step 3: Recalculate weekly total
-    const allDayInvoices = await DayInvoice.find({ driverId, serviceWeek, site });
-    const weeklyRawTotal = allDayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-
-    // Step 5: Recalculate installment allocation
-    const allInstallments = await Installment.find({ driverId });
-    let remainingTotal = weeklyRawTotal;
-    const updatedInstallmentDetail = [];
-
-    console.log('remainingTotal:', remainingTotal)
-    for (const inst of allInstallments) {
-      if (inst.installmentPending <= 0) continue;
-
-      const deductionAmount = Math.min(inst.spreadRate, inst.installmentPending, remainingTotal);
-      if (deductionAmount <= 0) continue;
-
-      inst.installmentPending -= deductionAmount;
-      remainingTotal -= deductionAmount;
-      await inst.save();
-
-      updatedInstallmentDetail.push({
-        _id: inst._id,
-        installmentRate: inst.installmentRate,
-        installmentType: inst.installmentType,
-        installmentDocument: inst.installmentDocument,
-        deductionAmount,
-        signed: inst.signed,
-      });
-    }
-
-    const totalInstallmentDeduction = updatedInstallmentDetail.reduce(
-      (sum, i) => sum + (i.deductionAmount || 0),
-      0
-    );
-    const finalTotal = Math.max(0, weeklyRawTotal - totalInstallmentDeduction);
-
-    // Step 6: Update WeeklyInvoice
-    weeklyInvoice.total = finalTotal;
-    weeklyInvoice.installmentDetail = updatedInstallmentDetail;
-    weeklyInvoice.unsigned = updatedInstallmentDetail.some(i => !i.signed);
-    await weeklyInvoice.save();
-
-    // Step 7: Delete the Deduction
-    await Deduction.findByIdAndDelete(deductionId);
-
-    // Step 8: Notify clients
-    sendToClients(req.db, {
-      type: 'deductionUpdated',
-    });
-
-    res.status(200).json({ message: 'Deduction deleted and installments recalculated' });
-  } catch (error) {
-    console.error('Error deleting deduction:', error);
-    res.status(500).json({ message: 'Error deleting deduction', error: error.message });
-  }
-});
 
 
 

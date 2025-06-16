@@ -360,6 +360,7 @@ const Rota = () => {
 
         try {
             let response = ''
+            console.log(rotaDetail.dayInvoice)
             if (e.target.name === 'add') {
                 response = await axios.post(
                     `${API_BASE_URL}/api/dayInvoice/`,

@@ -31,6 +31,7 @@ const weeklyInvoiceSchema = new mongoose.Schema({
             installmentType: String,
             installmentDocument: String,
             deductionAmount: Number,
+            installmentPending: Number,
             signed: Boolean,
         }
     ],

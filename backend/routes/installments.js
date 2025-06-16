@@ -48,6 +48,311 @@ const getModels = (req) => ({
 //  }
 //});
 
+// POST Installment
+router.post('/', upload.any(), async (req, res) => {
+  const {
+    driverId, driverName, user_ID, installmentRate,
+    tenure, site, installmentType, installmentPending,
+    spreadRate, signed
+  } = req.body;
+  let { addedBy } = req.body;
+
+  try {
+    const { Installment, User, Notification, WeeklyInvoice, DayInvoice, Driver } = getModels(req);
+    const doc = req.files[0]?.location || '';
+
+    // Create and save new Installment
+    const newInstallment = new Installment({
+      driverId,
+      driverName,
+      user_ID,
+      installmentRate,
+      tenure,
+      site,
+      installmentType,
+      installmentPending: +(+installmentPending).toFixed(2),
+      spreadRate: +(+spreadRate).toFixed(2),
+      addedBy,
+      signed,
+      installmentDocument: doc,
+    });
+    await newInstallment.save();
+
+    // Fetch all current and future WeeklyInvoices for the driver and site
+    const currentWeekFormatted = moment().format('GGGG-[W]WW');
+    const futureInvoices = await WeeklyInvoice.find({
+      driverId,
+      site,
+      serviceWeek: { $gte: currentWeekFormatted }
+    }).sort({ serviceWeek: 1 });
+
+    let pending = newInstallment.installmentPending;
+
+    for (const invoice of futureInvoices) {
+      if (pending <= 0) break;
+
+      // Calculate weekly total before installments
+      const dayInvoices = await DayInvoice.find({ _id: { $in: invoice.invoices } }).lean();
+      const driver = await Driver.findById(invoice.driverId);
+
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      const isVatApplicable = (date) => {
+        return (
+          (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
+          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      for (const inv of dayInvoices) {
+        const invBaseTotal = +(+inv.total || 0).toFixed(2);
+        weeklyBaseTotal += invBaseTotal;
+        if (isVatApplicable(new Date(inv.date))) {
+          weeklyVatTotal += +(+invBaseTotal * 0.2).toFixed(2);
+        }
+      }
+
+      weeklyBaseTotal = +weeklyBaseTotal.toFixed(2);
+      weeklyVatTotal = +weeklyVatTotal.toFixed(2);
+      const weeklyTotalBeforeInstallments = +(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
+
+      // Restore previous installment deductions
+      const allInstallments = await Installment.find({ driverId });
+      for (const detail of invoice.installmentDetail || []) {
+        const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        if (inst && detail.deductionAmount > 0) {
+          inst.installmentPending = +(+inst.installmentPending + detail.deductionAmount).toFixed(2);
+          await inst.save();
+        }
+      }
+
+      // Calculate new installment deductions, including the new installment
+      const installmentMap = new Map();
+      let remainingTotal = weeklyTotalBeforeInstallments;
+
+      // Include all installments, prioritizing the new one
+      const installmentsToProcess = [
+        newInstallment,
+        ...allInstallments.filter((inst) => inst._id.toString() !== newInstallment._id.toString())
+      ];
+
+      for (const inst of installmentsToProcess) {
+        const instId = inst._id.toString();
+        if (inst.installmentPending <= 0) continue;
+
+        const deduction = Math.min(
+          +(+inst.spreadRate).toFixed(2),
+          +(+inst.installmentPending).toFixed(2),
+          remainingTotal
+        );
+        if (deduction <= 0) continue;
+
+        inst.installmentPending = +(+inst.installmentPending - deduction).toFixed(2);
+        await inst.save();
+
+        installmentMap.set(instId, {
+          _id: inst._id,
+          installmentRate: inst.installmentRate,
+          installmentType: inst.installmentType,
+          installmentDocument: inst.installmentDocument,
+          installmentPending: inst.installmentPending,
+          deductionAmount: +deduction.toFixed(2),
+          signed: inst.signed,
+        });
+
+        remainingTotal = +(+remainingTotal - deduction).toFixed(2);
+      }
+
+      const mergedInstallments = Array.from(installmentMap.values());
+      const totalInstallmentDeduction = +mergedInstallments.reduce(
+        (sum, inst) => sum + (inst.deductionAmount || 0),
+        0
+      ).toFixed(2);
+
+      const finalWeeklyTotal = +Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2);
+      const unsigned = mergedInstallments.some((inst) => !inst.signed);
+
+      // Update WeeklyInvoice
+      invoice.installments = mergedInstallments.map((inst) => inst._id);
+      invoice.installmentDetail = mergedInstallments;
+      invoice.total = finalWeeklyTotal;
+      invoice.vatTotal = weeklyVatTotal;
+      invoice.unsigned = unsigned;
+
+      await invoice.save();
+
+      // Update pending amount for the new installment
+      pending = newInstallment.installmentPending;
+    }
+
+    // Notify user if needed
+    const user = await User.findOne({ user_ID });
+    if (user?.expoPushTokens) {
+      const expo = new Expo();
+      const message = {
+        to: user.expoPushTokens,
+        title: 'New Installment Added',
+        body: `A new installment has been added for ${driverName} at ${site}.`,
+        data: { installmentId: newInstallment._id },
+        isRead: false,
+      };
+
+      try {
+        await expo.sendPushNotificationsAsync([message]);
+      } catch (notificationError) {
+        console.error('Error sending push notification:', notificationError.message);
+      }
+    }
+
+    // Save in-app notification
+    const notification = new Notification({
+      notification: {
+        title: 'New Installment Added',
+        user_ID,
+        body: `A new installment has been added for ${driverName} at ${site}`,
+        data: { installmentId: newInstallment._id },
+        isRead: false,
+      },
+      targetDevice: 'app',
+    });
+    await notification.save();
+
+    sendToClients(req.db, { type: 'installmentUpdated' });
+    res.status(201).json({ message: 'Installment added and distributed', installment: newInstallment });
+  } catch (error) {
+    console.error('Error adding installment:', error);
+    res.status(500).json({ message: 'Error adding installment', error: error.message });
+  }
+});
+
+// DELETE Installment
+router.delete('/:id', async (req, res) => {
+  try {
+    const { Installment, WeeklyInvoice, DayInvoice, Driver } = getModels(req);
+    const installmentId = req.params.id;
+
+    const installment = await Installment.findById(installmentId);
+    if (!installment) {
+      return res.status(404).json({ message: 'Installment not found' });
+    }
+
+    // Step 1: Get only the weekly invoices that included this installment
+    const weeklyInvoices = await WeeklyInvoice.find({ installments: installmentId });
+
+    for (const weekly of weeklyInvoices) {
+      // Step 2: Remove the installment from both arrays
+      weekly.installments = weekly.installments.filter(id => id.toString() !== installmentId);
+      weekly.installmentDetail = (weekly.installmentDetail || []).filter(
+        detail => detail._id?.toString() !== installmentId
+      );
+
+      // Step 3: Recalculate weekly totals before installments
+      const relatedDayInvoices = await DayInvoice.find({ _id: { $in: weekly.invoices } }).lean();
+      const driver = await Driver.findById(weekly.driverId);
+
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      const isVatApplicable = (date) => {
+        return (
+          (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
+          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      for (const inv of relatedDayInvoices) {
+        const invBaseTotal = +(+inv.total || 0).toFixed(2);
+        weeklyBaseTotal += invBaseTotal;
+        if (isVatApplicable(new Date(inv.date))) {
+          weeklyVatTotal += +(+invBaseTotal * 0.2).toFixed(2);
+        }
+      }
+
+      weeklyBaseTotal = +weeklyBaseTotal.toFixed(2);
+      weeklyVatTotal = +weeklyVatTotal.toFixed(2);
+      const weeklyTotalBeforeInstallments = +(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
+
+      // Step 4: Restore pending amounts for previous installment deductions (excluding deleted one)
+      const validInstallmentIds = weekly.installments.map(id => id.toString());
+      const allInstallments = await Installment.find({
+        _id: { $in: validInstallmentIds }
+      });
+
+      for (const detail of weekly.installmentDetail || []) {
+        const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        if (inst && detail.deductionAmount > 0) {
+          inst.installmentPending = +(+inst.installmentPending + detail.deductionAmount).toFixed(2);
+          await inst.save();
+        }
+      }
+
+      // Step 5: Recalculate deductions from valid installments
+      const installmentMap = new Map();
+      let remainingTotal = weeklyTotalBeforeInstallments;
+
+      for (const inst of allInstallments) {
+        const instId = inst._id.toString();
+        if (inst.installmentPending <= 0) continue;
+
+        const deduction = Math.min(
+          +(+inst.spreadRate).toFixed(2),
+          +(+inst.installmentPending).toFixed(2),
+          remainingTotal
+        );
+        if (deduction <= 0) continue;
+
+        inst.installmentPending = +(+inst.installmentPending - deduction).toFixed(2);
+        await inst.save();
+
+        installmentMap.set(instId, {
+          _id: inst._id,
+          installmentRate: inst.installmentRate,
+          installmentType: inst.installmentType,
+          installmentDocument: inst.installmentDocument,
+          installmentPending: inst.installmentPending,
+          deductionAmount: +deduction.toFixed(2),
+          signed: inst.signed,
+        });
+
+        remainingTotal = +(+remainingTotal - deduction).toFixed(2);
+      }
+
+      const mergedInstallments = Array.from(installmentMap.values());
+      const totalInstallmentDeduction = +mergedInstallments.reduce(
+        (sum, inst) => sum + (inst.deductionAmount || 0),
+        0
+      ).toFixed(2);
+
+      const finalWeeklyTotal = +Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2);
+      const unsigned = mergedInstallments.some((inst) => !inst.signed);
+
+      // Step 6: Update weekly invoice
+      weekly.installmentDetail = mergedInstallments;
+      weekly.installments = mergedInstallments.map((inst) => inst._id);
+      weekly.total = finalWeeklyTotal;
+      weekly.vatTotal = weeklyVatTotal;
+      weekly.unsigned = unsigned;
+
+      await weekly.save();
+    }
+
+    // Step 7: Delete the actual installment
+    await Installment.findByIdAndDelete(installmentId);
+
+    // Step 8: Notify clients
+    sendToClients(req.db, { type: 'installmentUpdated' });
+
+    res.json({ message: 'Installment deleted successfully and WeeklyInvoices updated.' });
+  } catch (error) {
+    console.error('Error deleting installment:', error);
+    res.status(500).json({ message: 'Error deleting installment', error: error.message });
+  }
+});
+
+
+
+
 //Fetches Installments (Non-Disabled Drivers only)
 router.get('/', async (req, res) => {
   const { site } = req.query;
@@ -118,128 +423,6 @@ router.put('/', async (req, res) => {
   }
 });
 
-// POST a new installment
-router.post('/', upload.any(), async (req, res) => {
-  const {
-    driverId, driverName, user_ID, installmentRate,
-    tenure, site, installmentType, installmentPending,
-    spreadRate, signed
-  } = req.body;
-  let { addedBy } = req.body;
-
-  try {
-    const { Installment, User, Notification, WeeklyInvoice, DayInvoice } = getModels(req);
-    const doc = req.files[0]?.location || '';
-
-    const newInstallment = new Installment({
-      driverId,
-      driverName,
-      user_ID,
-      installmentRate,
-      tenure,
-      site,
-      installmentType,
-      installmentPending: +(+installmentPending).toFixed(2),
-      spreadRate: +(+spreadRate).toFixed(2),
-      addedBy,
-      signed,
-      installmentDocument: doc,
-    });
-    await newInstallment.save();
-
-    // Get current week in ISO format: 'YYYY-[W]WW'
-    const currentWeekFormatted = moment().format('GGGG-[W]WW');
-
-    // Fetch all current and future WeeklyInvoices for the driver and site
-    const futureInvoices = await WeeklyInvoice.find({
-      driverId,
-      site,
-      serviceWeek: { $gte: currentWeekFormatted }
-    }).sort({ serviceWeek: 1 });
-
-    let pending = newInstallment.installmentPending;
-    const deductionRate = newInstallment.spreadRate;
-
-    for (const invoice of futureInvoices) {
-      if (pending <= 0) break;
-
-      // Calculate remaining budget in invoice
-      const dayInvoices = await DayInvoice.find({ _id: { $in: invoice.invoices } });
-      const rawTotal = dayInvoices.reduce((sum, d) => sum + (d.total || 0), 0);
-      const alreadyDeducted = invoice.installmentDetail.reduce((sum, i) => sum + (i.deductionAmount || 0), 0);
-      const availableBudget = +(rawTotal + invoice.vatTotal - alreadyDeducted).toFixed(2);
-
-      const deduction = Math.min(deductionRate, pending, availableBudget);
-      if (deduction <= 0) continue;
-
-      invoice.installments.push(newInstallment._id);
-      invoice.installmentDetail.push({
-        _id: newInstallment._id,
-        installmentRate,
-        installmentType,
-        installmentDocument: doc,
-        deductionAmount: +deduction.toFixed(2),
-        signed,
-      });
-
-      invoice.unsigned = invoice.installmentDetail.some(inst => !inst.signed);
-
-      const newTotal = +(rawTotal + invoice.vatTotal - (alreadyDeducted + deduction)).toFixed(2);
-      invoice.total = Math.max(0, newTotal);
-
-      pending = +(pending - deduction).toFixed(2);
-      newInstallment.installmentPending = pending;
-
-      await invoice.save();
-    }
-
-    // Save updated installment with new pending
-    await newInstallment.save();
-
-    // Notify user if needed
-    const user = await User.findOne({ user_ID });
-    if (user?.expoPushTokens) {
-      const expo = new Expo();
-      const message = {
-        to: user.expoPushTokens,
-        title: 'New Installment Added',
-        body: `A new installment has been added for ${driverName} at ${site}.`,
-        data: { installmentId: newInstallment._id },
-        isRead: false,
-      };
-
-      try {
-        await expo.sendPushNotificationsAsync([message]);
-      } catch (notificationError) {
-        console.error('Error sending push notification:', notificationError.message);
-      }
-    }
-
-    // Save in-app notification
-    const notification = new Notification({
-      notification: {
-        title: 'New Installment Added',
-        user_ID,
-        body: `A new installment has been added for ${driverName} at ${site}`,
-        data: { installmentId: newInstallment._id },
-        isRead: false,
-      },
-      targetDevice: 'app',
-    });
-    await notification.save();
-
-    sendToClients(req.db, { type: 'installmentUpdated' });
-
-    res.status(201).json({ message: 'Installment added and distributed', installment: newInstallment });
-
-  } catch (error) {
-    console.error('Error adding installment:', error);
-    res.status(500).json({ message: 'Error adding installment', error: error.message });
-  }
-});
-
-
-
 
 // POST upload installment document
 router.post('/docupload', upload.any(), async (req, res) => {
@@ -279,81 +462,6 @@ router.post('/deleteupload', async (req, res) => {
     res.status(200).json(updatedInstallment);
   } catch (error) {
     res.status(500).json({ message: 'Error deleting document', error: error.message });
-  }
-});
-
-// DELETE an installment by ID
-router.delete('/:id', async (req, res) => {
-  try {
-    const { Installment, WeeklyInvoice, DayInvoice, Driver } = getModels(req);
-    const installmentId = req.params.id;
-
-    const installment = await Installment.findById(installmentId);
-    if (!installment) {
-      return res.status(404).json({ message: 'Installment not found' });
-    }
-
-    const weeklyInvoices = await WeeklyInvoice.find({ installments: installmentId });
-
-    for (const weekly of weeklyInvoices) {
-      // Remove the installment from arrays
-      weekly.installments = weekly.installments.filter(id => id.toString() !== installmentId);
-      weekly.installmentDetail = (weekly.installmentDetail || []).filter(
-        detail => detail._id?.toString() !== installmentId
-      );
-
-      // Recalculate total and VAT
-      const relatedDayInvoices = await DayInvoice.find({ _id: { $in: weekly.invoices } }).lean();
-      const driver = await Driver.findById(weekly.driverId);
-
-      let weeklyBaseTotal = 0;
-      let weeklyVatTotal = 0;
-
-      const isVatApplicable = (date) => {
-        return (
-          (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
-        );
-      };
-
-      for (const inv of relatedDayInvoices) {
-        const invBaseTotal = +(+inv.total || 0).toFixed(2);
-        weeklyBaseTotal += invBaseTotal;
-
-        if (isVatApplicable(new Date(inv.date))) {
-          weeklyVatTotal += +(+invBaseTotal * 0.2).toFixed(2);
-        }
-      }
-
-      weeklyBaseTotal = +weeklyBaseTotal.toFixed(2);
-      weeklyVatTotal = +weeklyVatTotal.toFixed(2);
-
-      const weeklyTotalBeforeInstallments = +(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
-      const totalInstallmentDeduction = weekly.installmentDetail.reduce(
-        (sum, inst) => sum + (inst.deductionAmount || 0),
-        0
-      );
-
-      const finalTotal = Math.max(0, +(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
-
-      // Update fields
-      weekly.total = finalTotal;
-      weekly.vatTotal = weeklyVatTotal;
-      weekly.unsigned = weekly.installmentDetail.some(d => !d.signed);
-
-      await weekly.save();
-    }
-
-    await Installment.findByIdAndDelete(installmentId);
-
-    sendToClients(req.db, {
-      type: 'installmentUpdated',
-    });
-
-    res.json({ message: 'Installment deleted successfully and WeeklyInvoices updated.' });
-  } catch (error) {
-    console.error('Error deleting installment:', error);
-    res.status(500).json({ message: 'Error deleting installment', error: error.message });
   }
 });
 

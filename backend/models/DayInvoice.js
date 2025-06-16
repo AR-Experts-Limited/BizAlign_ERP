@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const DeductionSchema = require('./deductions').schema;
+const IncentiveSchema = require('./Incentive').schema
 
 const dayInvoiceSchema = new mongoose.Schema({
   driverId: { type: String, required: true },
@@ -15,8 +17,14 @@ const dayInvoiceSchema = new mongoose.Schema({
   additionalService: { type: String },
   additionalServiceApproval: { type: String },
   shiftTimes: { type: Object },
-  incentiveDetailforMain: { type: Object },
-  deductionDetail: { type: Array, "default": [] },
+  incentiveDetailforMain: {
+    type: IncentiveSchema,
+    default: () => ({})
+  },
+  deductionDetail: {
+    type: [DeductionSchema],
+    default: []
+  },
   installmentDetail: { type: Array, "default": [] },
   additionalServiceDetails: { type: Object },
   serviceRateforAdditional: { type: Number },

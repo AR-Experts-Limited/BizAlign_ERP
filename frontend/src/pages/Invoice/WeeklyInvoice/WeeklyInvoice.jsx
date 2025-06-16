@@ -396,50 +396,188 @@ const WeeklyInvoice = () => {
                             </div>
                         </InputWrapper>
                     </div>
-                    {/* Installments Section */}
-                    {currentInvoice?.invoice.installmentDetail?.length > 0 && (
+                    {/* Installments Wrapper */}
+                    {currentInvoice?.instalments?.length > 0 && (
                         <InputWrapper title="Instalments">
-                            {currentInvoice?.invoice.installmentDetail?.map((insta) => (
-                                <div key={insta._id} className="flex max-sm:flex-col items-center gap-5 justify-between">
-                                    <input
-                                        type="checkbox"
-                                        className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
-                                        checked={true}
-                                        disabled={true}
-                                        onChange={(e) => {
-                                            const isChecked = e.target.checked;
-                                            const updatedInstallments = isChecked
-                                                ? [...(currentInvoice?.invoice.installments || []), insta]
-                                                : currentInvoice?.invoice.installments?.filter(i => i._id !== insta._id);
+                            {currentInvoice.instalments.map((insta) => {
+                                const existingDetails = currentInvoice?.invoice?.installmentDetail || [];
+                                const isChecked = existingDetails.some(
+                                    (cinsta) => cinsta._id.toString() === insta._id.toString()
+                                );
+                                const matchedDetail = existingDetails.find(
+                                    (cinsta) => cinsta._id.toString() === insta._id.toString()
+                                );
 
-                                            setCurrentInvoice(prev => {
-                                                return {
-                                                    ...prev,
-                                                    invoice: {
-                                                        ...prev.invoice,
-                                                        installments: updatedInstallments,
+                                const currentTotal = currentInvoice?.invoice?.total ?? 0;
+
+                                // Compute installmentPending from installmentDetail or instalment data
+                                const installmentPending = matchedDetail
+                                    ? insta.installmentRate - (matchedDetail.deductionAmount || 0) // Compute pending as total - deducted
+                                    : insta.installmentRate; // If no detail exists, use full installmentRate
+
+                                // Use backend-provided deductionAmount if available, otherwise calculate
+                                const deductionAmount = matchedDetail
+                                    ? matchedDetail.deductionAmount
+                                    : Math.max(0, Math.min(insta.spreadRate, currentTotal, installmentPending));
+
+                                const isDisabled = deductionAmount === 0 && !isChecked;
+
+                                return (
+                                    <div
+                                        key={insta._id}
+                                        className="flex max-sm:flex-col items-center gap-5 justify-between"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
+                                            checked={isChecked}
+                                            disabled={isDisabled}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                setCurrentInvoice((prev) => {
+                                                    const prevInvoice = prev.invoice || {};
+                                                    const prevDetails = prevInvoice.installmentDetail || [];
+                                                    const toggledId = insta._id.toString();
+
+                                                    if (!checked) {
+                                                        // UNCHECK logic
+                                                        const restoredTotal =
+                                                            (prevInvoice.total ?? 0) + prevDetails.reduce((sum, d) => sum + d.deductionAmount, 0);
+                                                        const remainingIds = prevDetails.map((d) => d._id.toString()).filter((id) => id !== toggledId);
+                                                        let newTotal = restoredTotal;
+                                                        const newInstallmentDetail = [];
+
+                                                        for (const installment of prev.instalments || []) {
+                                                            const id = installment._id.toString();
+                                                            if (remainingIds.includes(id)) {
+                                                                const existingDetail = prevDetails.find((d) => d._id.toString() === id);
+                                                                const pending = existingDetail
+                                                                    ? installment.installmentRate - (existingDetail.deductionAmount || 0)
+                                                                    : installment.installmentRate;
+                                                                const deduction = Math.max(0, Math.min(installment.spreadRate, newTotal, pending));
+                                                                if (deduction > 0) {
+                                                                    newTotal -= deduction;
+                                                                    newInstallmentDetail.push({
+                                                                        _id: installment._id,
+                                                                        installmentType: installment.installmentType,
+                                                                        deductionAmount: deduction,
+                                                                    });
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // Calculate updated installmentPending for all instalments based on new details
+                                                        const newInstalments = (prev.instalments || []).map((instaItem) => {
+                                                            const matchedDetail = newInstallmentDetail.find(
+                                                                (d) => d._id.toString() === instaItem._id.toString()
+                                                            );
+                                                            const deduction = matchedDetail ? matchedDetail.deductionAmount : 0;
+                                                            const newPendingAmount = instaItem.installmentRate - deduction;
+                                                            return {
+                                                                ...instaItem,
+                                                                installmentPending: newPendingAmount >= 0 ? newPendingAmount : 0,
+                                                            };
+                                                        });
+
+                                                        return {
+                                                            ...prev,
+                                                            invoice: {
+                                                                ...prev.invoice,
+                                                                total: newTotal < 0 ? 0 : newTotal,
+                                                                installmentDetail: newInstallmentDetail,
+                                                            },
+                                                            instalments: newInstalments,
+                                                        };
+                                                    } else {
+                                                        // CHECK logic
+                                                        const isAlreadySelected = prevDetails.some((d) => d._id.toString() === toggledId);
+                                                        if (isAlreadySelected) return prev;
+
+                                                        const newTotal = prevInvoice.total ?? 0;
+                                                        const deduction = Math.max(0, Math.min(insta.spreadRate, newTotal, installmentPending));
+                                                        if (deduction === 0) return prev;
+
+                                                        // Add the new detail
+                                                        const newInstallmentDetail = [
+                                                            ...prevDetails,
+                                                            {
+                                                                _id: insta._id,
+                                                                installmentType: insta.installmentType,
+                                                                deductionAmount: deduction,
+                                                            },
+                                                        ];
+
+                                                        // Update installmentPending on instalments
+                                                        const newInstalments = (prev.instalments || []).map((instaItem) => {
+                                                            if (instaItem._id.toString() === toggledId) {
+                                                                const newPendingAmount = instaItem.installmentRate - deduction;
+                                                                return {
+                                                                    ...instaItem,
+                                                                    installmentPending: newPendingAmount >= 0 ? newPendingAmount : 0,
+                                                                };
+                                                            } else {
+                                                                return instaItem;
+                                                            }
+                                                        });
+
+                                                        return {
+                                                            ...prev,
+                                                            invoice: {
+                                                                ...prev.invoice,
+                                                                total: newTotal - deduction,
+                                                                installmentDetail: newInstallmentDetail,
+                                                            },
+                                                            instalments: newInstalments,
+                                                        };
                                                     }
-                                                };
-                                            });
-                                        }}
-                                    />
-                                    <div className="grid grid-cols-2 md:grid-cols-4 space-x-7">
-                                        <InputGroup disabled={true} label="Instalment Type" value={insta.installmentType} />
-                                        <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Instalment Total" value={insta.installmentRate} />
-                                        <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Deducted Amount" value={insta.deductionAmount} />
-                                        <div className="flex items-center justify-center self-end mb-4 text-xs w-15">
-                                            {insta.signed ? (
-                                                <p className="bg-green-400/30 text-green-700 px-2 py-1 rounded-md">Signed</p>
-                                            ) : (
-                                                <p className="bg-yellow-400/30 text-yellow-700 px-2 py-1 rounded-md">Unsigned</p>
-                                            )}
+                                                });
+                                            }}
+
+                                        />
+
+                                        <div className="grid grid-cols-2 md:grid-cols-4 space-x-7">
+                                            <InputGroup
+                                                disabled={true}
+                                                label="Instalment Type"
+                                                value={insta.installmentType}
+                                            />
+                                            <InputGroup
+                                                disabled={true}
+                                                icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                iconPosition="left"
+                                                label="Instalment Total"
+                                                value={insta.installmentRate}
+                                            />
+                                            <InputGroup
+                                                disabled={true}
+                                                icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                iconPosition="left"
+                                                label="Deducted Amount"
+                                                value={deductionAmount}
+                                            />
+                                            <div className="flex items-center justify-center self-end mb-4 text-xs w-15">
+                                                {insta.signed ? (
+                                                    <p className="bg-green-400/30 text-green-700 px-2 py-1 rounded-md">
+                                                        Signed
+                                                    </p>
+                                                ) : (
+                                                    <p className="bg-yellow-400/30 text-yellow-700 px-2 py-1 rounded-md">
+                                                        Unsigned
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-
-                                </div>
-                            ))}
+                                );
+                            })}
                         </InputWrapper>
                     )}
+
+
+                    {console.log("Invoice:", currentInvoice?.instalments)}
+
+
+
 
                     {/* Daily Invoices */}
                     <div className="mb-6">
@@ -496,7 +634,7 @@ const WeeklyInvoice = () => {
                                                         <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             {new Date(invoice.date).toLocaleDateString('en-UK')}
                                                         </td>
-                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                        <td className="text-sm font-medium text-gray-900 dark:text-white px-2 py-2 border border-gray-200 dark:border-dark-5">
                                                             {invoice.mainService}
                                                         </td>
                                                         <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
