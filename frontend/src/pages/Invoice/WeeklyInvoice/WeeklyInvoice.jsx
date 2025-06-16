@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../../features/sites/siteSlice';
 import moment from 'moment';
@@ -9,9 +9,11 @@ import "flatpickr/dist/plugins/monthSelect/style.css";
 import { fetchDrivers } from '../../../features/drivers/driverSlice';
 import axios from 'axios'
 import Modal from '../../../components/Modal/Modal'
+import { jsPDF } from "jspdf";
 import { getInstallmentDetails } from '../../Rota/supportFunctions';
 import InputWrapper from '../../../components/InputGroup/InputWrapper'
 import InputGroup from '../../../components/InputGroup/InputGroup'
+import { PrintableContent } from './PrintContent';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -25,6 +27,7 @@ moment.updateLocale('en', {
 
 const WeeklyInvoice = () => {
     const dispatch = useDispatch();
+    const contentRef = useRef(null);
     const { userDetails } = useSelector((state) => state.auth);
     const { list: sites, siteStatus } = useSelector((state) => state.sites);
     const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
@@ -39,6 +42,8 @@ const WeeklyInvoice = () => {
     const [invoices, setInvoices] = useState([])
     const [groupedInvoices, setGroupedInvoices] = useState([])
     const [currentInvoice, setCurrentInvoice] = useState(null)
+    const [isPrintReady, setIsPrintReady] = useState(null)
+    const [driverDetails, setDriverDetails] = useState({})
     const [changed, setChanged] = useState(false)
 
     useEffect(() => {
@@ -133,6 +138,61 @@ const WeeklyInvoice = () => {
         setSelectedMonth(newMonth);
     };
 
+    const handlePrint = async () => {
+        setDriverDetails(currentInvoice?.invoice.driverId)
+        setIsPrintReady(true);
+    };
+
+    useEffect(() => {
+        if (currentInvoice && isPrintReady) {
+            generatePDF(contentRef.current,
+                currentInvoice?.driverName,
+                currentInvoice?.serviceWeek);
+
+            setIsPrintReady(false);
+        }
+    }, [isPrintReady]);
+
+    const generatePDF = (invoiceContent, driverName, serviceWeek) => {
+        const tempDiv = document.createElement("div");
+
+        // A4 portrait size in pixels at 96 DPI is ~794x1123
+        tempDiv.style.width = "794px";
+        tempDiv.style.height = "1123px";
+        tempDiv.style.minWidth = "794px";
+        tempDiv.style.minHeight = "1123px";
+        tempDiv.style.maxWidth = "794px";
+        tempDiv.style.maxHeight = "1123px";
+
+        const clone = invoiceContent.cloneNode(true);
+        tempDiv.appendChild(clone);
+        document.body.appendChild(tempDiv);
+
+        const doc = new jsPDF('portrait', 'mm', 'a4');
+
+        doc.html(tempDiv, {
+            image: { type: 'jpeg', quality: 0.98 },
+
+            html2canvas: {
+                scale: 0.262,
+                useCORS: true,
+                logging: true,
+                allowTaint: false,
+            },
+            callback: function (doc) {
+                const pdfFileName = `invoice-${driverName}-${serviceWeek}.pdf`;
+                document.body.removeChild(tempDiv);
+
+                const pdfBlob = doc.output('blob');
+                const reader = new FileReader();
+                reader.readAsDataURL(pdfBlob);
+                reader.onloadend = function () {
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    window.open(pdfUrl); // opens in new tab for preview/print
+                };
+            }
+        });
+    };
 
     const handleShowDetails = async (invoice) => {
         console.log("Invoice:", invoice)
@@ -613,15 +673,6 @@ const WeeklyInvoice = () => {
                         </InputWrapper>
                     )}
 
-
-
-
-
-                    {console.log("Invoice:", currentInvoice?.instalments)}
-
-
-
-
                     {/* Daily Invoices */}
                     <div className="mb-6">
                         <InputWrapper title={'Invoices'}>
@@ -724,9 +775,10 @@ const WeeklyInvoice = () => {
                                                         <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             £{invoice.incentiveDetailforMain?.rate || 0}
                                                         </td>
-                                                        {totalDeductions > 0 && <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                            -£{totalDeductions}
-                                                        </td>}
+                                                        {currentInvoice?.invoice.invoices.some(
+                                                            (invoice) => invoice.deductionDetail.length > 0) && <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                {totalDeductions > 0 ? `-£${totalDeductions}` : `-`}
+                                                            </td>}
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (inv) =>
                                                                 (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
@@ -780,44 +832,84 @@ const WeeklyInvoice = () => {
                                     </tbody>
                                 </table>
                             </div>
-                            {/* Installment Info Table */}
-                            {currentInvoice?.invoice.installmentDetail?.length > 0 && (
-                                <div className='rounded-lg overflow-hidden'>
-                                    <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
-                                        <thead>
-                                            <tr className="bg-primary-800 text-white">
-                                                <th className="text-xs px-4 py-2 border-r border-primary-600">Instalment Type</th>
-                                                <th className="text-xs px-4 py-2 border-r border-primary-600">Deducted Amount</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentInvoice.invoice.installmentDetail.map(insta => (
-                                                <tr key={insta._id} className="bg-gray-50 dark:bg-dark-4">
-                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{insta.installmentType}</td>
-                                                    <td className="text-sm text-red-700 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{insta.deductionAmount}</td>
+                            <div className="flex w-full gap-2">
+                                {/* Installment Info Table */}
+                                {currentInvoice?.invoice.installmentDetail?.length > 0 && (
+                                    <div className='rounded-lg w-full overflow-hidden'>
+                                        <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
+                                            <thead>
+                                                <tr className="bg-primary-800 text-white">
+                                                    <th className="text-xs px-4 py-2 border-r border-primary-600">Instalment Type</th>
+                                                    <th className="text-xs px-4 py-2 border-r border-primary-600">Deducted Amount</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                                            </thead>
+                                            <tbody>
+                                                {currentInvoice.invoice.installmentDetail.map(insta => (
+                                                    <tr key={insta._id} className="bg-gray-50 dark:bg-dark-4">
+                                                        <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{insta.installmentType}</td>
+                                                        <td className="text-sm text-red-700 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{insta.deductionAmount}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                {currentInvoice?.invoice.invoices.some(
+                                    (invoice) => invoice.deductionDetail.length > 0) && (
+                                        <div className='rounded-lg w-full overflow-hidden'>
+                                            <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
+                                                <thead>
+                                                    <tr className="bg-primary-800 text-white">
+                                                        <th className="text-xs px-4 py-2 border-r border-primary-600">Deduction Date</th>
+                                                        <th className="text-xs px-4 py-2 border-r border-primary-600">Deduction Type</th>
+                                                        <th className="text-xs px-4 py-2 border-r border-primary-600">Deducted Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {currentInvoice.invoice.invoices.map(inv => (
+                                                        <tr key={inv._id} className="bg-gray-50 dark:bg-dark-4">
+                                                            {inv.deductionDetail.map((ded) => (
+                                                                <>
+                                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{new Date(ded.date).toLocaleDateString()}</td>
+                                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{ded.serviceType}</td>
+                                                                    <td className="text-sm text-red-700 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{ded.rate}</td>
+                                                                </>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                            </div>
 
                         </InputWrapper>
                     </div>
 
 
                     {/* Weekly Total */}
-                    <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">Weekly Total</h3>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                            £{currentInvoice?.invoice.total}
-                        </p>
+                    <div className="mt-6 flex justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">Weekly Total</h3>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                £{currentInvoice?.invoice.total}
+                            </p>
+                        </div>
+                        {/*Download or Send Invoice */}
+                        <div className='flex gap-3 p-3 rounded border-2 border-neutral-300 mt-2 w-fit'>
+                            <button disabled={changed}
+                                className='bg-sky-400/50 text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Download Invoice</button>
+                            <button disabled={changed}
+                                className='bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Send invoice</button>
+                        </div>
                     </div>
+
+
                 </div >
                 <div className="border-t border-neutral-300 flex px-2 md:px-6 py-2 justify-end gap-2 items-center">
                     <button
                         className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600"
-                        onClick={() => setCurrentInvoice(null)}
+                        onClick={() => { setCurrentInvoice(null); setChanged(false) }}
                     >
                         Close
                     </button>
@@ -831,7 +923,7 @@ const WeeklyInvoice = () => {
                     <button
                         disabled={changed}
                         onClick={() => {
-                            // handlePrint()
+                            handlePrint()
                         }}
                         className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                     >
@@ -839,6 +931,15 @@ const WeeklyInvoice = () => {
                     </button>
                 </div>
             </Modal >
+            <div style={{
+                visibility: 'hidden',
+                position: 'absolute',
+                left: '-9999px'
+            }}>
+
+                {currentInvoice && (<PrintableContent ref={contentRef} invoice={currentInvoice.invoice} driverDetails={driverDetails} />)}
+
+            </div>
         </div >
     );
 };
