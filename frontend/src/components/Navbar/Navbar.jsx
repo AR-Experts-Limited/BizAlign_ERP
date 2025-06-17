@@ -93,7 +93,9 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                             </button>
                         </div>
                         <div className="p-1 md:p-2 border-t border-neutral-300">
-                            <button onClick={() => dispatch(logout())} className={`hover:text-red-500 hover:bg-zinc-300/70 rounded-md p-2 text-xs md:text-sm w-full flex  items-center gap-2`}>
+                            <button onClick={() => {
+                                dispatch(logout()); navigate('/login');
+                            }} className={`hover:text-red-500 hover:bg-zinc-300/70 rounded-md p-2 text-xs md:text-sm w-full flex  items-center gap-2`}>
                                 <FiLogOut size={15} /> Log out
                             </button>
                         </div>

@@ -42,6 +42,8 @@ const weeklyInvoiceSchema = new mongoose.Schema({
     referenceNumber: String,
     unsigned: Boolean,
     vatTotal: Number,
+    downloadInvoice: Array,
+    sentInvoice: Array,
     total: Number,
 });
 

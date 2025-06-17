@@ -19,7 +19,11 @@ const dayInvoiceSchema = new mongoose.Schema({
   shiftTimes: { type: Object },
   incentiveDetailforMain: {
     type: IncentiveSchema,
-    default: () => ({})
+    default: null
+  },
+  incentiveDetailforAdditional: {
+    type: IncentiveSchema,
+    default: null
   },
   deductionDetail: {
     type: [DeductionSchema],

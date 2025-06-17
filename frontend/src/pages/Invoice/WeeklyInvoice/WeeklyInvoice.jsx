@@ -42,8 +42,9 @@ const WeeklyInvoice = () => {
     const [invoices, setInvoices] = useState([])
     const [groupedInvoices, setGroupedInvoices] = useState([])
     const [currentInvoice, setCurrentInvoice] = useState(null)
-    const [isPrintReady, setIsPrintReady] = useState(null)
-    const [driverDetails, setDriverDetails] = useState({})
+    // const [isPrintReady, setIsPrintReady] = useState(null)
+    // const [driverDetails, setDriverDetails] = useState({})
+    const [sendingInvoice, setSendingInvoice] = useState(false)
     const [changed, setChanged] = useState(false)
 
     useEffect(() => {
@@ -138,25 +139,23 @@ const WeeklyInvoice = () => {
         setSelectedMonth(newMonth);
     };
 
-    const handlePrint = async () => {
-        setDriverDetails(currentInvoice?.invoice.driverId)
-        setIsPrintReady(true);
-    };
+    // const handlePrint = async () => {
+    //     setDriverDetails(currentInvoice?.invoice.driverId)
+    //     setIsPrintReady(true);
+    // };
 
-    useEffect(() => {
-        if (currentInvoice && isPrintReady) {
-            generatePDF(contentRef.current,
-                currentInvoice?.driverName,
-                currentInvoice?.serviceWeek);
+    // useEffect(() => {
+    //     if (currentInvoice && isPrintReady) {
+    //         generatePDF(contentRef.current,
+    //             currentInvoice?.driverName,
+    //             currentInvoice?.serviceWeek);
 
-            setIsPrintReady(false);
-        }
-    }, [isPrintReady]);
+    //         setIsPrintReady(false);
+    //     }
+    // }, [isPrintReady]);
 
-    const generatePDF = (invoiceContent, driverName, serviceWeek) => {
+    const generatePDF = async (invoiceContent, driverName, serviceWeek, actionType) => {
         const tempDiv = document.createElement("div");
-
-        // A4 portrait size in pixels at 96 DPI is ~794x1123
         tempDiv.style.width = "794px";
         tempDiv.style.height = "1123px";
         tempDiv.style.minWidth = "794px";
@@ -172,51 +171,85 @@ const WeeklyInvoice = () => {
 
         doc.html(tempDiv, {
             image: { type: 'jpeg', quality: 0.98 },
-
             html2canvas: {
                 scale: 0.262,
                 useCORS: true,
                 logging: true,
                 allowTaint: false,
             },
-            callback: function (doc) {
-                const pdfFileName = `invoice-${driverName}-${serviceWeek}.pdf`;
+            callback: async function (doc) {
                 document.body.removeChild(tempDiv);
-
                 const pdfBlob = doc.output('blob');
-                const reader = new FileReader();
-                reader.readAsDataURL(pdfBlob);
-                reader.onloadend = function () {
+                const filename = `${currentInvoice?.invoice?.driverId.firstName + '_' + currentInvoice?.invoice?.driverId.lastName}.pdf`;
+
+                if (actionType === 'print') {
                     const pdfUrl = URL.createObjectURL(pdfBlob);
-                    window.open(pdfUrl); // opens in new tab for preview/print
-                };
+                    window.open(pdfUrl);
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('weeklyInvoiceId', currentInvoice?.invoice?._id);
+                formData.append('driverId', currentInvoice?.invoice?.driverId?._id);
+                formData.append('driverEmail', currentInvoice?.invoice?.driverId?.Email);
+                formData.append('driverName', currentInvoice?.invoice?.driverId.firstName + ' ' + currentInvoice?.invoice?.driverId.lastName);
+                formData.append('actionType', actionType);
+                formData.append('document', new File([pdfBlob], filename, { type: 'application/pdf' }));
+
+                try {
+                    const res = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/document`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+
+                    if (actionType === 'downloadInvoice') {
+                        const url = window.URL.createObjectURL(pdfBlob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = filename;
+                        link.click();
+
+                    } else if (actionType === 'sentInvoice') {
+                        setSendingInvoice(false)
+                        alert("Invoice sent and saved successfully.");
+                    }
+                    setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.updatedWeeklyInvoice }))
+                    setInvoices(allinvoices => (allinvoices.map((inv) => {
+                        if (inv.driverId._id === currentInvoice?.invoice?.driverId?._id && inv.serviceWeek === currentInvoice?.invoice?.serviceWeek)
+                            return res.data.updatedWeeklyInvoice
+                        else
+                            return inv
+                    })))
+                } catch (err) {
+                    console.error("Upload failed:", err);
+                    alert("Error uploading invoice.");
+                }
             }
         });
     };
 
+
     const handleShowDetails = async (invoice) => {
-        console.log("Invoice:", invoice)
         const instalments = await getInstallmentDetails(invoice.driverId._id)
-        console.log("Installments:", instalments)
         setCurrentInvoice({ invoice, instalments })
     }
 
     const handleUpdateInvoice = async (currentInvoice) => {
-        const response = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/update`, { weeklyInvoiceId: currentInvoice.invoice._id, installmentDetail: currentInvoice.invoice.installmentDetail, weeklyTotal: currentInvoice.invoice.total, instalments: currentInvoice.instalments })
-        console.log(response.data)
-        setChanged(false)
+        try {
+            const res = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/update`, { weeklyInvoiceId: currentInvoice.invoice._id, installmentDetail: currentInvoice.invoice.installmentDetail, weeklyTotal: currentInvoice.invoice.total, instalments: currentInvoice.instalments })
+            setChanged(false)
+            setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.weeklyInvoice }))
+            setInvoices(allinvoices => (allinvoices.map((inv) => {
+                if (inv.driverId._id === currentInvoice?.invoice?.driverId?._id && inv.serviceWeek === currentInvoice?.invoice?.serviceWeek)
+                    return res.data.weeklyInvoice
+                else
+                    return inv
+            })))
+        }
+        catch (err) {
+            console.error("Upload failed:", err);
+            alert("Error uploading invoice.");
+        }
     }
-
-    const calculateTotal = (invoice) => {
-
-        return (
-            invoice.serviceRateforMain +
-            invoice.byodRate +
-            invoice.calculatedMileage +
-            (invoice.incentiveDetailforMain?.rate || 0)
-        );
-    };
-
 
     const tableData = (driver) => {
         return weeks.map((week) => {
@@ -773,7 +806,7 @@ const WeeklyInvoice = () => {
                                                                 </>
                                                             )}
                                                         <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                            £{invoice.incentiveDetailforMain?.rate || 0}
+                                                            £{(invoice.incentiveDetailforMain?.rate || 0) + (invoice.incentiveDetailforAdditional?.rate || 0)}
                                                         </td>
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (invoice) => invoice.deductionDetail.length > 0) && <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
@@ -895,16 +928,92 @@ const WeeklyInvoice = () => {
                                 £{currentInvoice?.invoice.total}
                             </p>
                         </div>
-                        {/*Download or Send Invoice */}
-                        <div className='flex gap-3 p-3 rounded border-2 border-neutral-300 mt-2 w-fit'>
-                            <button disabled={changed}
-                                className='bg-sky-400/50 text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Download Invoice</button>
-                            <button disabled={changed}
-                                className='bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Send invoice</button>
-                        </div>
+
                     </div>
 
+                    {/*Download or Send Invoice */}
+                    <div className='flex gap-3 p-3 rounded border-2 border-neutral-300 mt-2 w-full'>
+                        <div className='w-full'>
+                            <button
+                                disabled={changed}
+                                className='flex gap-2 bg-sky-400/50 items-center text-sm text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white'
+                                onClick={() => generatePDF(contentRef.current, currentInvoice.driverName, currentInvoice.serviceWeek, 'downloadInvoice')}
+                            >
+                                <i className="flex items-center fi fi-sr-download"></i>
+                                Download Invoice
+                            </button>
+                            {currentInvoice?.invoice?.downloadInvoice?.length > 0 && (
+                                <div className='rounded-lg overflow-auto border border-neutral-200 mt-2 max-h-[15rem]'>
+                                    <table className='table-general'>
+                                        <thead className='sticky top-0 bg-white'>
+                                            <tr>
+                                                <th colSpan={3}>
+                                                    History of Downloaded Invoices
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <th>Downloaded On</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {currentInvoice.invoice?.downloadInvoice?.sort((a, b) => new Date(b.date) - new Date(a.date)).map((dInvoice) => (
+                                                <tr >
+                                                    <td>{new Date(dInvoice.date).toLocaleString()}</td>
+                                                    <td ><div className='flex justify-center'><a className='flex w-fit bg-purple-300/50 text-purple-500 rounded p-2' target='_blank' href={dInvoice.document}><i class="flex items-center fi text-[1rem] fi-sr-file-download"></i></a></div></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>)}
+                        </div>
+                        <div className='w-full'>
+                            <button
+                                disabled={changed}
+                                className="flex gap-2 items-center text-sm bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
+                                onClick={() => {
+                                    setSendingInvoice(true);
+                                    generatePDF(contentRef.current, currentInvoice.driverName, currentInvoice.serviceWeek, 'sentInvoice');
+                                }}
+                            >
+                                {sendingInvoice ? (
+                                    <div className="w-3 h-3 border-3 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <i
+                                        className={`fi fi-sr-paper-plane
+                                        } flex items-center`}
+                                    ></i>
+                                )}
+                                Send Invoice
+                            </button>
+                            {currentInvoice?.invoice?.sentInvoice?.length > 0 && (
 
+                                <div className='rounded-lg overflow-auto border border-neutral-200 mt-2 max-h-[15rem]'>
+
+                                    <table className='table-general'>
+                                        <thead className='sticky top-0 bg-white'>
+                                            <tr>
+                                                <th colSpan={3}>
+                                                    History of Sent Invoices
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <th>Downloaded On</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {currentInvoice.invoice?.sentInvoice?.sort((a, b) => new Date(b.date) - new Date(a.date)).map((sInvoice) => (
+                                                <tr>
+                                                    <td>{new Date(sInvoice.date).toLocaleString()}</td>
+                                                    <td ><div className='flex justify-center'><a className='flex w-fit bg-purple-300/50 text-purple-500 rounded p-2' target='_blank' href={sInvoice.document}><i class="flex items-center fi text-[1rem] fi-sr-file-download"></i></a></div></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>)}
+                        </div>
+                    </div>
                 </div >
                 <div className="border-t border-neutral-300 flex px-2 md:px-6 py-2 justify-end gap-2 items-center">
                     <button
@@ -922,9 +1031,7 @@ const WeeklyInvoice = () => {
                     </button>
                     <button
                         disabled={changed}
-                        onClick={() => {
-                            handlePrint()
-                        }}
+                        onClick={() => generatePDF(contentRef.current, currentInvoice.driverName, currentInvoice.serviceWeek, 'print')}
                         className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                     >
                         Print Weekly Invoice
@@ -937,7 +1044,7 @@ const WeeklyInvoice = () => {
                 left: '-9999px'
             }}>
 
-                {currentInvoice && (<PrintableContent ref={contentRef} invoice={currentInvoice.invoice} driverDetails={driverDetails} />)}
+                {currentInvoice && (<PrintableContent ref={contentRef} invoice={currentInvoice.invoice} driverDetails={currentInvoice.invoice.driverId} />)}
 
             </div>
         </div >

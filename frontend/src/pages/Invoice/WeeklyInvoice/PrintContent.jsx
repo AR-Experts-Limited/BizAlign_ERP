@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchSites } from '../../../features/sites/siteSlice';
+import moment from 'moment'
 
 export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, ref) => {
     const dispatch = useDispatch();
@@ -29,7 +30,10 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                         <p className="text-[10px] mb-0.5"><span className="italic font-semibold">Site:</span> {invoice.site}</p>
                         <p className="text-[10px] mb-0.5"><span className="font-semibold">Service Week:</span> {invoice.serviceWeek}</p>
                         <p className="text-[10px] mb-0.5"><span className="font-semibold">Invoice Number:</span> {invoice.referenceNumber}</p>
-                        <p className="text-[10px] mb-0.5"><span className="font-semibold">Due Date:</span> {new Date((new Date().setDate((new Date().getDate() + 17)))).toLocaleDateString()}</p>
+                        <p className="text-[10px] mb-0.5">
+                            <span className="font-semibold">Due Date:</span>{' '}
+                            {moment(invoice.serviceWeek, 'GGGG-[W]WW').startOf('week').add(17, 'days').format('YYYY-MM-DD')}
+                        </p>
                     </div>
                     <div>
                         <h4 className="text-[10px] font-bold mt-1 mb-2.5 border-b border-[#4B0082] pb-2">Bill From</h4>
@@ -106,11 +110,11 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                                     const totalDeductions = item.deductionDetail?.reduce((sum, ded) => sum + parseFloat(ded.rate || 0), 0) || 0;
                                     const hasDriverVat = driverDetails?.vatDetails?.vatNo && new Date(item.date) >= new Date(driverDetails.vatDetails.vatEffectiveDate);
                                     const hasCompanyVat = driverDetails?.companyVatDetails?.companyVatNo && new Date(item.date) >= new Date(driverDetails.companyVatDetails.companyVatEffectiveDate);
-                                    let dayTotal = item.serviceRateforMain + item.byodRate + item.calculatedMileage + (item.serviceRateforAdditional || 0) + (item.incentiveDetailforMain?.rate || 0);
+                                    let dayTotal = item.serviceRateforMain + item.byodRate + item.calculatedMileage + (item.serviceRateforAdditional || 0) + (item.incentiveDetailforMain?.rate || 0) + (item.incentiveDetailforAdditional?.rate || 0);
                                     if (hasDriverVat || hasCompanyVat) {
                                         vatAddition += item.total * 0.2;
                                     }
-                                    weeklyTotalEarning += dayTotal;
+                                    weeklyTotalEarning += item.total;
                                     return (
                                         <tr key={item._id} className={index % 2 === 0 ? 'bg-[#FFFFFF]' : 'bg-[#F9FAFB]'}>
                                             <td className="text-[10px] font-medium text-[#111827] p-2 border border-[#E5E7EB]">{new Date(item.date).toLocaleDateString('en-UK')}</td>
@@ -138,7 +142,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                                                     </td>
                                                 </>
                                             )}
-                                            <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{item.incentiveDetailforMain?.rate?.toFixed(2) || '0.00'}</td>
+                                            <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{(item.incentiveDetailforMain?.rate || 0 + item.incentiveDetailforAdditional?.rate || 0).toFixed(2) || '0.00'}</td>
                                             {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
                                                 <td className="text-[10px] font-medium text-[#7F1D1D] p-2 border border-[#E5E7EB]">{totalDeductions > 0 ? `-£${totalDeductions.toFixed(2)}` : '-'}</td>
                                             )}
@@ -170,7 +174,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                                 ) && (
                                         <td className="text-[10px] w-[3rem] max-w-[3rem] font-medium text-[#111827] px-2 py-1 border border-[#E5E7EB]">£{vatAddition.toFixed(2)}</td>
                                     )}
-                                <td className="text-[10px] font-medium text-[#111827] px-4 py-2 border border-[#E5E7EB]">£{weeklyTotalEarning.toFixed(2)}</td>
+                                <td className="text-[10px] font-medium text-[#111827] px-4 py-2 border border-[#E5E7EB]"> £{invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0).toFixed(2)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -238,10 +242,10 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                     </div>
                     <div className="flex-1 pl-5 text-right border-l border-[#D1D5DB]">
                         <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Summary</h4>
-                        <p className="text-[10px]"><span className="font-semibold">Total Earnings:</span> £{(weeklyTotalEarning + vatAddition).toFixed(2)}</p>
+                        <p className="text-[10px]"><span className="font-semibold">Total Earnings:</span> £{(weeklyTotalEarning + vatAddition + weeklyTotalDeduction).toFixed(2)}</p>
                         <p className="text-[10px]"><span className="font-semibold">Total Deductions:</span> -£{weeklyTotalDeduction.toFixed(2)}</p>
                         <p className="text-[10px]"><span className="font-semibold">Total Installments:</span> -£{weeklyTotalInstallment.toFixed(2)}</p>
-                        <h3 className="text-lg font-bold mt-2.5 text-[#4B0082]">Amount Due: £{(weeklyTotalEarning + vatAddition - weeklyTotalDeduction - weeklyTotalInstallment).toFixed(2)}</h3>
+                        <h3 className="text-lg font-bold mt-2.5 text-[#4B0082]">Amount Due: £{(weeklyTotalEarning + vatAddition - weeklyTotalInstallment).toFixed(2)}</h3>
                     </div>
                 </div>
             </div>

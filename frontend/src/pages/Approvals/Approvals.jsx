@@ -55,15 +55,14 @@ const Approvals = () => {
                         serviceRateforAdditional: (
                             additionalServiceDetails.serviceRate +
                             additionalServiceDetails.byodRate +
-                            additionalServiceDetails.calculatedMileage +
-                            (additionalServiceDetails?.incentiveDetailforAdditional ?? 0)
+                            additionalServiceDetails.calculatedMileage
                         ),
                         total: parseFloat(
                             dayInvoice.total +
                             additionalServiceDetails.serviceRate +
                             additionalServiceDetails.byodRate +
                             additionalServiceDetails.calculatedMileage +
-                            (additionalServiceDetails?.incentiveDetailforAdditional ?? 0))
+                            (dayInvoice.incentiveDetailforAdditional?.rate ?? 0))
                     };
                 }
                 await axios.put(`${API_BASE_URL}/api/dayInvoice/${dayInvoice._id}`, { ...dayInvoice, additionalServiceDetails, additionalServiceApproval });

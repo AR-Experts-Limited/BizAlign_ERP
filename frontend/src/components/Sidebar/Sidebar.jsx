@@ -71,7 +71,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
             <div className='mb-12'>
                 <div className="flex flex-col justify-center gap-5 m-2">
                     <Tooltip.Provider delayDuration={500}>
-                        {menuItems.filter(item => accessDetails.includes(item.name)).map((item) => (
+                        {menuItems.filter(item => accessDetails?.includes(item.name)).map((item) => (
                             <Tooltip.Root key={item.path}>
                                 <Tooltip.Trigger asChild>
                                     <div ref={(el) => (itemRefs.current[item.path] = el)}>

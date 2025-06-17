@@ -42,6 +42,24 @@ const rateCardFinder = (ratecards, week, service, typeOfDriver) => {
 };
 
 /**
+ * Helper function to check if user has admin privileges
+ */
+const hasAdminPrivileges = (role) => ['super-admin', 'Admin'].includes(role);
+
+/**
+ * Helper function to determine approval status
+ */
+const getApprovalStatus = (currentStatus, isAdmin) => {
+    if (isAdmin) return 'Approved';
+    if (currentStatus === '')
+        return 'Request'
+    else if (currentStatus === 'Request')
+        return 'Requested'
+    else
+        return currentStatus;
+};
+
+/**
  * Main Rota component
  */
 const Rota = () => {
@@ -49,6 +67,7 @@ const Rota = () => {
     const dispatch = useDispatch();
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
+    const { userDetails } = useSelector((state) => state.auth);
 
     // State management
     const [rangeType, setRangeType] = useState('weekly');
@@ -66,7 +85,7 @@ const Rota = () => {
     const [prevRangeType, setPrevRangeType] = useState(rangeType);
     const [rotaDetail, setRotaDetail] = useState(null);
     const [errors, setErrors] = useState({});
-    const [openTotalBreakdown, setOpenTotalBreakdown] = useState(false)
+    const [openTotalBreakdown, setOpenTotalBreakdown] = useState(false);
 
     // Consolidated state objects
     const state = {
@@ -119,12 +138,10 @@ const Rota = () => {
         const weeklyMap = {};
 
         schedules.forEach(sch => {
-            // Build scheduleMap
             const dateKey = new Date(sch.day).toLocaleDateString('en-UK');
             const key = `${dateKey}_${sch.driverId}`;
             scheduleMap[key] = sch;
 
-            // Build weeklyMap
             const weekKey = sch.schedule?.week;
             const driverKey = `${sch.driverId}_${weekKey}`;
             weeklyMap[driverKey] = (weeklyMap[driverKey] || 0) + 1;
@@ -151,15 +168,10 @@ const Rota = () => {
         if (driversList.length > 0 && rangeOptions) {
             const rangeOptionsVal = Object.values(rangeOptions);
 
-            if (!cacheRangeOption) {
-                fetchSchedules();
-                setCacheRangeOption(rangeOptions);
-            }
-            else if (
+            if (!cacheRangeOption ||
                 !Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex) ||
                 Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
-                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)
-            ) {
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
                 fetchSchedules();
                 setCacheRangeOption(rangeOptions);
             }
@@ -183,8 +195,7 @@ const Rota = () => {
 
         const rateCard = rateCardFinder(ratecards, week, service, typeOfDriver);
         const deductions = await getDeductionDetails(_id, day);
-        const incentives = await getIncentiveDetails(service, site, new Date(day))
-
+        const incentives = await getIncentiveDetails(service, site, new Date(day));
 
         if (invoice) {
             setRotaDetail({
@@ -224,17 +235,25 @@ const Rota = () => {
         });
     };
 
-    const handleAdditionalService = (additionalService) => {
+    const handleAdditionalService = async (additionalService) => {
         if (!rotaDetail) return;
 
-        const { serviceWeek, driverVehicleType } = rotaDetail.dayInvoice;
+        const { serviceWeek, driverVehicleType, date, site } = rotaDetail.dayInvoice;
+        const isAdmin = hasAdminPrivileges(userDetails.role);
+
+        const incentiveDetailforAdditional = await getIncentiveDetails(additionalService, site, new Date(date));
+
+        console.log(incentiveDetailforAdditional)
 
         setRotaDetail((prev) => {
             const prevAdditionalServiceDetails = prev.dayInvoice.additionalServiceDetails || {};
-            const prevAdditionalServiceTotal =
-                Number((Number(prevAdditionalServiceDetails.serviceRate || 0) +
+            const prevAdditionalServiceTotal = Number(
+                (Number(prevAdditionalServiceDetails.serviceRate || 0) +
                     Number(prevAdditionalServiceDetails.byodRate || 0) +
-                    Number(prevAdditionalServiceDetails.calculatedMileage || 0)).toFixed(2));
+                    Number(prevAdditionalServiceDetails.calculatedMileage || 0) +
+                    Number(prev.dayInvoice.incentiveDetailforAdditional?.rate || 0)
+                ).toFixed(2)
+            );
 
             let additionalServiceDetails = null;
             if (additionalService) {
@@ -255,18 +274,26 @@ const Rota = () => {
             }
 
             const newAdditionalServiceTotal = additionalServiceDetails
-                ? Number((Number(additionalServiceDetails.serviceRate || 0) +
-                    Number(additionalServiceDetails.byodRate || 0) +
-                    Number(additionalServiceDetails.calculatedMileage || 0)).toFixed(2))
+                ? Number(
+                    (Number(additionalServiceDetails.serviceRate || 0) +
+                        Number(additionalServiceDetails.byodRate || 0) +
+                        Number(additionalServiceDetails.calculatedMileage || 0) +
+                        Number(incentiveDetailforAdditional[0]?.rate || 0)).toFixed(2)
+
+                )
                 : 0;
 
+            console.log(incentiveDetailforAdditional[0]?.rate, newAdditionalServiceTotal)
             return {
                 ...prev,
                 dayInvoice: {
                     ...prev.dayInvoice,
-                    additionalServiceApproval: additionalService ? 'Request' : '',
-                    serviceRateforAdditional: newAdditionalServiceTotal,
-                    total: prev.dayInvoice.additionalServiceApproval === 'Approved' ? Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2)) : prev.dayInvoice.total,
+                    incentiveDetailforAdditional: incentiveDetailforAdditional[0],
+                    additionalServiceApproval: additionalService ? getApprovalStatus('', isAdmin) : '',
+                    serviceRateforAdditional: isAdmin ? newAdditionalServiceTotal : 0,
+                    total: isAdmin || prev.dayInvoice.additionalServiceApproval === 'Approved'
+                        ? Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2))
+                        : prev.dayInvoice.total,
                     additionalServiceDetails,
                 },
             };
@@ -274,38 +301,47 @@ const Rota = () => {
     };
 
     const handleAdditionalServiceFieldChange = (field, value) => {
-        const parsedValue = Number(value) || 0; // Ensure valid number
-        if (parsedValue < 0) return; // Prevent negative values
+        const parsedValue = Number(value) || 0;
+        if (parsedValue < 0) return;
+
+        const isAdmin = hasAdminPrivileges(userDetails.role);
 
         setRotaDetail((prev) => {
             const prevAdditionalServiceDetails = prev.dayInvoice.additionalServiceDetails || {};
-            const prevAdditionalServiceTotal =
-                Number((Number(prevAdditionalServiceDetails.serviceRate || 0) +
+            const prevAdditionalServiceTotal = Number(
+                (Number(prevAdditionalServiceDetails.serviceRate || 0) +
                     Number(prevAdditionalServiceDetails.byodRate || 0) +
-                    Number(prevAdditionalServiceDetails.calculatedMileage || 0)).toFixed(2));
+                    Number(prevAdditionalServiceDetails.calculatedMileage || 0) +
+                    Number(prev.dayInvoice.incentiveDetailforAdditional?.rate || 0)).toFixed(2)
+            );
 
             const updatedAdditionalServiceDetails = {
                 ...prevAdditionalServiceDetails,
                 [field]: parsedValue,
             };
 
-            // Calculate mileage for additional service if miles or mileage changes
             if (field === 'miles' || field === 'mileage') {
                 updatedAdditionalServiceDetails.calculatedMileage = Number(
                     (updatedAdditionalServiceDetails.miles * updatedAdditionalServiceDetails.mileage).toFixed(2)
                 );
             }
 
-            const newAdditionalServiceTotal =
-                Number((Number(updatedAdditionalServiceDetails.serviceRate || 0) +
+            const newAdditionalServiceTotal = Number(
+                (Number(updatedAdditionalServiceDetails.serviceRate || 0) +
                     Number(updatedAdditionalServiceDetails.byodRate || 0) +
-                    Number(updatedAdditionalServiceDetails.calculatedMileage || 0)).toFixed(2));
+                    Number(updatedAdditionalServiceDetails.calculatedMileage || 0) +
+                    Number(prev.dayInvoice.incentiveDetailforAdditional?.rate || 0)).toFixed(2)
+
+            );
 
             return {
                 ...prev,
                 dayInvoice: {
                     ...prev.dayInvoice,
-                    total: prev.dayInvoice.additionalServiceApproval === 'Approved' ? Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2)) : prev.dayInvoice.total,
+                    serviceRateforAdditional: isAdmin ? newAdditionalServiceTotal : 0,
+                    total: isAdmin || prev.dayInvoice.additionalServiceApproval === 'Approved'
+                        ? Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2))
+                        : prev.dayInvoice.total,
                     additionalServiceDetails: updatedAdditionalServiceDetails,
                 },
             };
@@ -354,37 +390,34 @@ const Rota = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-
     const handleSubmitInvoice = async (e) => {
         if (!validateFields()) return;
 
         try {
-            let response = ''
-            console.log(rotaDetail.dayInvoice)
+            const isAdmin = hasAdminPrivileges(userDetails.role);
+            let response = '';
+            const payload = {
+                ...rotaDetail.dayInvoice,
+                additionalServiceApproval: getApprovalStatus(rotaDetail.dayInvoice.additionalServiceApproval, isAdmin)
+            };
+
             if (e.target.name === 'add') {
-                response = await axios.post(
-                    `${API_BASE_URL}/api/dayInvoice/`,
-                    {
-                        ...rotaDetail.dayInvoice,
-                        additionalServiceApproval: rotaDetail.dayInvoice.additionalServiceApproval === 'Request' ? 'Requested' : rotaDetail.dayInvoice.additionalServiceApproval
-                    }
-                );
+                response = await axios.post(`${API_BASE_URL}/api/dayInvoice/`, payload);
+            } else {
+                response = await axios.put(`${API_BASE_URL}/api/dayInvoice/${rotaDetail.dayInvoice._id}`, payload);
             }
-            else {
-                response = await axios.put(
-                    `${API_BASE_URL}/api/dayInvoice/${rotaDetail.dayInvoice._id}`,
-                    {
-                        ...rotaDetail.dayInvoice,
-                        additionalServiceApproval: rotaDetail.dayInvoice.additionalServiceApproval === 'Request' ? 'Requested' : rotaDetail.dayInvoice.additionalServiceApproval
-                    }
-                );
-            }
-            if (rotaDetail.dayInvoice.additionalServiceApproval === 'Request') {
-                const approvalResponse = await axios.post(`${API_BASE_URL}/api/approvals`, {
+
+            if (payload.additionalServiceApproval === 'Requested' && !isAdmin) {
+                await axios.post(`${API_BASE_URL}/api/approvals`, {
                     type: "additionalService",
-                    reqData: { dayInvoiceId: response.data._id, additionalServiceDetails: rotaDetail.dayInvoice.additionalServiceDetails, details: "Additional Service addition requested for: \n" + response.data.driverName + ' for ' + response.data.site + ' on ' + new Date(response.data.date).toLocaleDateString() },
-                })
+                    reqData: {
+                        dayInvoiceId: response.data._id,
+                        additionalServiceDetails: rotaDetail.dayInvoice.additionalServiceDetails,
+                        details: `Additional Service addition requested for: \n${response.data.driverName} for ${response.data.site} on ${new Date(response.data.date).toLocaleDateString()} by ${userDetails.userName}`
+                    },
+                });
             }
+
             const dateObj = new Date(rotaDetail.dayInvoice.date);
             const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${rotaDetail.dayInvoice.driverId}`;
@@ -432,18 +465,21 @@ const Rota = () => {
         const miles = mileValue ? mileValue : dayInvoice.miles;
         const calculatedMileage = Number((miles * dayInvoice.mileage).toFixed(2));
 
-
         const totalDeductions = dayInvoice.deductionDetail?.reduce(
             (sum, ded) => sum + Number(ded.rate || 0),
             0
         );
 
-        const incentiveDetailforMain = dayInvoice.incentiveDetailforMain ? dayInvoice.incentiveDetailforMain.rate : 0
+        const incentiveDetailforMain = dayInvoice.incentiveDetailforMain ? dayInvoice.incentiveDetailforMain.rate : 0;
 
         const additionalServiceTotal = dayInvoice.additionalServiceDetails && dayInvoice.additionalServiceApproval === 'Approved'
-            ? Number((Number(dayInvoice.additionalServiceDetails.serviceRate || 0) +
-                Number(dayInvoice.additionalServiceDetails.byodRate || 0) +
-                Number(dayInvoice.additionalServiceDetails.calculatedMileage || 0)).toFixed(2))
+            ? Number(
+                (Number(dayInvoice.additionalServiceDetails.serviceRate || 0) +
+                    Number(dayInvoice.additionalServiceDetails.byodRate || 0) +
+                    Number(dayInvoice.additionalServiceDetails.calculatedMileage || 0)).toFixed(2) +
+                Number(dayInvoice.incentiveDetailforAdditional?.rate || 0)
+
+            )
             : 0;
 
         const updatedInvoice = {
@@ -480,7 +516,7 @@ const Rota = () => {
         const streak = streaks[driver._id]?.[dateKey] || 0;
         const isToday = dateObj.toDateString() === new Date().toDateString();
         const cellClass = isToday ? 'bg-amber-100/30' : '';
-        const isLocked = schedule?.status !== 'completed'
+        const isLocked = schedule?.status !== 'completed';
 
         if (!schedule) return <td key={day.date} className={cellClass} />;
 
@@ -523,6 +559,32 @@ const Rota = () => {
         return days.map((day) => renderTableCell(driver, day));
     };
 
+    const getApprovalStatusMessage = (status) => {
+        switch (status) {
+            case 'Request':
+                return 'Service will be added after successful approval';
+            case 'Requested':
+                return 'Waiting for additional service approval';
+            case 'Approved':
+                return 'Successfully Approved';
+            default:
+                return '';
+        }
+    };
+
+    const getApprovalStatusStyles = (status) => {
+        switch (status) {
+            case 'Request':
+                return 'bg-amber-200/40 text-amber-700 border-amber-700';
+            case 'Requested':
+                return 'bg-sky-200/40 text-sky-700 border-sky-700';
+            case 'Approved':
+                return 'bg-green-200/40 text-green-700 border-green-700';
+            default:
+                return '';
+        }
+    };
+
     return (
         <>
             <TableStructure
@@ -540,7 +602,7 @@ const Rota = () => {
                     </div>
 
                     <div className="px-5 py-3 flex flex-col gap-3 max-h-[40rem] overflow-auto pb-35">
-                        <h1 className="text-xl font-bold border-b border-neutral-300 ">Main Service</h1>
+                        <h1 className="text-xl font-bold border-b border-neutral-300">Main Service</h1>
 
                         {/* Main Service Section */}
                         <InputGroup
@@ -595,7 +657,7 @@ const Rota = () => {
                                     value={rotaDetail?.dayInvoice.miles > 0 ? rotaDetail?.dayInvoice.miles : ''}
                                     onChange={(e) => {
                                         makeTotal(e.target.value);
-                                        setErrors(prev => ({ ...prev, milesDriven: false, total: false }))
+                                        setErrors(prev => ({ ...prev, milesDriven: false, total: false }));
                                     }}
                                 />
                                 {errors.milesDriven && (
@@ -614,44 +676,25 @@ const Rota = () => {
                         </InputWrapper>
 
                         {/* Incentives Section */}
-                        {(rotaDetail?.dayInvoice?.incentiveDetailforMain) &&
-                            (<div className='incentive-detail'>
+                        {rotaDetail?.dayInvoice?.incentiveDetailforMain && (
+                            <div className='incentive-detail'>
                                 <label></label>
-                                <InputGroup type="text" icon={<FaPoundSign className="text-neutral-300" size={20} />}
-                                    iconPosition="left" label={`${rotaDetail?.dayInvoice?.incentiveDetailforMain.type} Incentive`} value={rotaDetail?.dayInvoice?.incentiveDetailforMain.rate} disabled /> </div>)
-                        }
+                                <InputGroup
+                                    type="text"
+                                    icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                    iconPosition="left"
+                                    label={`${rotaDetail?.dayInvoice?.incentiveDetailforMain.type} Incentive for Main Service`}
+                                    value={rotaDetail?.dayInvoice?.incentiveDetailforMain.rate}
+                                    disabled
+                                />
+                            </div>
+                        )}
 
                         {/* Deductions Section */}
                         {rotaDetail?.deductions?.length > 0 && (
                             <InputWrapper title="Deductions">
                                 {rotaDetail?.deductions?.map((ded) => (
                                     <div key={ded._id} className="flex items-center gap-5 justify-between">
-                                        {/* <input
-                                            className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
-                                            type="checkbox"
-                                            checked={rotaDetail?.dayInvoice?.deductionDetail?.some((d) => d._id === ded._id)}
-                                            onChange={(e) => {
-                                                const isChecked = e.target.checked;
-                                                const updatedDeductions = isChecked
-                                                    ? [...(rotaDetail?.dayInvoice?.deductionDetail || []), ded]
-                                                    : rotaDetail?.dayInvoice?.deductionDetail?.filter(d => d._id !== ded._id);
-
-                                                setRotaDetail(prev => {
-                                                    const currentTotal = Number(prev.dayInvoice?.total || 0);
-                                                    const rate = Number(ded?.rate || 0);
-                                                    const newTotal = isChecked ? currentTotal - rate : currentTotal + rate;
-
-                                                    return {
-                                                        ...prev,
-                                                        dayInvoice: {
-                                                            ...prev.dayInvoice,
-                                                            deductionDetail: updatedDeductions,
-                                                            total: Number(newTotal.toFixed(2))
-                                                        }
-                                                    };
-                                                });
-                                            }}
-                                        /> */}
                                         <div className="flex-1 grid grid-cols-2 space-x-3">
                                             <InputGroup disabled={true} label="Deduction Type" value={ded.serviceType} />
                                             <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Deduction amount" value={ded.rate} />
@@ -669,7 +712,7 @@ const Rota = () => {
                         )}
 
                         {/* Additional Service Section */}
-                        {rotaDetail?.dayInvoice?.miles > 0 &&
+                        {rotaDetail?.dayInvoice?.miles > 0 && (
                             <div>
                                 <h1 className="text-xl font-bold border-b mb-2 border-neutral-300">Additional Service</h1>
                                 <div className="w-full">
@@ -699,26 +742,48 @@ const Rota = () => {
                                     </InputGroup>
 
                                     {rotaDetail?.dayInvoice?.additionalServiceDetails && (
-                                        <>
-                                            {rotaDetail?.dayInvoice?.additionalServiceApproval && (
+                                        <div className='flex flex-col gap-3 mt-3'>
+                                            {!hasAdminPrivileges(userDetails.role) && (
                                                 <div className='flex justify-start gap-2 items-center'>
                                                     <div
-                                                        className={`text-sm w-fit my-4 px-2 py-1 rounded border ${rotaDetail.dayInvoice.additionalServiceApproval === 'Request'
-                                                            ? 'bg-amber-200/40 text-amber-700 border-amber-700'
-                                                            : rotaDetail.dayInvoice.additionalServiceApproval === 'Requested'
-                                                                ? 'bg-sky-200/40 text-sky-700 border-sky-700'
-                                                                : 'bg-green-200/40 text-green-700 border-green-700'
-                                                            }`}
+                                                        className={`text-sm w-fit my-4 px-2 py-1 rounded border ${getApprovalStatusStyles(rotaDetail.dayInvoice.additionalServiceApproval)}`}
                                                     >
-                                                        {rotaDetail.dayInvoice.additionalServiceApproval === 'Request'
-                                                            ? 'Service will be added after successful approval'
-                                                            : rotaDetail.dayInvoice.additionalServiceApproval === 'Requested'
-                                                                ? 'Waiting for additional service approval'
-                                                                : 'Successfully Approved'}
+                                                        {getApprovalStatusMessage(rotaDetail.dayInvoice.additionalServiceApproval)}
                                                     </div>
-                                                    {rotaDetail.dayInvoice.additionalServiceApproval === 'Approved' && <button onClick={() => setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, serviceRateforAdditional: 0, total: prev.dayInvoice.total - prev.dayInvoice.serviceRateforAdditional, additionalServiceApproval: 'Request' } }))}><i class="flex items-center text-[1.6rem] hover:text-amber-600 text-amber-500 fi fi-rr-pen-square"></i></button>}
+                                                    {rotaDetail.dayInvoice.additionalServiceApproval === 'Approved' && (
+                                                        <button
+                                                            onClick={() => setRotaDetail(prev => ({
+                                                                ...prev,
+                                                                dayInvoice: {
+                                                                    ...prev.dayInvoice,
+                                                                    serviceRateforAdditional: 0,
+                                                                    total: prev.dayInvoice.total - prev.dayInvoice.serviceRateforAdditional,
+                                                                    additionalServiceApproval: 'Request'
+                                                                }
+                                                            }))}
+                                                        >
+                                                            <i className="flex items-center text-[1.6rem] hover:text-amber-600 text-amber-500 fi fi-rr-pen-square"></i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
+
+
+                                            {/* Incentives Section */}
+                                            {rotaDetail?.dayInvoice?.incentiveDetailforAdditional && (
+                                                <div className='incentive-detail'>
+                                                    <label></label>
+                                                    <InputGroup
+                                                        type="text"
+                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                        iconPosition="left"
+                                                        label={`${rotaDetail?.dayInvoice?.incentiveDetailforAdditional.type} Incentive for Additional Service`}
+                                                        value={rotaDetail?.dayInvoice?.incentiveDetailforAdditional.rate}
+                                                        disabled
+                                                    />
+                                                </div>
+                                            )}
+
 
                                             <InputWrapper title="Ratecard Details" gridCols={4} colspan={3}>
                                                 <div>
@@ -726,7 +791,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Service Rate"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request'}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
                                                         type="number"
                                                         min={0}
                                                         name="serviceRate"
@@ -743,7 +808,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Byod Rate"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request'}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
                                                         type="number"
                                                         min={0}
                                                         name="byodRate"
@@ -760,7 +825,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Mileage per mile"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request'}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
                                                         type="number"
                                                         min={0}
                                                         name="mileage"
@@ -789,7 +854,7 @@ const Rota = () => {
                                                         label="Miles driven"
                                                         type="number"
                                                         min={0}
-                                                        disabled={rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request'}
+                                                        disabled={(rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
                                                         value={rotaDetail?.dayInvoice?.additionalServiceDetails?.miles > 0 ? rotaDetail?.dayInvoice?.additionalServiceDetails?.miles : ''}
                                                         onChange={(e) => {
                                                             handleAdditionalServiceFieldChange('miles', e.target.value);
@@ -810,14 +875,19 @@ const Rota = () => {
                                                     value={rotaDetail?.dayInvoice?.additionalServiceDetails?.calculatedMileage > 0 ? rotaDetail?.dayInvoice?.additionalServiceDetails?.calculatedMileage : ''}
                                                 />
                                             </InputWrapper>
-                                        </>
+                                        </div>
                                     )}
                                 </div>
-                            </div>}
+                            </div>
+                        )}
                     </div>
                     <div className={`z-7 absolute bottom-21 left-0 w-full md:w-[25rem] ${rotaDetail?.dayInvoice?.calculatedMileage ? '-translate-y-0 opacity-100' : 'translate-y-5 opacity-0'} transition-all duration-200`}>
-                        <div className='border-t border-x border-neutral-300 bg-white/70 dark:bg-dark-4/70 backdrop-blur-lg h-6 w-full rounded-t-2xl flex justify-center items-center p-1'><button onClick={() => setOpenTotalBreakdown(prev => !prev)} className={` px-7 py-1 hover:bg-gray-200 rounded-md ${openTotalBreakdown && 'rotate-180'}`}><FaChevronUp size={12} /></button></div>
-                        <div className={`bg-white dark:bg-dark-4 ${openTotalBreakdown ? 'h-[23rem] border' : 'h-0  '}  border-neutral-200 overflow-auto transition-all duration-300`}>
+                        <div className='border-t border-x border-neutral-300 bg-white/70 dark:bg-dark-4/70 backdrop-blur-lg h-6 w-full rounded-t-2xl flex justify-center items-center p-1'>
+                            <button onClick={() => setOpenTotalBreakdown(prev => !prev)} className={`px-7 py-1 hover:bg-gray-200 rounded-md ${openTotalBreakdown && 'rotate-180'}`}>
+                                <FaChevronUp size={12} />
+                            </button>
+                        </div>
+                        <div className={`bg-white dark:bg-dark-4 ${openTotalBreakdown ? 'h-[23rem] border' : 'h-0'} border-neutral-200 overflow-auto transition-all duration-300`}>
                             <TotalBreakdown {...rotaDetail?.dayInvoice} />
                         </div>
                     </div>

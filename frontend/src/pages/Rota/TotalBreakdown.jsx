@@ -1,4 +1,5 @@
 import React from "react";
+import { useSelector } from 'react-redux';
 
 const TotalBreakdown = ({
     miles,
@@ -10,6 +11,7 @@ const TotalBreakdown = ({
     additionalServiceApproval,
     deductionDetail,
     incentiveDetailforMain,
+    incentiveDetailforAdditional,
     total,
 }) => {
 
@@ -21,8 +23,12 @@ const TotalBreakdown = ({
     const additionalServiceTotal = additionalServiceDetails
         ? Number((Number(additionalServiceDetails.serviceRate || 0) +
             Number(additionalServiceDetails.byodRate || 0) +
-            Number(additionalServiceDetails.miles || 0) * Number(additionalServiceDetails.mileage || 0)).toFixed(2))
+            Number(additionalServiceDetails.miles || 0) * Number(additionalServiceDetails.mileage || 0)).toFixed(2)) +
+        Number(incentiveDetailforAdditional?.rate || 0)
+
         : 0;
+    const { userDetails } = useSelector((state) => state.auth);
+
 
     return (
         <div className="max-w-xl m-3 p-4 bg-gradient-to-br from-primary-50/5 to-primary-100/10 rounded-2xl border border-primary-100">
@@ -45,7 +51,7 @@ const TotalBreakdown = ({
                     <span>£</span>
                     <span className="text-right">{calculatedMileage}</span>
                 </div>
-                {additionalServiceDetails && additionalServiceApproval === 'Approved' && <div className="grid grid-cols-[7fr_1fr_1fr]">
+                {additionalServiceDetails && (additionalServiceApproval === 'Approved' || ['super-admin', 'Admin'].includes(userDetails.role)) && <div className="grid grid-cols-[7fr_1fr_1fr]">
                     <span>Additional Services:</span>
                     <span>£</span>
                     <span className="text-right">{additionalServiceTotal}</span>
