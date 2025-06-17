@@ -31,6 +31,7 @@ import DailyInvoice from './pages/Invoice/DailyInvoice/DailyInvoice';
 import WeeklyInvoice from './pages/Invoice/WeeklyInvoice/WeeklyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
+import AdditionalCharges from './pages/AdditionalCharges/AdditonalCharges';
 
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
     { path: "/incentives", name: "Incentives", component: Incentives },
     { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
+    { path: "/add-ons", name: "Additional Charges", component: AdditionalCharges },
     { path: "/print-invoices", name: "Print Invoices", component: WeeklyInvoice },
     { path: "/manage-users", name: "Manage Users", component: ManageUsers },
     { path: "/settings", name: "Application Settings", component: ApplicationSettings },

@@ -15,6 +15,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
     let weeklyTotalEarning = 0;
     let weeklyTotalDeduction = 0;
     let weeklyTotalInstallment = 0;
+    let weeklyTotalAddOns = 0;
     let vatAddition = 0;
 
     const weeklyDeductions = invoice.invoices.flatMap((inv) => inv.deductionDetail?.map((d) => ({ ...d, date: inv.date })) || []);
@@ -184,7 +185,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
             <div className="break-before-page">
                 <div className="flex justify-between mt-0 ">
                     {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
-                        <div className="flex-1  border-r border-[#D1D5DB] px-2">
+                        <div className="flex-1  border-r border-[#D1D5DB] px-2 ">
                             <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] p-2">Deductions</h4>
                             <table className="w-full border-collapse text-[10px] border border-[#E5E7EB]">
                                 <thead>
@@ -210,7 +211,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                         </div>
                     )}
                     {invoice.installmentDetail?.length > 0 && (
-                        <div className="flex-1  border-r border-[#D1D5DB] px-2">
+                        <div className="flex-1  border-r border-[#D1D5DB] px-2 ">
                             <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] p-2">Installments</h4>
                             <table className="w-full border-collapse text-[10px] border border-[#E5E7EB]">
                                 <thead>
@@ -233,19 +234,60 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                             </table>
                         </div>
                     )}
-                    <div className="px-5">
-                        <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Payment Details</h4>
-                        <p className="text-[10px]"><span className="font-semibold">Account Name:</span> {driverDetails?.bankChoice === 'Company' ? driverDetails?.accountNameCompany : driverDetails?.accountName}</p>
-                        <p className="text-[10px]"><span className="font-semibold">Account Number:</span> {(driverDetails?.bankChoice === 'Company' ? (driverDetails?.bankAccountNumberCompany || '') : (driverDetails?.bankAccountNumber || '')).replace(/^\d{4}/, '****')}</p>
-                        <p className="text-[10px]"><span className="font-semibold">Bank Name:</span> {driverDetails?.bankChoice === 'Company' ? driverDetails?.bankNameCompany : driverDetails?.bankName}</p>
-                        <p className="text-[10px]"><span className="font-semibold">Sort Code:</span> {(driverDetails?.bankChoice === 'Company' ? (driverDetails?.sortCodeCompany || '') : (driverDetails?.sortCode || '')).replace(/^\d{3}/, '***')}</p>
+                    {invoice.additionalChargesDetail?.length > 0 && (
+                        <div className="flex-1  border-r border-[#D1D5DB] px-2 ">
+                            <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] p-2">Additional Charges</h4>
+                            <table className="w-full border-collapse text-[10px] border border-[#E5E7EB]">
+                                <thead>
+                                    <tr className="bg-[#4B0082] text-[#FFFFFF]">
+                                        <th className="text-[10px] px-1 pb-2 border-r border-[#4B0082] text-center font-bold">Charge Title</th>
+                                        <th className="text-[10px] px-1 pb-2 border-r border-[#4B0082] text-center font-bold">Charge Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {invoice.additionalChargesDetail.map((addon, idx) => {
+                                        weeklyTotalAddOns = addon.type === 'addition' ? weeklyTotalAddOns + addon.rate : weeklyTotalAddOns - addon.rate
+                                        return (
+                                            <tr key={addon._id} className="bg-[#F9FAFB]">
+                                                <td className="text-[10px] text-[#111827] px-1 pb-2 border border-[#E5E7EB]">{addon.title}</td>
+                                                <td className="text-[10px]  px-1 pb-2 border border-[#E5E7EB]">{addon.type === 'addition' ? '+' : '-'} £{addon.rate.toFixed(2)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                </div>
+                <div className='grid grid-cols-[1fr_1fr] gap-2 mt-5'>
+                    <div className="px-2 ">
+                        <h4 className="text-[13px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Payment Details</h4>
+                        <p className="text-[13px]"><span className="font-semibold">Account Name:</span> {driverDetails?.bankChoice === 'Company' ? driverDetails?.accountNameCompany : driverDetails?.accountName}</p>
+                        <p className="text-[13px]"><span className="font-semibold">Account Number:</span> {(driverDetails?.bankChoice === 'Company' ? (driverDetails?.bankAccountNumberCompany || '') : (driverDetails?.bankAccountNumber || '')).replace(/^\d{4}/, '****')}</p>
+                        <p className="text-[13px]"><span className="font-semibold">Bank Name:</span> {driverDetails?.bankChoice === 'Company' ? driverDetails?.bankNameCompany : driverDetails?.bankName}</p>
+                        <p className="text-[13px]"><span className="font-semibold">Sort Code:</span> {(driverDetails?.bankChoice === 'Company' ? (driverDetails?.sortCodeCompany || '') : (driverDetails?.sortCode || '')).replace(/^\d{3}/, '***')}</p>
                     </div>
-                    <div className="flex-1 pl-5 text-right border-l border-[#D1D5DB]">
-                        <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Summary</h4>
-                        <p className="text-[10px]"><span className="font-semibold">Total Earnings:</span> £{(weeklyTotalEarning + vatAddition + weeklyTotalDeduction).toFixed(2)}</p>
-                        <p className="text-[10px]"><span className="font-semibold">Total Deductions:</span> -£{weeklyTotalDeduction.toFixed(2)}</p>
-                        <p className="text-[10px]"><span className="font-semibold">Total Installments:</span> -£{weeklyTotalInstallment.toFixed(2)}</p>
-                        <h3 className="text-lg font-bold mt-2.5 text-[#4B0082]">Amount Due: £{(weeklyTotalEarning + vatAddition - weeklyTotalInstallment).toFixed(2)}</h3>
+                    <div className="flex-1 pl-2 text-right border-l border-[#D1D5DB]">
+                        <h4 className="text-[15px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Summary</h4>
+                        <div className="grid grid-cols-[3fr_1fr] text-[13px] gap-y-1">
+                            <p className="font-semibold text-left">Total Earnings:</p>
+                            <p className=" text-right">£{(weeklyTotalEarning + vatAddition + weeklyTotalDeduction).toFixed(2)}</p>
+
+                            <p className="font-semibold text-left">Total Deductions:</p>
+                            <p className=" text-right">-£{weeklyTotalDeduction.toFixed(2)}</p>
+
+                            <p className="font-semibold text-left">Total Installments:</p>
+                            <p className=" text-right">-£{weeklyTotalInstallment.toFixed(2)}</p>
+
+                            <p className="font-semibold text-left">Total AddOns:</p>
+                            <p className=" text-right">{weeklyTotalAddOns < 0 ? '-' : '+'} £{Math.abs(weeklyTotalAddOns).toFixed(2)}</p>
+                        </div>
+
+                        <h3 className="text-lg font-bold mt-2.5 text-[#4B0082] text-right">
+                            Amount Due: £{(weeklyTotalEarning + vatAddition - weeklyTotalInstallment + weeklyTotalAddOns).toFixed(2)}
+                        </h3>
+
                     </div>
                 </div>
             </div>

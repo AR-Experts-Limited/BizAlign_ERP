@@ -56,6 +56,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
         { path: "/incentives", name: "Incentives", icon: <i className="fi fi-rr-handshake-deal-loan hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/manage-summary", name: "Manage Summary", icon: <i className="fi fi-rr-clip-file hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/manage-payments", name: "Manage Payments", icon: <i className="fi fi-rr-money-bill-wave hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/add-ons", name: "Additional Charges", icon: <i className="fi fi-rr-plus-hexagon hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/print-invoices", name: "Print Invoices", icon: <i className="fi fi-rr-print hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/profit-loss", name: "Profit / Loss", icon: <i className="fi fi-rr-chart-histogram hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/manage-users", name: "Manage users", icon: <i className="fi fi-rr-id-card-clip-alt hover:text-primary-800 text-[1.5rem]"></i> },

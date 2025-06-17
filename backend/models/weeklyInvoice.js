@@ -35,6 +35,7 @@ const weeklyInvoiceSchema = new mongoose.Schema({
             signed: Boolean,
         }
     ],
+    additionalChargesDetail: Array,
     count: Number,
     invoiceGeneratedBy: String,
     invoiceGeneratedOn: Date,

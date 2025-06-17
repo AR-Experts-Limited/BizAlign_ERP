@@ -1,0 +1,528 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import axios from 'axios';
+import { MdOutlineDelete } from 'react-icons/md';
+import { FaPoundSign, FaUser, FaEye } from 'react-icons/fa';
+import { FaBuildingUser } from 'react-icons/fa6';
+import InputGroup from '../../components/InputGroup/InputGroup';
+import DatePicker from '../../components/Datepicker/Datepicker';
+import { fetchDrivers } from '../../features/drivers/driverSlice';
+import { fetchSites } from '../../features/sites/siteSlice';
+import RateCardWeek from '../../components/Calendar/RateCardWeek';
+
+
+
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+const AdditionalCharges = () => {
+    const dispatch = useDispatch();
+    const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
+    const { list: sites, siteStatus } = useSelector((state) => state.sites);
+
+    const clearAddOn = {
+        site: '',
+        driverId: '',
+        driverName: '',
+        week: '',
+        title: '',
+        type: 'addition',
+        rate: '',
+        chargeDocument: null,
+    };
+
+    const [addOn, setAddOn] = useState(clearAddOn);
+    const [allAdditionalCharges, setAllAdditionalCharges] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [isUploadingFile, setIsUploadingFile] = useState({});
+    const [errors, setErrors] = useState({
+        site: false,
+        driverId: false,
+        week: false,
+        title: false,
+        rate: false,
+    });
+
+    const fileInputRefs = useRef({});
+    const uploadButtonsRefs = useRef({});
+
+    useEffect(() => {
+        if (driverStatus === 'idle') dispatch(fetchDrivers());
+        if (siteStatus === 'idle') dispatch(fetchSites());
+    }, [driverStatus, siteStatus, dispatch]);
+
+    useEffect(() => {
+        fetchAddOns();
+    }, []);
+
+    const fetchAddOns = async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/addons`);
+            setAllAdditionalCharges(response.data);
+        } catch (error) {
+            console.error('Error fetching additional charges:', error);
+        }
+    };
+
+    const validateFields = () => {
+        const newErrors = {
+            site: !addOn.site,
+            driverId: !addOn.driverId,
+            week: !addOn.week,
+            title: !addOn.title,
+            rate: !addOn.rate || addOn.rate <= 0,
+        };
+        setErrors(newErrors);
+        return !Object.values(newErrors).some(error => error);
+    };
+
+    const handleFileChange = (e) => {
+        setAddOn({ ...addOn, chargeDocument: e.target.files[0] });
+    };
+
+    const handleAdd = async (e) => {
+        if (!validateFields()) return;
+        e.preventDefault();
+        try {
+            const driverDetail = driversBySite[addOn.site]?.find((driver) => driver._id === addOn.driverId);
+            if (!driverDetail) {
+                console.error('Driver not found');
+                return;
+            }
+            const newAddOn = {
+                ...addOn,
+                driverName: `${driverDetail.firstName} ${driverDetail.lastName}`,
+                user_ID: driverDetail.user_ID,
+                signed: false,
+            };
+
+            const data = new FormData();
+            Object.keys(newAddOn).forEach((key) => {
+                if (newAddOn[key]) {
+                    if (key === 'chargeDocument' && newAddOn[key] instanceof File) {
+                        data.append('chargeDocument', newAddOn[key]);
+                    } else {
+                        data.append(key, newAddOn[key]);
+                    }
+                }
+            });
+
+            const response = await axios.post(`${API_BASE_URL}/api/addons`, data);
+            setAllAdditionalCharges([...allAdditionalCharges, response.data.obj]);
+            setAddOn(clearAddOn);
+            setSearchTerm('');
+        } catch (error) {
+            console.error('Error adding charge:', error);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await axios.delete(`${API_BASE_URL}/api/addons/${id}`);
+            setAllAdditionalCharges(allAdditionalCharges.filter((addon) => addon._id !== id));
+        } catch (error) {
+            console.error('Error deleting charge:', error);
+        }
+    };
+
+    const handleFileInputClick = (id) => {
+        if (fileInputRefs.current[id]) {
+            fileInputRefs.current[id].click();
+        }
+    };
+
+    const handleFileChangeTable = (e, id) => {
+        const chooseFileElement = document.getElementById(`chooseFile-${id}`);
+        const fileNameElement = document.getElementById(`fileName-${id}`);
+        if (chooseFileElement && fileNameElement && uploadButtonsRefs.current[id]) {
+            chooseFileElement.classList.add('hidden');
+            chooseFileElement.classList.remove('block');
+            uploadButtonsRefs.current[id].classList.remove('hidden');
+            uploadButtonsRefs.current[id].classList.add('flex');
+            fileNameElement.classList.add('block');
+            fileNameElement.classList.remove('hidden');
+            fileNameElement.textContent = e.target.files[0]?.name || 'No file chosen';
+        }
+    };
+
+    const handleRemoveFileAdded = (id) => {
+        const chooseFileElement = document.getElementById(`chooseFile-${id}`);
+        const fileNameElement = document.getElementById(`fileName-${id}`);
+        if (chooseFileElement && fileNameElement && uploadButtonsRefs.current[id]) {
+            uploadButtonsRefs.current[id].classList.remove('flex');
+            uploadButtonsRefs.current[id].classList.add('hidden');
+            chooseFileElement.classList.add('block');
+            chooseFileElement.classList.remove('hidden');
+            fileNameElement.classList.add('hidden');
+            fileNameElement.classList.remove('block');
+            fileInputRefs.current[id].value = '';
+            fileNameElement.textContent = 'No file chosen';
+        }
+    };
+
+    const handleUploadFile = async (addon) => {
+        const data = new FormData();
+        Object.keys(addon).forEach((key) => {
+            if (addon[key] && key !== 'chargeDocument') {
+                data.append(key, addon[key]);
+            }
+        });
+        if (fileInputRefs.current[addon._id]?.files[0]) {
+            data.append('chargeDocument', fileInputRefs.current[addon._id].files[0]);
+        }
+        try {
+            setIsUploadingFile(prev => ({ ...prev, [addon._id]: true }));
+            await axios.post(`${API_BASE_URL}/api/addons/docupload`, data);
+            await fetchAddOns();
+        } catch (error) {
+            console.error('Error uploading file:', error);
+        } finally {
+            setIsUploadingFile(prev => ({ ...prev, [addon._id]: false }));
+        }
+    };
+
+    const handleRemoveFileUploaded = async (id) => {
+        try {
+            await axios.post(`${API_BASE_URL}/api/addons/deleteupload`, { id });
+            await fetchAddOns();
+        } catch (error) {
+            console.error('Error deleting uploaded file:', error);
+        }
+    };
+
+    const getFileName = (documentUrl, driverId) => {
+        if (!documentUrl || !driverId) return 'No file';
+        try {
+            const parts = documentUrl.split(`${driverId}/`);
+            return parts[1] ? decodeURIComponent(parts[1]) : 'Document';
+        } catch {
+            return 'Document';
+        }
+    };
+
+    return (
+        <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
+            <h2 className='text-xl mb-3 font-bold dark:text-white'>Additional Charges</h2>
+            <div className='h-full grid grid-cols-1 md:grid-cols-7 gap-3'>
+                {/* Add new charge section */}
+                <div className='h-full md:col-span-2 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg'>
+                    <div className='relative overflow-auto max-h-[42rem]'>
+                        <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
+                            <h3>Add new charge</h3>
+                        </div>
+                        <div className='p-4 pb-8 flex flex-col gap-3'>
+                            {/* Site selection */}
+                            <div>
+                                <InputGroup
+                                    type="dropdown"
+                                    label="Select Site"
+                                    icon={<FaBuildingUser className='text-neutral-200' size={20} />}
+                                    iconPosition="left"
+                                    required={true}
+                                    className={`${addOn.site === '' && 'text-gray-400'}`}
+                                    onChange={(e) => {
+                                        setAddOn({ ...addOn, site: e.target.value });
+                                        setErrors({ ...errors, site: false });
+                                    }}
+                                    error={errors.site}
+                                    value={addOn.site}
+                                >
+                                    <option value="">-Select Site-</option>
+                                    {sites.map((site) => (
+                                        <option key={site.siteKeyword} value={site.siteKeyword}>
+                                            {site.siteName}
+                                        </option>
+                                    ))}
+                                </InputGroup>
+                                {errors.site && <p className="text-red-400 text-sm mt-1">* Site is required</p>}
+                            </div>
+
+                            {/* Driver selection */}
+                            <div>
+                                <div className="relative">
+                                    <label className="text-body-sm font-medium text-black dark:text-white">
+                                        Select Personnel<span className="ml-1 text-red select-none">*</span>
+                                    </label>
+                                    <div className="relative mt-3">
+                                        <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            disabled={addOn.site === ''}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onFocus={() => setDropdownOpen(true)}
+                                            onBlur={() => setTimeout(() => setDropdownOpen(false), 100)}
+                                            placeholder="-Select Personnel-"
+                                            className={`w-full rounded-lg border-[1.5px] ${errors.driverId ? "border-red animate-pulse" : "border-neutral-300"} bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
+                                        />
+                                        {dropdownOpen && (
+                                            <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
+                                                {(driversBySite[addOn.site] || [])
+                                                    .filter((driver) =>
+                                                        `${driver.firstName} ${driver.lastName}`
+                                                            .toLowerCase()
+                                                            .includes(searchTerm.toLowerCase())
+                                                    )
+                                                    .map((driver) => (
+                                                        <li
+                                                            key={driver._id}
+                                                            className="cursor-pointer px-4 py-2 hover:bg-primary-100/50 dark:hover:bg-dark-2 text-sm"
+                                                            onMouseDown={() => {
+                                                                const fullName = `${driver.firstName} ${driver.lastName}`;
+                                                                setAddOn({
+                                                                    ...addOn,
+                                                                    driverId: driver._id,
+                                                                    driverName: fullName,
+                                                                });
+                                                                setSearchTerm(fullName);
+                                                                setErrors({ ...errors, driverId: false });
+                                                            }}
+                                                        >
+                                                            {driver.firstName} {driver.lastName}
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                    {errors.driverId && (
+                                        <p className="text-red-400 text-sm mt-1">* Personnel is required</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Week selection */}
+                            <div>
+                                <label className='text-sm font-medium block mb-3'>Select Weeks <span className='text-red-400'>*</span></label>
+                                <RateCardWeek
+                                    value={addOn.week}
+                                    onChange={(date) => {
+                                        setAddOn({ ...addOn, week: date });
+                                        setErrors({ ...errors, week: false });
+                                    }}
+                                    selectedWeeks={addOn.serviceWeek}
+                                />
+                                {errors.week && <p className="text-red-400 text-sm mt-1">* Week is required</p>}
+                            </div>
+
+                            {/* Title */}
+                            <div>
+                                <InputGroup
+                                    type="text"
+                                    label="Title"
+                                    placeholder="Enter Charge Title"
+                                    required={true}
+                                    onChange={(e) => {
+                                        setAddOn({ ...addOn, title: e.target.value });
+                                        setErrors({ ...errors, title: false });
+                                    }}
+                                    error={errors.title}
+                                    value={addOn.title}
+                                />
+                                {errors.title && <p className="text-red-400 text-sm mt-1">* Title is required</p>}
+                            </div>
+
+                            {/* Type selection */}
+                            <div>
+                                <label className="text-body-sm font-medium text-black dark:text-white">
+                                    Charge Type<span className="ml-1 text-red select-none">*</span>
+                                </label>
+                                <div className="flex gap-4 mt-3">
+                                    <label className="flex items-center gap-2 text-sm text-black dark:text-white">
+                                        <input
+                                            type="radio"
+                                            checked={addOn.type === 'addition'}
+                                            onChange={() => setAddOn({ ...addOn, type: 'addition' })}
+                                            className="text-primary-500 focus:ring-primary-500"
+                                        />
+                                        Addition
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm text-black dark:text-white">
+                                        <input
+                                            type="radio"
+                                            checked={addOn.type === 'deduction'}
+                                            onChange={() => setAddOn({ ...addOn, type: 'deduction' })}
+                                            className="text-primary-500 focus:ring-primary-500"
+                                        />
+                                        Deduction
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Rate */}
+                            <div>
+                                <InputGroup
+                                    type="number"
+                                    label="Rate (£)"
+                                    placeholder="Enter Amount"
+                                    required={true}
+                                    min={0}
+                                    step="any"
+                                    iconPosition="left"
+                                    icon={<div>{addOn.type === 'deduction' ? <i class="absolute top-4 left-1 flex items-center fi fi-rr-minus-small text-[1.2rem] text-neutral-300"></i> : <i class="absolute top-4 left-1 flex items-center fi fi-rr-plus-small text-[1.2rem] text-neutral-300"></i>}<FaPoundSign className="text-neutral-300" /></div>}
+                                    onChange={(e) => {
+                                        setAddOn({ ...addOn, rate: parseFloat(e.target.value) });
+                                        setErrors({ ...errors, rate: false });
+                                    }}
+                                    error={errors.rate}
+                                    value={addOn.rate}
+                                />
+                                {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid amount is required</p>}
+                            </div>
+
+                            {/* Document upload */}
+                            <div>
+                                <label className="text-sm font-medium text-black dark:text-white">Document Upload</label>
+                                <p className="text-xs text-amber-500 mb-1">Allowed file formats: JPG, JPEG, PNG</p>
+                                <div className="relative mt-1">
+                                    <InputGroup
+                                        type="file"
+                                        fileStyleVariant="style1"
+                                        accept=".jpg,.jpeg,.png"
+                                        onChange={handleFileChange}
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleAdd}
+                                disabled={Object.values(errors).some((error) => error)}
+                                className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Additional charges list section */}
+                <div className='h-full relative md:col-span-5 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg'>
+                    <div className='z-5 rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <h3>Additional Charges List</h3>
+                    </div>
+                    <div className='px-2 overflow-auto max-h-[39.5rem]'>
+                        <table className="table-general">
+                            <thead>
+                                <tr className="sticky top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
+                                    <th>#</th>
+                                    <th>Personnel Name</th>
+                                    <th>Site</th>
+                                    <th>Week</th>
+                                    <th>Title</th>
+                                    <th>Rate</th>
+                                    <th>Document</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allAdditionalCharges.map((addon, index) => (
+                                    <tr key={addon._id}>
+                                        <td>{index + 1}</td>
+                                        <td>{addon.driverName}</td>
+                                        <td>{addon.site}</td>
+                                        <td>{addon.week}</td>
+                                        <td>{addon.title}</td>
+                                        <td>{addon.type === 'addition' ? '+ £' : '- £'}{addon.rate}</td>
+                                        <td>
+                                            <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
+                                                {addon.signed ? (
+                                                    <a
+                                                        href={addon.chargeDocument}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
+                                                    >
+                                                        <FaEye size={14} /> Download
+                                                    </a>
+                                                ) : (
+                                                    <>
+                                                        {!addon.chargeDocument ? (
+                                                            <div className="w-full flex flex-col items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        id={`chooseFile-${addon._id}`}
+                                                                        onClick={() => handleFileInputClick(addon._id)}
+                                                                        className="block text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+                                                                    >
+                                                                        Choose File
+                                                                    </button>
+                                                                    <input
+                                                                        type="file"
+                                                                        ref={(el) => (fileInputRefs.current[addon._id] = el)}
+                                                                        className="hidden"
+                                                                        accept=".jpg,.jpeg,.png"
+                                                                        onChange={(e) => handleFileChangeTable(e, addon._id)}
+                                                                    />
+                                                                </div>
+                                                                <span id={`fileName-${addon._id}`} className="hidden text-sm text-gray-500 truncate max-w-[120px]">
+                                                                    No file chosen
+                                                                </span>
+                                                                <div
+                                                                    ref={(el) => (uploadButtonsRefs.current[addon._id] = el)}
+                                                                    className="hidden mt-2 gap-2"
+                                                                >
+                                                                    <button
+                                                                        className="text-sm px-3 py-1 bg-primary-400 text-white rounded hover:bg-primary-500 disabled:bg-primary-200 transition-colors"
+                                                                        onClick={() => handleUploadFile(addon)}
+                                                                        disabled={isUploadingFile[addon._id]}
+                                                                    >
+                                                                        {isUploadingFile[addon._id] ? 'Uploading...' : 'Upload'}
+                                                                    </button>
+                                                                    <button
+                                                                        className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 transition-colors"
+                                                                        onClick={() => handleRemoveFileAdded(addon._id)}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className='flex flex-col items-center gap-2 rounded bg-white border border-neutral-200 p-2'>
+                                                                <span id={`fileName-${addon._id}`} className="text-sm text-gray-700 truncate max-w-[150px]">
+                                                                    {getFileName(addon.chargeDocument, addon.driverId)}
+                                                                </span>
+                                                                <div className='flex gap-1'>
+                                                                    <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">
+                                                                        <i className="fi fi-rr-file-signature"></i> Pending
+                                                                    </span>
+                                                                    <a
+                                                                        href={addon.chargeDocument}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full"
+                                                                    >
+                                                                        <FaEye size={14} />
+                                                                    </a>
+                                                                    <span
+                                                                        onClick={() => handleRemoveFileUploaded(addon._id)}
+                                                                        className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-red-100 text-red-600 rounded-full"
+                                                                    >
+                                                                        <MdOutlineDelete size={14} />
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <button
+                                                onClick={() => handleDelete(addon._id)}
+                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400 transition-colors"
+                                                title="Delete charge"
+                                            >
+                                                <MdOutlineDelete size={17} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default AdditionalCharges;
