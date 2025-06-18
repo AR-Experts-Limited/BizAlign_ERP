@@ -7,7 +7,7 @@ import { IoCalendarOutline } from "react-icons/io5";
 import { TiDelete } from "react-icons/ti";
 import moment from 'moment';
 
-function WeekInput({ value, display, onChange, error }) {
+function WeekInput({ value, display, onChange, error, filter = false }) {
     const containerRef = useRef(null);
     const flatpickrRef = useRef(null);
     const [selectedWeek, setSelectedWeek] = useState(null);
@@ -16,6 +16,8 @@ function WeekInput({ value, display, onChange, error }) {
 
     useEffect(() => {
         selectedWeekRef.current = selectedWeek;
+        if (!selectedWeek)
+            onChange(null)
     }, [selectedWeek]);
 
     useEffect(() => {
@@ -91,29 +93,29 @@ function WeekInput({ value, display, onChange, error }) {
     }, []);
 
     return (
-        <div className='w-full' ref={containerRef}>
+        <div className='relative w-full' ref={containerRef}>
             <div
-                className={`relative cursor-pointer w-full rounded-lg border-[1.5px] px-12 py-3.5  flex items-center gap-1  bg-white outline-none transition ${isCalendarOpen && 'border-primary-200'} dark:border-dark-3 dark:bg-dark-2 ${error ? 'border-red-500 animate-pulse' : 'border-neutral-300'}`}
+                className={`relative cursor-pointer w-full rounded-lg border-[1.5px] ${filter ? 'h-8 pl-7 pr-5 text-sm' : 'px-12 py-3.5'}  flex items-center gap-1  bg-white outline-none transition ${isCalendarOpen && 'border-primary-200'} dark:border-dark-3 dark:bg-dark-2 ${error ? 'border-red-500 animate-pulse' : 'border-neutral-300'}`}
                 onClick={() => setIsCalendarOpen(prev => !prev)}
             >
                 {selectedWeek ? (
                     <span
-                        className="w-full text-xs md:text-base inline-flex items-center text-sm overflow-auto"
+                        className={`w-full ${filter ? 'text-sm' : 'text-base'} inline-flex items-center  overflow-auto`}
                     >
                         {value}
                     </span>
                 ) : (
                     <span className="text-gray-400">Select a week</span>
                 )}
-                <div className="absolute top-5 right-2">
+                <div className={`absolute ${filter ? 'top-1.5 right-0.5' : 'top-5 right-2'}`}>
                     <BiChevronDown size={18} />
                 </div>
                 <div >
-                    {selectedWeek ? <button onClick={(e) => { e.stopPropagation(); setSelectedWeek(null) }}><TiDelete className='absolute top-3.5 left-3.5 text-red-400' size={26} /> </button> : <IoCalendarOutline className='absolute top-4 left-3.5 text-neutral-300' size={20} />}
+                    {selectedWeek ? <button onClick={(e) => { e.stopPropagation(); setSelectedWeek(null) }}><TiDelete className={`absolute ${filter ? 'top-1 left-1' : 'top-3.5 left-3.5'} text-red-400`} size={filter ? 20 : 26} /> </button> : <IoCalendarOutline className={`absolute ${filter ? 'top-1.5 left-1' : 'top-4 left-3.5'}   text-neutral-300`} size={filter ? 17 : 20} />}
                 </div>
             </div>
             {isCalendarOpen && (
-                <div className="absolute -bottom-7 left-3.5 md:right-0 z-30 ">
+                <div className="absolute top-10 left-0 md:right-0 z-30 ">
                     <Flatpickr
                         ref={flatpickrRef}
                         options={{

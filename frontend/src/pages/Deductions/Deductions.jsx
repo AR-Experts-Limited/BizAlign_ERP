@@ -263,7 +263,7 @@ const Deductions = () => {
                                     required={true}
                                     error={errors.date}
                                     onChange={(date) => {
-                                        setNewDeduction({ ...newDeduction, date });
+                                        setNewDeduction(prev => ({ ...prev, date }));
                                         setErrors({ ...errors, date: false });
                                     }} />
                                 {errors.date && <p className="text-red-400 text-sm mt-1">* Date is required</p>}

@@ -8,6 +8,7 @@ import moment from 'moment';
 
 const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus }) => {
     const dispatch = useDispatch();
+    const [isFilterOpen, setIsFilterOpen] = useState(true)
     const { driverStatus } = useSelector((state) => state.drivers);
     const driversBySite = useSelector((state) => state.drivers.bySite);
 
@@ -38,49 +39,66 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
 
     return (
         <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white'>
-            <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>{title}</h2>
-            <div className='flex flex-col gap-3 w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-3 shadow overflow-hidden'>
-                <TableFilters title={title} state={state} setters={setters} invoiceMap={invoiceMap} handleFileChange={handleFileChange} selectedInvoices={selectedInvoices} handleSelectAll={handleSelectAll} updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} />
-                <div className="relative rounded-t-lg flex-1 overflow-auto">
-                    <table className='calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4'>
-                        <thead>
-                            <tr className='text-white'>
-                                <th className='sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-500 font-medium max-sm:!max-w-20 max-sm:!whitespace-normal'>
-                                    Personnels List
-                                </th>
-                                {days.map((day) => (
-                                    <th className={`sticky top-0 z-10  bg-primary-800 border-r-[1.5px] border-primary-500 font-light ${rangeType === 'daily' ? '!max-w-35' : ''}`} key={day.date}>
-                                        <div className='flex flex-col gap-1 items-center '>
-                                            <div>{day.date}</div>
-                                            {rangeType === 'biweekly' && <div className='font-medium text-gray-600 w-fit px-1 py-0.5 text-[0.55rem] bg-stone-100 rounded-sm'>
-                                                {day.week}
-                                            </div>}
-                                        </div>
+            {/* <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>{title}</h2> */}
+            <div className='flex flex-col w-full h-full bg-white dark:bg-dark-3 rounded-xl shadow overflow-hidden'>
+                <div className='flex font-bold text-lg justify-between items-center z-5 rounded-t-lg w-full px-3 py-1.5 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                    <h3>{title}</h3>
+                    <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded-lg p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
+                </div >
+                <div className='flex flex-col p-2 overflow-auto'>
+                    <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
+                        <TableFilters
+                            title={title}
+                            state={state}
+                            setters={setters}
+                            invoiceMap={invoiceMap}
+                            handleFileChange={handleFileChange}
+                            selectedInvoices={selectedInvoices}
+                            handleSelectAll={handleSelectAll}
+                            updateInvoiceApprovalStatus={updateInvoiceApprovalStatus}
+                        />
+                    </div>
+                    <div className="relative rounded-t-xl flex-1 overflow-auto">
+                        <table className='calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4'>
+                            <thead>
+                                <tr className='text-white'>
+                                    <th className='sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-500 font-medium max-sm:!max-w-20 max-sm:!whitespace-normal'>
+                                        Personnels List
                                     </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {driversList.map((driver) => {
-                                const disableDriver = driver.activeStatus != 'Active' ? driver.activeStatus : null
-                                const standbydriver = standbydriversList.some((sdriver) => sdriver._id === driver._id)
-                                return (
-                                    <tr>
-                                        <td className='z-10 sticky left-0 bg-white dark:bg-dark-3'>
-                                            <div className='flex flex-col gap-3 '>
-                                                <p>{driver.firstName + ' ' + driver.lastName}</p>
-                                                {disableDriver && title !== 'Daily Invoice' && <div className='text-xs md:text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm'>{disableDriver}</div>}
-                                                {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs'>Stand by driver from {driver.siteSelection}</div>}
+                                    {days.map((day) => (
+                                        <th className={`sticky top-0 z-10  bg-primary-800 border-r-[1.5px] border-primary-500 font-light ${rangeType === 'daily' ? '!max-w-35' : ''}`} key={day.date}>
+                                            <div className='flex flex-col gap-1 items-center '>
+                                                <div>{day.date}</div>
+                                                {rangeType === 'biweekly' && <div className='font-medium text-gray-600 w-fit px-1 py-0.5 text-[0.55rem] bg-stone-100 rounded-sm'>
+                                                    {day.week}
+                                                </div>}
                                             </div>
-                                        </td>
-                                        {tableData(driver, disableDriver, standbydriver)}
-                                    </tr>)
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {driversList.map((driver) => {
+                                    const disableDriver = driver.activeStatus != 'Active' ? driver.activeStatus : null
+                                    const standbydriver = standbydriversList.some((sdriver) => sdriver._id === driver._id)
+                                    return (
+                                        <tr>
+                                            <td className='z-10 sticky left-0 bg-white dark:bg-dark-3'>
+                                                <div className='flex flex-col gap-3 '>
+                                                    <p>{driver.firstName + ' ' + driver.lastName}</p>
+                                                    {disableDriver && title !== 'Daily Invoice' && <div className='text-xs md:text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm'>{disableDriver}</div>}
+                                                    {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs'>Stand by driver from {driver.siteSelection}</div>}
+                                                </div>
+                                            </td>
+                                            {tableData(driver, disableDriver, standbydriver)}
+                                        </tr>)
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div >
             </div>
-        </div>
+        </div >
 
     );
 };

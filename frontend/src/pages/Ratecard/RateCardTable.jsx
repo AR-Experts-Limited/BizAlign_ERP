@@ -5,20 +5,31 @@ import { MdOutlineDelete } from "react-icons/md";
 import { FcInfo } from "react-icons/fc";
 import InputGroup from '../../components/InputGroup/InputGroup';
 import { groupRateCards } from './groupRateCards';
+import WeekInput from '../../components/Calendar/WeekInput';
 
-const RateCardTable = ({ toastOpen, ratecards, filterVehicleType, onFilterChange, onDelete }) => {
+const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
     const [dropdownPositions, setDropdownPositions] = useState({});
     const [groupedRateCards, setGroupedRateCards] = useState([])
+    const [selectedGroupUpdate, setSelectedGroupUpdate] = useState(null)
+    const [filterVehicleType, setFilterVehicleType] = useState('');
+    const [filterWeek, setFilterWeek] = useState('');
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
     const dropdownRefs = useRef({});
 
     useEffect(() => {
         let group = []
-        group = groupRateCards(filterVehicleType
-            ? ratecards.filter(rc => rc.vehicleType === filterVehicleType)
-            : ratecards);
+        let filteredRatecards = [...ratecards]
+        if (filterVehicleType) {
+            filteredRatecards = filteredRatecards.filter(rc => rc.vehicleType === filterVehicleType)
+        }
+        if (filterWeek) {
+            filteredRatecards = filteredRatecards.filter(rc => rc.serviceWeek === filterWeek)
+        }
+        group = groupRateCards(filteredRatecards);
+
         setGroupedRateCards(group)
-    }, [filterVehicleType, ratecards]);
+    }, [filterVehicleType, filterWeek, ratecards]);
 
 
     //const groupedRateCards = groupRateCards(filteredRatecards);
@@ -52,23 +63,30 @@ const RateCardTable = ({ toastOpen, ratecards, filterVehicleType, onFilterChange
     }, [groupedRateCards]);
 
     return (
-        <div className='max-h-[40rem] relative md:col-span-7 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg'>
-            <div className='z-5 rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+        <div className='relative md:col-span-7 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg'>
+            <div className='flex justify-between items-center z-5 rounded-t-lg w-full px-5 py-2 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                 <h3>Rate card list</h3>
+                <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
             </div>
 
-            <div className='flex items-center justify-between p-2 rounded-lg border border-neutral-200 mx-3 mt-3'>
+            <div className={`flex items-center justify-between rounded-lg mx-3 mb-1 transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 p-2 opacity-100 mt-3' : 'max-h-0 opacity-0'
+                } bg-neutral-100/75 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/70 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`}>
                 <div className='flex items-center gap-3'>
                     <p className='text-sm'>Filter By:</p>
-                    <select
-                        className='w-30 h-8 text-sm rounded-lg border-[1.5px] border-neutral-300 bg-transparent outline-none transition focus:border-primary-500 disabled:cursor-default disabled:bg-gray-2 data-[active=true]:border-primary-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary-500 dark:disabled:bg-dark dark:data-[active=true]:border-primary-500 px-5.5 placeholder:text-dark-6 dark:text-white'
-                        value={filterVehicleType}
-                        onChange={(e) => onFilterChange(e.target.value)}
-                    >
-                        <option value=''>-Vehicle Type-</option>
-                        <option value='Own Vehicle'>Own vehicle</option>
-                        <option value='Company Vehicle'>Company vehicle</option>
-                    </select>
+                    <div className='flex gap-2'>
+                        <select
+                            className={`w-32 h-8 text-sm rounded-lg border-[1.5px] border-neutral-300 bg-white ${filterVehicleType === '' && 'text-gray-400'} outline-none transition focus:border-primary-500 disabled:cursor-default disabled:bg-gray-2 data-[active=true]:border-primary-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary-500 dark:disabled:bg-dark dark:data-[active=true]:border-primary-500 px-2 placeholder:text-dark-6 dark:text-white `}
+                            value={filterVehicleType}
+                            onChange={(e) => setFilterVehicleType(e.target.value)}
+                        >
+                            <option value=''>-Vehicle Type-</option>
+                            <option value='Own Vehicle'>Own vehicle</option>
+                            <option value='Company Vehicle'>Company vehicle</option>
+                        </select>
+                        <div >
+                            <WeekInput value={filterWeek} filter={true} onChange={(week) => setFilterWeek(week)} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -98,7 +116,7 @@ const RateCardTable = ({ toastOpen, ratecards, filterVehicleType, onFilterChange
                             return (
                                 <tr
                                     key={index}
-                                    className={`hover:bg-neutral-50 dark:hover:bg-dark-4 ${!group.active ? 'text-gray-400' : 'dark:text-white'}`}
+                                    className={` dark:hover:bg-dark-4 ${!group.active ? 'text-gray-400' : 'dark:text-white'} ${selectedGroupUpdate === group._id && mode === 'edit' ? 'bg-amber-200/30' : 'hover:bg-neutral-50'}`}
                                     ref={(el) => setDropdownRef(el, group._id)}
                                 >
                                     <td className="border-b border-neutral-200">
@@ -174,7 +192,12 @@ const RateCardTable = ({ toastOpen, ratecards, filterVehicleType, onFilterChange
                                     <td className="border-b border-neutral-200">£ {group.byodRate}</td>
                                     <td className="border-b border-neutral-200">
                                         <div className="flex justify-center gap-2">
-                                            <button className="p-2 rounded-md hover:bg-neutral-200 text-amber-300">
+                                            <button onClick={() => {
+                                                setSelectedGroupUpdate(group._id)
+                                                const selectedWeekList = selectedWeeks[group._id] || Array(group.serviceWeeks[0]);
+                                                onUpdate({ selectedIds, vehicleType: group.vehicleType, minimumRate: group.minimumRate, serviceTitle: group.serviceTitle, serviceWeek: selectedWeekList, mileage: group.mileage, serviceRate: group.serviceRate, byodRate: group.byodRate, vanRent: group.vanRent, vanRentHours: group.vanRentHours })
+                                            }}
+                                                className="p-2 rounded-md hover:bg-neutral-200 text-amber-300">
                                                 <FiEdit3 size={17} />
                                             </button>
                                             <button

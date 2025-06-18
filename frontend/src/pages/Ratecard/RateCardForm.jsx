@@ -6,20 +6,7 @@ import RateCardWeek from '../../components/Calendar/RateCardWeek';
 import WeekRangeDropdown from './WeekRangeDropdown';
 import { FaPoundSign } from "react-icons/fa";
 
-const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
-    const [rateCard, setRateCard] = useState({
-        vehicleType: '',
-        minimumRate: '',
-        serviceTitle: '',
-        serviceRate: '',
-        byodRate: '',
-        serviceWeek: [],
-        mileage: '',
-        active: true,
-        vanRent: '',
-        vanRentHours: 1,
-        hourlyRate: '',
-    });
+const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, services, onAddRatecard, onUpdateRatecard, mode, setMode }) => {
     const [newService, setNewService] = useState(false);
     const [newServiceInfo, setNewServiceInfo] = useState({
         title: '',
@@ -42,7 +29,18 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
         existingRateCard: false
     });
     const [breakdownHTML, setBreakdownHTML] = useState('');
-    const [weekbyCalendar, setWeekbyCalendar] = useState(false);
+    const [weekbyCalendar, setWeekbyCalendar] = useState(true);
+
+    useEffect(() => {
+        if (mode === 'edit') {
+            setWeekbyCalendar(true)
+        }
+    }, [mode])
+
+    useEffect(() => {
+        if (mode !== 'edit')
+            setRateCard(prev => ({ ...prev, serviceWeek: [] }))
+    }, [weekbyCalendar])
 
     useEffect(() => {
         calculateHourlyRate();
@@ -56,14 +54,11 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
         newService,
         newServiceInfo
     ]);
-
+    { console.log(rateCard) }
     useEffect(() => {
         checkExistingRateCards();
     }, [rateCard.serviceTitle, rateCard.serviceWeek, weekbyCalendar]);
 
-    useEffect(() => {
-        setRateCard(prev => ({ ...prev, serviceWeek: [] }))
-    }, [weekbyCalendar])
 
     const validateFields = () => {
         const newErrors = {
@@ -162,7 +157,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
 
     const checkExistingRateCards = () => {
         let foundRateCard = []
-        if (rateCard.serviceTitle !== '' && rateCard.serviceWeek.length > 0) {
+        if (rateCard.serviceTitle !== '' && rateCard.serviceWeek.length > 0 && mode !== 'edit') {
             foundRateCard = ratecards.filter(item =>
                 item.serviceTitle === rateCard.serviceTitle &&
                 item.vehicleType === rateCard.vehicleType &&
@@ -277,8 +272,8 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
     };
 
     return (
-        <div className='h-full md:col-span-3 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg'>
-            <div className='relative overflow-auto max-h-[40rem]'>
+        <div className='md:col-span-3 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg flex-1'>
+            <div className='relative overflow-auto max-h-[42rem]'>
                 <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
                     <h3>Add new rate card</h3>
                 </div>
@@ -286,7 +281,9 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                 <div className='p-4 pb-8 flex flex-col gap-3'>
                     <div>
                         <InputGroup
+                            disabled={mode === 'edit'}
                             type="dropdown"
+                            value={rateCard.vehicleType}
                             className={`${rateCard.vehicleType === '' && 'text-gray-400'}`}
                             onChange={handleVehicleTypeChange}
                             label="Vehicle Type"
@@ -354,6 +351,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                         <div className='flex flex-col gap-3'>
                             <div className='flex items-center gap-1'>
                                 <input
+                                    disabled={mode === 'edit'}
                                     type="radio"
                                     checked={newService}
                                     onChange={(e) => {
@@ -368,6 +366,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                 <>
                                     <div>
                                         <InputGroup
+                                            disabled={mode === 'edit'}
                                             type="text"
                                             label='Service title'
                                             placeholder="New service title"
@@ -383,6 +382,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                     <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
                                         <div>
                                             <InputGroup
+
                                                 type="number"
                                                 label='Hours'
                                                 required={true}
@@ -413,6 +413,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             <div className='flex items-center gap-1'>
                                 <input
                                     type="radio"
+                                    disabled={mode === 'edit'}
                                     checked={!newService}
                                     onChange={() => {
                                         setNewService(false);
@@ -426,6 +427,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                 <div>
                                     <InputGroup
                                         type='dropdown'
+                                        disabled={mode === 'edit'}
                                         required={true}
                                         label='Select service'
                                         className={`${rateCard.serviceTitle === '' && 'text-gray-400'}`}
@@ -449,6 +451,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             <div className='flex items-center gap-1'>
                                 <input
                                     type='radio'
+                                    disabled={mode === 'edit'}
                                     checked={weekbyCalendar}
                                     onChange={() => {
                                         setWeekbyCalendar(prev => !prev);
@@ -459,9 +462,10 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             </div>
                             <div className='mt-3'>
                                 <RateCardWeek
+                                    value={weekbyCalendar ? rateCard.serviceWeek : []}
                                     onChange={handleWeekChange}
-                                    disabled={!weekbyCalendar}
-                                    selectedWeeks={rateCard.serviceWeek}
+                                    disabled={!weekbyCalendar || mode === 'edit'}
+                                    mode={mode}
                                 />
                             </div>
                         </div>
@@ -469,6 +473,7 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                             <div className='flex items-center gap-1'>
                                 <input
                                     type='radio'
+                                    disabled={mode === 'edit'}
                                     checked={!weekbyCalendar}
                                     onChange={() => {
                                         setWeekbyCalendar(prev => !prev);
@@ -562,13 +567,32 @@ const RateCardForm = ({ ratecards, services, onAddRatecard }) => {
                                 * A Rate Card already exists for the specified Service and for selected Week.
                             </p>
                         )}
-                        <button
+                        {mode !== 'edit' ? <button
                             disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er])}
                             onClick={handleAddRateCard}
                             className='ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                         >
                             Add
-                        </button>
+                        </button> :
+                            <div className='flex justify-end w-full gap-2'>
+                                <button
+                                    disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er])}
+                                    onClick={() => onUpdateRatecard()}
+                                    className=' border w-fit h-fit border-amber-500 bg-amber-500 text-white rounded-md py-1 px-2 hover:text-amber-500 hover:bg-transparent disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
+                                >
+                                    Update
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setMode('create')
+                                        setRateCard(clearRateCard)
+                                    }
+                                    }
+                                    className=' border w-fit h-fit border-red-500 bg-red-500 text-white rounded-md py-1 px-2 hover:text-red-500 hover:bg-transparent disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
+                                >
+                                    Cancel
+                                </button>
+                            </div>}
                     </div>
                 </div>
             </div>

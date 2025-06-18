@@ -134,11 +134,11 @@ const Incentives = () => {
         if (['07', '08', '09'].includes(monthNum)) type = 'Prime';
         if (['10', '11', '12'].includes(monthNum)) type = 'Peak';
 
-        setNewIncentive({
-            ...newIncentive,
+        setNewIncentive(prev => ({
+            ...prev,
             month: monthStr,
             type
-        });
+        }));
         setErrors({ ...errors, month: false });
     };
 

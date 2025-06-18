@@ -18,37 +18,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get rate cards by service week and vehicle type
-router.get('/type_week', async (req, res) => {
-  const { serviceWeek, vehicleType } = req.query;
-
-  try {
-    const { RateCard } = getModels(req);
-    let query = {};
-
-    if (serviceWeek) query.serviceWeek = serviceWeek;
-    if (vehicleType) query.vehicleType = vehicleType;
-
-    const rateCards = await RateCard.find(query);
-    res.json(rateCards);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching rate cards', error: error.message });
-  }
-});
-
-// Get rate cards by service, service week, and vehicle type
-router.get('/filter/weekandservice', async (req, res) => {
-  const { service, serviceWeek, vehicleType } = req.query;
-
-  try {
-    const { RateCard } = getModels(req);
-    const rateCards = await RateCard.find({ serviceTitle: service, serviceWeek, vehicleType, active: true });
-    res.json(rateCards);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching rate cards', error: error.message });
-  }
-});
-
 // Add a new rate card
 router.post('/', async (req, res) => {
   try {
@@ -127,63 +96,85 @@ router.post('/', async (req, res) => {
   }
 });
 
-
-// Search rate cards by title
-router.get('/search/title', async (req, res) => {
-  const { serviceTitle } = req.query;
-
+//Update rate cards
+router.put('/', async (req, res) => {
   try {
     const { RateCard } = getModels(req);
-    const filter = serviceTitle
-      ? { serviceTitle: { $regex: serviceTitle, $options: 'i' } } // Case-insensitive search
-      : {};
+    const {
+      selectedIds,
+      serviceTitle,
+      serviceRate,
+      minimumRate,
+      vanRent,
+      vanRentHours,
+      hourlyRate,
+      vehicleType,
+      byodRate,
+      serviceWeek,
+      active,
+      mileage,
+      modifiedBy
+    } = req.body;
 
-    const rateCards = await RateCard.find(filter);
-    res.status(200).json(rateCards);
-  } catch (error) {
-    res.status(500).json({ message: 'Error searching rate cards', error: error.message });
-  }
-});
+    if (!Array.isArray(selectedIds)) {
+      return res.status(400).json({ message: 'ids must be an array' });
+    }
 
-// Update an existing rate card
-router.put('/:id', async (req, res) => {
-  const { serviceTitle, vehicleType, minimumRate, vanRent, vanRentHours, hourlyRate, serviceRate, byodRate, mileage, serviceWeek, modifiedBy, active } = req.body;
+    if (!Array.isArray(serviceWeek)) {
+      return res.status(400).json({ message: 'serviceWeek must be an array' });
+    }
 
-  try {
-    const { RateCard } = getModels(req);
-    const updatedRateCard = await RateCard.findByIdAndUpdate(
-      req.params.id,
-      { serviceTitle, serviceRate, vehicleType, minimumRate, vanRent, vanRentHours, hourlyRate, byodRate, mileage, serviceWeek, modifiedBy, active },
-      { new: true }
+    const updatedRateCards = [];
+
+    for (const week of serviceWeek) {
+      for (const id of selectedIds) {
+        // Update the rate card for the given ID and week
+        const updatedRateCard = await RateCard.findOneAndUpdate(
+          { _id: id, serviceWeek: week },
+          {
+            serviceTitle,
+            serviceRate,
+            vehicleType,
+            minimumRate,
+            vanRent,
+            vanRentHours,
+            hourlyRate,
+            byodRate,
+            mileage,
+            serviceWeek: week,
+            modifiedBy,
+            active
+          },
+          { new: true }
+        );
+
+        if (updatedRateCard) {
+          updatedRateCards.push(updatedRateCard);
+        }
+      }
+
+      // Update mileage for all rate cards in this week
+      await RateCard.updateMany(
+        { serviceWeek: week },
+        { $set: { mileage: mileage } }
+      );
+
+      // Fetch all rate cards for this week
+      const updated = await RateCard.find({ serviceWeek: week });
+      updatedRateCards.push(...updated);
+    }
+
+    // Remove duplicates from updatedRateCards
+    const uniqueUpdated = Array.from(
+      new Map(updatedRateCards.map(card => [card._id.toString(), card])).values()
     );
-
 
     sendToClients(req.db, {
       type: 'rateCardUpdated', // Custom event to signal data update
     });
 
-    res.json(updatedRateCard);
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating rate card', error: error.message });
-  }
-});
+    res.status(200).json({ added: [], updated: uniqueUpdated });
 
-// Update mileage for rate cards by service week
-router.put('/update/mileage', async (req, res) => {
-  const { serviceWeek, mileage } = req.body;
-
-  try {
-    const { RateCard } = getModels(req);
-    const updatedRateCard = await RateCard.updateMany(
-      { serviceWeek: serviceWeek },
-      { $set: { mileage: mileage } }
-    );
-
-    sendToClients(req.db, {
-      type: 'rateCardUpdated', // Custom event to signal data update
-    });
-
-    res.json(updatedRateCard);
   } catch (error) {
     res.status(500).json({ message: 'Error updating rate card', error: error.message });
   }
@@ -213,3 +204,52 @@ router.delete('/', async (req, res) => {
 
 
 module.exports = router;
+
+
+// // Get rate cards by service week and vehicle type
+// router.get('/type_week', async (req, res) => {
+//   const { serviceWeek, vehicleType } = req.query;
+
+//   try {
+//     const { RateCard } = getModels(req);
+//     let query = {};
+
+//     if (serviceWeek) query.serviceWeek = serviceWeek;
+//     if (vehicleType) query.vehicleType = vehicleType;
+
+//     const rateCards = await RateCard.find(query);
+//     res.json(rateCards);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Error fetching rate cards', error: error.message });
+//   }
+// });
+
+// // Get rate cards by service, service week, and vehicle type
+// router.get('/filter/weekandservice', async (req, res) => {
+//   const { service, serviceWeek, vehicleType } = req.query;
+
+//   try {
+//     const { RateCard } = getModels(req);
+//     const rateCards = await RateCard.find({ serviceTitle: service, serviceWeek, vehicleType, active: true });
+//     res.json(rateCards);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Error fetching rate cards', error: error.message });
+//   }
+// });
+
+// // Search rate cards by title
+// router.get('/search/title', async (req, res) => {
+//   const { serviceTitle } = req.query;
+
+//   try {
+//     const { RateCard } = getModels(req);
+//     const filter = serviceTitle
+//       ? { serviceTitle: { $regex: serviceTitle, $options: 'i' } } // Case-insensitive search
+//       : {};
+
+//     const rateCards = await RateCard.find(filter);
+//     res.status(200).json(rateCards);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Error searching rate cards', error: error.message });
+//   }
+// });

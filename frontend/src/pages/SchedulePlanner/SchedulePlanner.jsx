@@ -185,7 +185,7 @@ const SchedulePlanner = () => {
             const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
 
             const isToday = dateObj.toDateString() === new Date().toDateString();
-            const cellClass = isToday ? 'bg-amber-100/30' : '';
+            const cellClass = isToday ? 'bg-amber-100/30 relative' : 'relative';
 
             return (
                 <td key={day.date} className={cellClass}>
@@ -200,6 +200,7 @@ const SchedulePlanner = () => {
                             return (
                                 <div className="relative flex justify-center h-full w-full group">
                                     <div className="relative max-w-40">
+
                                         <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                             <div className="overflow-auto max-h-[4rem]">{schedule.service}</div>
                                             <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
@@ -243,7 +244,8 @@ const SchedulePlanner = () => {
                         }
 
                         //  Render empty schedule cell (click to add)
-                        return (
+                        return (<>
+
                             <div
                                 onClick={() =>
                                     setAddScheduleData({
@@ -255,8 +257,12 @@ const SchedulePlanner = () => {
                                 }
                                 className="cursor-pointer flex h-full w-full justify-center items-center"
                             >
-                                <div className="h-full w-40 rounded-md max-w-40 hover:bg-stone-100" />
-                            </div>
+                                <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100" >
+                                    <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
+                                        {driver.typeOfDriver}
+                                    </div>
+                                </div>
+                            </div></>
                         );
                     })()}
                 </td>

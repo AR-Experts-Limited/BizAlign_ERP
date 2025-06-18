@@ -15,7 +15,7 @@ export const addRatecard = createAsyncThunk('Ratecards/addRatecard', async (Rate
 });
 
 export const updateRatecard = createAsyncThunk('Ratecards/updateRatecard', async (Ratecard) => {
-    const response = await axios.put(`${API_BASE_URL}/${Ratecard.id}`, Ratecard);
+    const response = await axios.put(`${API_BASE_URL}/api/ratecards`, Ratecard);
     return response.data;
 });
 
@@ -73,8 +73,15 @@ const RatecardSlice = createSlice({
 
             // Update Ratecard
             .addCase(updateRatecard.fulfilled, (state, action) => {
-                const index = state.list.findIndex((d) => d.id === action.payload.id);
-                if (index !== -1) state.list[index] = action.payload;
+                const { updated } = action.payload;
+                if (Array.isArray(updated)) {
+                    updated.forEach((rateCard) => {
+                        const index = state.list.findIndex((d) => d._id === rateCard._id);
+                        if (index !== -1) {
+                            state.list[index] = { ...rateCard, id: rateCard._id };
+                        }
+                    });
+                }
             })
 
             // Delete Ratecard
