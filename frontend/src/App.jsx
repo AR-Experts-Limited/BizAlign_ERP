@@ -31,7 +31,7 @@ import DailyInvoice from './pages/Invoice/DailyInvoice/DailyInvoice';
 import WeeklyInvoice from './pages/Invoice/WeeklyInvoice/WeeklyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
-import AdditionalCharges from './pages/AdditionalCharges/AdditonalCharges';
+import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
 
 
 function App() {

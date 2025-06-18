@@ -5,10 +5,9 @@ import { MdOutlineDelete } from 'react-icons/md';
 import { FaPoundSign, FaUser, FaEye } from 'react-icons/fa';
 import { FaBuildingUser } from 'react-icons/fa6';
 import InputGroup from '../../components/InputGroup/InputGroup';
-import DatePicker from '../../components/Datepicker/Datepicker';
 import { fetchDrivers } from '../../features/drivers/driverSlice';
 import { fetchSites } from '../../features/sites/siteSlice';
-import RateCardWeek from '../../components/Calendar/RateCardWeek';
+import WeekInput from '../../components/Calendar/WeekInput';
 
 
 
@@ -244,7 +243,7 @@ const AdditionalCharges = () => {
                                         Select Personnel<span className="ml-1 text-red select-none">*</span>
                                     </label>
                                     <div className="relative mt-3">
-                                        <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
+                                        <FaUser className="z-1 absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200  pointer-events-none" />
                                         <input
                                             type="text"
                                             value={searchTerm}
@@ -293,10 +292,11 @@ const AdditionalCharges = () => {
                             {/* Week selection */}
                             <div>
                                 <label className='text-sm font-medium block mb-3'>Select Weeks <span className='text-red-400'>*</span></label>
-                                <RateCardWeek
+                                <WeekInput
                                     value={addOn.week}
-                                    onChange={(date) => {
-                                        setAddOn({ ...addOn, week: date });
+                                    error={errors.week}
+                                    onChange={(week) => {
+                                        setAddOn({ ...addOn, week: week });
                                         setErrors({ ...errors, week: false });
                                     }}
                                     selectedWeeks={addOn.serviceWeek}

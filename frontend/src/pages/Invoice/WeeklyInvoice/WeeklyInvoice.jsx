@@ -266,7 +266,7 @@ const WeeklyInvoice = () => {
                             return (
                                 <div className={`relative flex justify-center h-full w-full `}>
                                     <div className='relative max-w-40 w-full'>
-                                        <div onClick={() => { handleShowDetails(invoice) }} className={`${!allCompleted || invoice.unsigned && 'border-dashed border-gray-300'} relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
+                                        <div onClick={() => { handleShowDetails(invoice) }} className={`${!allCompleted || invoice.unsigned && 'border-dashed border-gray-300'} cursor-pointer relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
                                             <div className='grid grid-cols-[3fr_1fr] w-full'>
                                                 <strong className='text-xs'>Total Invoice count:</strong>
                                                 <div className='text-xs overflow-auto max-h-[4rem] w-full text-center'> {invoice?.count}</div>

@@ -169,7 +169,7 @@ const DailyInvoice = () => {
                             return (
                                 <div className={`relative flex justify-center h-full w-full `}>
                                     <div className='relative max-w-40'>
-                                        <div onClick={() => { if (completed) setCurrentInvoice(invoice) }} className={`relative z-6 w-full h-full flex flex-col gap-1 ${completed && 'cursor-pointer'} items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-1.5 transition-all duration-300 group-hover:w-[82%]`}>
+                                        <div onClick={() => { setCurrentInvoice(invoice) }} className={`relative z-6 w-full h-full flex flex-col gap-1 cursor-pointer items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-1.5 transition-all duration-300 group-hover:w-[82%]`}>
                                             <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService}</div>
                                             {(completed) && <div className='flex gap-2 text-xs bg-sky-200 rounded-full px-3 py-1'> <i class="flex items-center fi fi-rr-document"></i>Ready to print</div>}
                                         </div>
@@ -331,10 +331,11 @@ const DailyInvoice = () => {
                                 Close
                             </button>
                             <button
+                                disabled={currentInvoice?.approvalStatus !== 'completed'}
                                 onClick={() => {
                                     handlePrint()
                                 }}
-                                className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600"
+                                className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                             >
                                 Print Daily Invoice
                             </button>
