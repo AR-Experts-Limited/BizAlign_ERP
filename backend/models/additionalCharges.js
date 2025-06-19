@@ -10,7 +10,7 @@ const AdditionalChargesSchema = new mongoose.Schema({
     rate: { type: Number, required: true }
 
 })
-AdditionalChargesSchema.index({ driverId: 1, week: 1 }, { unique: true });
+AdditionalChargesSchema.index({ driverId: 1, week: 1 });
 
 const AdditionalCharges = mongoose.model('AdditionalCharges', AdditionalChargesSchema)
 

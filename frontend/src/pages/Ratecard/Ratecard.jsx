@@ -49,6 +49,7 @@ const Ratecard = () => {
 
     const handleAddRateCard = async (rateCard, newService, newServiceInfo, existingweek) => {
         dispatch(addRatecard(rateCard))
+        setRateCard(clearRateCard)
         if (newService) {
             dispatch(addService({ title: newServiceInfo.title, hours: newServiceInfo.totalHours }))
         }
@@ -80,7 +81,7 @@ const Ratecard = () => {
     }
 
     return (
-        <div className='flex flex-col relative h-full  w-full p-4 overflow-auto'>
+        <div className='flex flex-col relative h-full w-full p-4 overflow-hidden'>
             <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
                 <div className='flex gap-4 justify-around items-center'>
                     {toastOpen?.content}

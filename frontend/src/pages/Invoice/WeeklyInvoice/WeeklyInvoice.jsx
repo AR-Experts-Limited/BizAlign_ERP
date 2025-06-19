@@ -35,7 +35,7 @@ const WeeklyInvoice = () => {
 
     const [selectedSite, setSelectedSite] = useState('');
     const [searchDriver, setSearchDriver] = useState('');
-    const [selectedMonth, setSelectedMonth] = useState(moment().format('YYYY-MM'));
+    const [selectedMonth, setSelectedMonth] = useState(moment().startOf('month').toDate());
     const [weeks, setWeeks] = useState([]);
     const [driversList, setDriversList] = useState([]);
     const [standbydriversList, setStandbydriversList] = useState([]);
@@ -133,9 +133,9 @@ const WeeklyInvoice = () => {
     }, [driversBySite, selectedSite, searchDriver, standbydrivers]);
 
     const handleMonthChange = (direction) => {
-        const newMonth = moment(selectedMonth, 'YYYY-MM')
+        const newMonth = moment(selectedMonth)
             .add(direction === 'next' ? 1 : -1, 'month')
-            .format('YYYY-MM');
+            .toDate();
         setSelectedMonth(newMonth);
     };
 
@@ -330,7 +330,7 @@ const WeeklyInvoice = () => {
                             </button>
                             <Flatpickr
                                 className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 text-center w-full max-w-[150px] outline-none dark:border-primary-dark-gray-5"
-                                value={moment(selectedMonth).format('MMMM, YYYY')}
+                                value={selectedMonth}
                                 options={{
                                     plugins: [new monthSelectPlugin({
                                         shorthand: true,
@@ -338,7 +338,7 @@ const WeeklyInvoice = () => {
                                         theme: "light"
                                     })], // initialized in useEffect
                                     dateFormat: "Y-m", // fallback
-                                    altFormat: "F Y"
+                                    altFormat: "F Y",
                                 }}
                                 onChange={([date]) => setSelectedMonth(date)}
                             />
@@ -527,7 +527,7 @@ const WeeklyInvoice = () => {
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    className="h-[50%] self-end mb-2 w-4 accent-primary-400 rounded focus:ring-primary-400"
+                                                    className="h-[50%] self-start w-4 accent-primary-400 rounded focus:ring-primary-400"
                                                     checked={isChecked}
                                                     disabled={isDisabled}
                                                     onChange={(e) => {
@@ -671,8 +671,7 @@ const WeeklyInvoice = () => {
                                                         });
                                                     }}
                                                 />
-
-                                                <div className="grid grid-cols-2 md:grid-cols-4 space-x-7">
+                                                <div className="grid grid-cols-2 md:grid-cols-4 space-x-4 space-y-2">
                                                     <InputGroup
                                                         disabled={true}
                                                         label="Instalment Type"
@@ -687,12 +686,31 @@ const WeeklyInvoice = () => {
                                                     />
                                                     <InputGroup
                                                         disabled={true}
+                                                        label="Instalment Tenure"
+                                                        value={`${insta.tenure} week${insta.tenure > 1 && 's'}`}
+                                                    />
+                                                    <InputGroup
+                                                        disabled={true}
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
-                                                        label="Deducted Amount"
+                                                        label="Instalment Spread Rate"
+                                                        value={insta.spreadRate.toFixed(2)}
+                                                    />
+                                                    <InputGroup
+                                                        disabled={true}
+                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                        iconPosition="left"
+                                                        label="Instalment Pending"
+                                                        value={insta.installmentPending.toFixed(2)}
+                                                    />
+                                                    <InputGroup
+                                                        disabled={true}
+                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                        iconPosition="left"
+                                                        label="Deduction Amount"
                                                         value={deductionAmount}
                                                     />
-                                                    <div className="flex items-center justify-center self-end mb-4 text-xs w-15">
+                                                    <div className="flex items-center justify-center text-xs w-15">
                                                         {insta.signed ? (
                                                             <p className="bg-green-400/30 text-green-700 px-2 py-1 rounded-md">
                                                                 Signed
@@ -804,7 +822,7 @@ const WeeklyInvoice = () => {
                                                                         {invoice.additionalServiceApproval === 'Requested' ? (
                                                                             <div className="bg-red-200/40 text-red-400 text-xs px-2 py-1 rounded">Waiting for approval</div>
                                                                         ) : (
-                                                                            invoice.serviceRateforAdditional ? <p className='text-sm font-medium text-green-600'>£ {invoice.serviceRateforAdditional}</p> : '-'
+                                                                            invoice.serviceRateforAdditional ? <p className='text-sm font-medium text-green-600'>£ {(invoice.serviceRateforAdditional - invoice.incentiveDetailforAdditional?.rate).toFixed(2)}</p> : '-'
                                                                         )}
                                                                     </td>
                                                                 </>

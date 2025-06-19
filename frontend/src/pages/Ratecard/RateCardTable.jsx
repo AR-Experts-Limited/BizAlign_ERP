@@ -6,6 +6,7 @@ import { FcInfo } from "react-icons/fc";
 import InputGroup from '../../components/InputGroup/InputGroup';
 import { groupRateCards } from './groupRateCards';
 import WeekInput from '../../components/Calendar/WeekInput';
+import moment from 'moment'
 
 const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
@@ -14,7 +15,10 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
     const [selectedGroupUpdate, setSelectedGroupUpdate] = useState(null)
     const [filterVehicleType, setFilterVehicleType] = useState('');
     const [filterWeek, setFilterWeek] = useState('');
+    const [filterService, setFilterService] = useState('');
     const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const [glowMap, setGlowMap] = useState({});
+    const prevDataRef = useRef([]);
     const dropdownRefs = useRef({});
 
     useEffect(() => {
@@ -26,17 +30,41 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
         if (filterWeek) {
             filteredRatecards = filteredRatecards.filter(rc => rc.serviceWeek === filterWeek)
         }
+        if (filterService) {
+            filteredRatecards = filteredRatecards.filter(rc =>
+                String(rc.serviceTitle).toLowerCase().includes(filterService.toLowerCase())
+            );
+        }
         group = groupRateCards(filteredRatecards);
 
+        const newGlowMap = {};
+
+        group.forEach(newItem => {
+            const prevItem = prevDataRef.current.find(prev => prev._id === newItem._id);
+            if (prevItem) {
+                ['serviceRate', 'hourlyRate', 'mileage', 'byodRate'].forEach(field => {
+                    if (prevItem[field] !== newItem[field]) {
+                        if (!newGlowMap[newItem._id]) newGlowMap[newItem._id] = {};
+                        newGlowMap[newItem._id][field] = true;
+
+                        // Remove the glow after 1 second
+                        setTimeout(() => {
+                            setGlowMap(prev => ({
+                                ...prev,
+                                [newItem._id]: { ...prev[newItem._id], [field]: false }
+                            }));
+                        }, 1500);
+                    }
+                });
+            }
+        });
+
+        setGlowMap(prev => ({ ...prev, ...newGlowMap }));
+        prevDataRef.current = group;
+
         setGroupedRateCards(group)
-    }, [filterVehicleType, filterWeek, ratecards]);
+    }, [filterVehicleType, filterWeek, filterService, ratecards]);
 
-
-    //const groupedRateCards = groupRateCards(filteredRatecards);
-
-    const handleWeekSelect = (groupId, week) => {
-        setSelectedWeeks(prev => ({ ...prev, [groupId]: week }));
-    };
 
     const setDropdownRef = (el, groupId) => {
         dropdownRefs.current[groupId] = el;
@@ -63,7 +91,7 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
     }, [groupedRateCards]);
 
     return (
-        <div className='relative md:col-span-7 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg'>
+        <div className='relative flex flex-col md:col-span-7 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg overflow-hidden'>
             <div className='flex justify-between items-center z-5 rounded-t-lg w-full px-5 py-2 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                 <h3>Rate card list</h3>
                 <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
@@ -71,9 +99,9 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
 
             <div className={`flex items-center justify-between rounded-lg mx-3 mb-1 transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 p-2 opacity-100 mt-3' : 'max-h-0 opacity-0'
                 } bg-neutral-100/75 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/70 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white`}>
-                <div className='flex items-center gap-3'>
+                <div className='flex items-center gap-3 px-3'>
                     <p className='text-sm'>Filter By:</p>
-                    <div className='flex gap-2'>
+                    <div className='flex gap-4'>
                         <select
                             className={`w-32 h-8 text-sm rounded-lg border-[1.5px] border-neutral-300 bg-white ${filterVehicleType === '' && 'text-gray-400'} outline-none transition focus:border-primary-500 disabled:cursor-default disabled:bg-gray-2 data-[active=true]:border-primary-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary-500 dark:disabled:bg-dark dark:data-[active=true]:border-primary-500 px-2 placeholder:text-dark-6 dark:text-white `}
                             value={filterVehicleType}
@@ -86,11 +114,16 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
                         <div >
                             <WeekInput value={filterWeek} filter={true} onChange={(week) => setFilterWeek(week)} />
                         </div>
+                        <div >
+                            <input className={`w-32 h-8 text-sm rounded-lg border-[1.5px] border-neutral-300 bg-white outline-none transition focus:border-primary-500 disabled:cursor-default disabled:bg-gray-2 data-[active=true]:border-primary-500 dark:border-dark-3 dark:bg-dark-2 dark:focus:border-primary-500 dark:disabled:bg-dark dark:data-[active=true]:border-primary-500 px-2 placeholder:text-dark-6 dark:text-white `}
+                                placeholder="Search by service"
+                                value={filterService} onChange={(e) => setFilterService(e.target.value)} />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="max-h-[32.5rem] h-full px-2 overflow-auto">
+            <div className="max-h-[35rem] px-2 overflow-auto">
                 <table className="ratecard-table w-full text-sm text-center">
                     <thead>
                         <tr className="sticky top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
@@ -186,16 +219,17 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
                                         </div>
                                     </td>
 
-                                    <td className="border-b border-neutral-200">£ {group.serviceRate}</td>
-                                    <td className="border-b border-neutral-200">£ {group.hourlyRate}</td>
-                                    <td className="border-b border-neutral-200">£ {group.mileage}</td>
-                                    <td className="border-b border-neutral-200">£ {group.byodRate}</td>
+                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.serviceRate ? 'text-orange-400 ' : ''}`}>£ {group.serviceRate}</td>
+                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.hourlyRate ? 'text-orange-400 ' : ''}`}>£ {group.hourlyRate}</td>
+                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.mileage ? 'text-orange-400 ' : ''}`}>£ {group.mileage}</td>
+                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.byodRate ? 'text-orange-400 ' : ''}`}>£ {group.byodRate}</td>
                                     <td className="border-b border-neutral-200">
                                         <div className="flex justify-center gap-2">
                                             <button onClick={() => {
                                                 setSelectedGroupUpdate(group._id)
+                                                const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]])
                                                 const selectedWeekList = selectedWeeks[group._id] || Array(group.serviceWeeks[0]);
-                                                onUpdate({ selectedIds, vehicleType: group.vehicleType, minimumRate: group.minimumRate, serviceTitle: group.serviceTitle, serviceWeek: selectedWeekList, mileage: group.mileage, serviceRate: group.serviceRate, byodRate: group.byodRate, vanRent: group.vanRent, vanRentHours: group.vanRentHours })
+                                                onUpdate({ selectedIds: selectedIdsList, hourlyRate: group.hourlyRate, vehicleType: group.vehicleType, minimumRate: group.minimumRate, serviceTitle: group.serviceTitle, serviceWeek: selectedWeekList, mileage: group.mileage, serviceRate: group.serviceRate, byodRate: group.byodRate, vanRent: group.vanRent, vanRentHours: group.vanRentHours })
                                             }}
                                                 className="p-2 rounded-md hover:bg-neutral-200 text-amber-300">
                                                 <FiEdit3 size={17} />

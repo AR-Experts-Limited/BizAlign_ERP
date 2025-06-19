@@ -138,12 +138,12 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                                                         {item.additionalServiceApproval === 'Requested' ? (
                                                             <div className="bg-[#FEE2E2] text-[#EF4444] text-[10px] px-2 py-1 rounded">Waiting for approval</div>
                                                         ) : (
-                                                            item.serviceRateforAdditional ? `£${item.serviceRateforAdditional.toFixed(2)}` : '-'
+                                                            item.serviceRateforAdditional ? `£ ${(item.serviceRateforAdditional - item.incentiveDetailforAdditional?.rate).toFixed(2)}` : '-'
                                                         )}
                                                     </td>
                                                 </>
                                             )}
-                                            <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{(item.incentiveDetailforMain?.rate || 0 + item.incentiveDetailforAdditional?.rate || 0).toFixed(2) || '0.00'}</td>
+                                            <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{((item.incentiveDetailforMain?.rate || 0) + (item.incentiveDetailforAdditional?.rate || 0)).toFixed(2) || '0.00'}</td>
                                             {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
                                                 <td className="text-[10px] font-medium text-[#7F1D1D] p-2 border border-[#E5E7EB]">{totalDeductions > 0 ? `-£${totalDeductions.toFixed(2)}` : '-'}</td>
                                             )}

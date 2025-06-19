@@ -183,7 +183,7 @@ const TableFilters = ({ title, state, setters, invoiceMap, handleFileChange, sel
                 </select>
             </div>
             <div className=' flex flex-col items-center justify-center gap-1'>
-                <label className='text-xs font-semibold'>Select {rangeType}: </label>
+                <label className='ml-8 self-start text-xs font-semibold'>Select {rangeType}: </label>
                 <div className='relative flex items-center justify-center w-full h-full gap-2'>
                     <button name="previous" onClick={() => handleForwardOrBackward('previous')} className='dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5'><FaChevronLeft size={13} /></button>
                     {rangeType === 'daily' && <WeekFilter value={selectedRangeIndex} type={rangeType} display={rangeOptions[selectedRangeIndex]?.display} onChange={(e) => setSelectedRangeIndex(e)} />}
