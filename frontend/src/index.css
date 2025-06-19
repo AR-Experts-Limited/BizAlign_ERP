@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @import "@flaticon/flaticon-uicons/css/regular/all";
 @import "@flaticon/flaticon-uicons/css/solid/all";
+@plugin 'tailwind-scrollbar';
 
 
 
@@ -85,37 +86,6 @@ button:disabled {
     stroke-dashoffset: -160;
   }
 
-}
-
-/* Hide scrollbar by default */
-.sidebar {
-  overflow: auto;
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
-}
-
-.sidebar::-webkit-scrollbar {
-  width: 0;
-  /* Chrome, Safari */
-  height: 0;
-}
-
-/* Show scrollbar on hover */
-.sidebar:hover {
-  scrollbar-width: thin;
-  /* Firefox */
-}
-
-.sidebar:hover::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.sidebar:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.4);
-  border-radius: 4px;
 }
 
 

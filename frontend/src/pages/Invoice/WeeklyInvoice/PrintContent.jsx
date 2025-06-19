@@ -1,16 +1,8 @@
 import React, { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchSites } from '../../../features/sites/siteSlice';
 import moment from 'moment'
 
-export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, ref) => {
-    const dispatch = useDispatch();
+export const PrintableContent = React.forwardRef(({ invoice, driverDetails, sites }, ref) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const { list: sites, siteStatus } = useSelector((state) => state.sites);
-
-    useEffect(() => {
-        if (siteStatus === 'idle') dispatch(fetchSites());
-    }, [siteStatus, dispatch]);
 
     let weeklyTotalEarning = 0;
     let weeklyTotalDeduction = 0;
@@ -66,7 +58,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails }, re
                         <div className="flex-1 pl-2.5 text-right">
                             <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Ship To</h4>
                             <strong className='text-[10px]'>{invoice.site}</strong>
-                            <p className="text-[10px]">{sites.find((site) => site.siteKeyword === invoice.site)?.siteAddress}</p>
+                            <p className="text-[10px]">{sites?.find((site) => site.siteKeyword === invoice.site)?.siteAddress}</p>
                         </div>
                     </div>
                 </div>

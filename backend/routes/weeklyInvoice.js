@@ -49,9 +49,6 @@ router.get('/', async (req, res) => {
         // Fetch weekly invoices and populate the invoices field
         const weeklyInvoices = await WeeklyInvoice.find(query).populate('invoices').populate('installments').populate({ path: 'driverId' });
 
-        if (!weeklyInvoices || weeklyInvoices.length === 0) {
-            return res.status(404).json({ message: 'No weekly invoices found' });
-        }
 
         res.status(200).json({ message: 'Weekly invoices retrieved successfully', data: weeklyInvoices });
     } catch (error) {

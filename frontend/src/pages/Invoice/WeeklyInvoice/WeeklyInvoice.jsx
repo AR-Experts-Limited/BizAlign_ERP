@@ -7,13 +7,17 @@ import Flatpickr from 'react-flatpickr';
 import monthSelectPlugin from "flatpickr/dist/plugins/monthSelect";
 import "flatpickr/dist/plugins/monthSelect/style.css";
 import { fetchDrivers } from '../../../features/drivers/driverSlice';
-import axios from 'axios'
-import Modal from '../../../components/Modal/Modal'
+import axios from 'axios';
+import Modal from '../../../components/Modal/Modal';
 import { jsPDF } from "jspdf";
 import { getInstallmentDetails } from '../../Rota/supportFunctions';
-import InputWrapper from '../../../components/InputGroup/InputWrapper'
-import InputGroup from '../../../components/InputGroup/InputGroup'
+import InputWrapper from '../../../components/InputGroup/InputWrapper';
+import InputGroup from '../../../components/InputGroup/InputGroup';
 import { PrintableContent } from './PrintContent';
+import { PDFDocument } from "pdf-lib";
+import ReactDOMServer from 'react-dom/server';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -24,13 +28,13 @@ moment.updateLocale('en', {
     },
 });
 
-
 const WeeklyInvoice = () => {
     const dispatch = useDispatch();
     const contentRef = useRef(null);
     const { userDetails } = useSelector((state) => state.auth);
     const { list: sites, siteStatus } = useSelector((state) => state.sites);
     const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
+
     const { list: standbydrivers } = useSelector((state) => state.standbydrivers);
 
     const [selectedSite, setSelectedSite] = useState('');
@@ -39,18 +43,16 @@ const WeeklyInvoice = () => {
     const [weeks, setWeeks] = useState([]);
     const [driversList, setDriversList] = useState([]);
     const [standbydriversList, setStandbydriversList] = useState([]);
-    const [invoices, setInvoices] = useState([])
-    const [groupedInvoices, setGroupedInvoices] = useState([])
-    const [currentInvoice, setCurrentInvoice] = useState(null)
-    // const [isPrintReady, setIsPrintReady] = useState(null)
-    // const [driverDetails, setDriverDetails] = useState({})
-    const [sendingInvoice, setSendingInvoice] = useState(false)
-    const [changed, setChanged] = useState(false)
+    const [invoices, setInvoices] = useState([]);
+    const [groupedInvoices, setGroupedInvoices] = useState([]);
+    const [currentInvoice, setCurrentInvoice] = useState(null);
+    const [mode, setMode] = useState('single');
+    const [sendingInvoice, setSendingInvoice] = useState(false);
+    const [changed, setChanged] = useState(false);
 
     useEffect(() => {
         if (siteStatus === 'idle') dispatch(fetchSites());
         if (driverStatus === 'idle') dispatch(fetchDrivers());
-
     }, [siteStatus, driverStatus, dispatch]);
 
     useEffect(() => {
@@ -63,39 +65,33 @@ const WeeklyInvoice = () => {
     useEffect(() => {
         const fetchInvoices = async () => {
             if (driversList.length > 0 && weeks.length > 0) {
-                const serviceWeeks = weeks.map((week) => week.week)
-
+                const serviceWeeks = weeks.map((week) => week.week);
                 const response = await axios.get(`${API_BASE_URL}/api/weeklyInvoice`, {
                     params: {
                         driverIds: driversList.map((driver) => driver._id),
                         serviceWeeks: serviceWeeks,
                     }
-                })
-
+                });
                 setInvoices(response.data.data);
-            };
-
-        }
-        fetchInvoices()
+            }
+        };
+        fetchInvoices();
     }, [driversList, weeks]);
 
     useEffect(() => {
-        let map = {}
+        let map = {};
         invoices?.forEach(inv => {
             const key = `${inv.driverId._id}_${inv.serviceWeek}`;
             map[key] = inv;
         });
-
-        setGroupedInvoices(map)
-    }, [invoices])
+        setGroupedInvoices(map);
+    }, [invoices]);
 
     useEffect(() => {
         const startOfMonth = moment(selectedMonth, 'YYYY-MM').startOf('month');
         const endOfMonth = moment(selectedMonth, 'YYYY-MM').endOf('month');
         const weeksArray = [];
-
         let currentWeek = startOfMonth.clone().startOf('week');
-
         while (currentWeek.isSameOrBefore(endOfMonth, 'week')) {
             weeksArray.push({
                 week: currentWeek.format('YYYY-[W]ww'),
@@ -104,10 +100,9 @@ const WeeklyInvoice = () => {
             });
             currentWeek.add(1, 'week');
         }
-
+        console.log(weeksArray)
         setWeeks(weeksArray);
     }, [selectedMonth]);
-
 
     useEffect(() => {
         if (Object.keys(driversBySite).length > 0) {
@@ -118,7 +113,6 @@ const WeeklyInvoice = () => {
             let standbydriversList = driversList.filter((driver) =>
                 standbydriversIds.some((sId) => sId == driver._id)
             );
-
             if (selectedSite !== '') driversList = driversBySite[selectedSite] || [];
             if (searchDriver !== '')
                 driversList = driversList.filter((driver) =>
@@ -126,7 +120,6 @@ const WeeklyInvoice = () => {
                         .toLowerCase()
                         .includes(searchDriver.toLowerCase())
                 );
-
             setDriversList([...driversList, ...standbydriversList]);
             setStandbydriversList(standbydriversList);
         }
@@ -139,22 +132,26 @@ const WeeklyInvoice = () => {
         setSelectedMonth(newMonth);
     };
 
-    // const handlePrint = async () => {
-    //     setDriverDetails(currentInvoice?.invoice.driverId)
-    //     setIsPrintReady(true);
-    // };
+    const mergePDFs = async (generatedPdfBytes, additionalPdfUrls) => {
+        const pdfDoc = await PDFDocument.load(generatedPdfBytes);
+        for (const pdfUrl of additionalPdfUrls) {
+            if (pdfUrl) {
+                try {
+                    const response = await fetch(pdfUrl);
+                    const pdfBytes = await response.arrayBuffer();
+                    const pdfToMerge = await PDFDocument.load(pdfBytes);
+                    const copiedPages = await pdfDoc.copyPages(pdfToMerge, pdfToMerge.getPageIndices());
+                    copiedPages.forEach((page) => pdfDoc.addPage(page));
+                } catch (error) {
+                    console.error("Error merging PDF:", pdfUrl, error);
+                }
+            }
+        }
+        return await pdfDoc.save();
+    };
 
-    // useEffect(() => {
-    //     if (currentInvoice && isPrintReady) {
-    //         generatePDF(contentRef.current,
-    //             currentInvoice?.driverName,
-    //             currentInvoice?.serviceWeek);
-
-    //         setIsPrintReady(false);
-    //     }
-    // }, [isPrintReady]);
-
-    const generatePDF = async (invoiceContent, driverName, serviceWeek, actionType) => {
+    const generatePDF = async (invoice, actionType) => {
+        // Create a temporary div for rendering the invoice content
         const tempDiv = document.createElement("div");
         tempDiv.style.width = "794px";
         tempDiv.style.height = "1123px";
@@ -162,137 +159,165 @@ const WeeklyInvoice = () => {
         tempDiv.style.minHeight = "1123px";
         tempDiv.style.maxWidth = "794px";
         tempDiv.style.maxHeight = "1123px";
-
-        const clone = invoiceContent.cloneNode(true);
-        tempDiv.appendChild(clone);
         document.body.appendChild(tempDiv);
+        // Render PrintableContent into tempDiv
+        const printableContent = ReactDOMServer.renderToStaticMarkup(
+            <PrintableContent invoice={invoice} driverDetails={invoice.driverId} sites={sites} />
+        );
+        const clone = document.createElement("div");
+        clone.innerHTML = printableContent; // Simplified rendering; assumes PrintableContent can be serialized
+        tempDiv.appendChild(clone);
 
         const doc = new jsPDF('portrait', 'mm', 'a4');
+        const installmentPdfs = invoice.installments?.map((id) => id.installmentDocument) || [];
+        const deductionPdfs = invoice.invoices.flatMap((inv) => inv.deductionDetail?.map((d) => d.deductionDocument) || []);
 
-        doc.html(tempDiv, {
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 0.262,
-                useCORS: true,
-                logging: true,
-                allowTaint: false,
-            },
-            callback: async function (doc) {
-                document.body.removeChild(tempDiv);
-                const pdfBlob = doc.output('blob');
-                const filename = `${currentInvoice?.invoice?.driverId.firstName + '_' + currentInvoice?.invoice?.driverId.lastName}.pdf`;
+        return new Promise((resolve, reject) => {
+            doc.html(tempDiv, {
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 0.262,
+                    useCORS: true,
+                    logging: true,
+                    allowTaint: false,
+                },
+                callback: async function (doc) {
+                    document.body.removeChild(tempDiv);
+                    const pdfBlob = doc.output('blob');
+                    const generatedPdfBytes = await pdfBlob.arrayBuffer();
+                    const filename = `${invoice.driverId.firstName}_${invoice.driverId.lastName}_${invoice.serviceWeek}.pdf`;
 
-                if (actionType === 'print') {
-                    const pdfUrl = URL.createObjectURL(pdfBlob);
-                    window.open(pdfUrl);
-                    return;
-                }
+                    // Fetch and merge additional PDFs
+                    const mergedPdfBytes = await mergePDFs(generatedPdfBytes, [...installmentPdfs, ...deductionPdfs]);
+                    const mergedPdfBlob = new Blob([mergedPdfBytes], { type: "application/pdf" });
 
-                const formData = new FormData();
-                formData.append('weeklyInvoiceId', currentInvoice?.invoice?._id);
-                formData.append('driverId', currentInvoice?.invoice?.driverId?._id);
-                formData.append('driverEmail', currentInvoice?.invoice?.driverId?.Email);
-                formData.append('driverName', currentInvoice?.invoice?.driverId.firstName + ' ' + currentInvoice?.invoice?.driverId.lastName);
-                formData.append('actionType', actionType);
-                formData.append('document', new File([pdfBlob], filename, { type: 'application/pdf' }));
-
-                try {
-                    const res = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/document`, formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' }
-                    });
-
-                    if (actionType === 'downloadInvoice') {
-                        const url = window.URL.createObjectURL(pdfBlob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = filename;
-                        link.click();
-
-                    } else if (actionType === 'sentInvoice') {
-                        setSendingInvoice(false)
-                        alert("Invoice sent and saved successfully.");
+                    if (actionType === 'print') {
+                        const pdfUrl = URL.createObjectURL(mergedPdfBlob);
+                        window.open(pdfUrl);
+                        resolve();
+                        return;
                     }
-                    setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.updatedWeeklyInvoice }))
-                    setInvoices(allinvoices => (allinvoices.map((inv) => {
-                        if (inv.driverId._id === currentInvoice?.invoice?.driverId?._id && inv.serviceWeek === currentInvoice?.invoice?.serviceWeek)
-                            return res.data.updatedWeeklyInvoice
-                        else
-                            return inv
-                    })))
-                } catch (err) {
-                    console.error("Upload failed:", err);
-                    alert("Error uploading invoice.");
+
+                    if (actionType === 'downloadAllInvoices') {
+                        // Return the blob for zipping
+                        resolve(mergedPdfBlob);
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('weeklyInvoiceId', invoice._id);
+                    formData.append('driverId', invoice.driverId._id);
+                    formData.append('driverEmail', invoice.driverId.Email);
+                    formData.append('driverName', invoice.driverId.firstName + ' ' + invoice.driverId.lastName);
+                    formData.append('actionType', actionType === 'downloadAllInvoices' ? 'downloadInvoice' : actionType);
+                    formData.append('document', new File([mergedPdfBlob], filename, { type: 'application/pdf' }));
+
+                    try {
+                        const res = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/document`, formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+
+                        if (actionType === 'downloadInvoice' || actionType === 'downloadAllInvoices') {
+                            const url = window.URL.createObjectURL(mergedPdfBlob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                        } else if (actionType === 'sentInvoice') {
+                            alert("Invoice sent and saved successfully.");
+                        }
+
+                        if (actionType !== 'downloadAllInvoices') setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.updatedWeeklyInvoice }))
+
+                        // Update invoices state
+                        setInvoices(allinvoices => allinvoices.map((inv) => {
+                            if (inv.driverId._id === invoice.driverId._id && inv.serviceWeek === invoice.serviceWeek) {
+                                return res.data.updatedWeeklyInvoice;
+                            }
+                            return inv;
+                        }));
+
+                        resolve(res.data.updatedWeeklyInvoice);
+                    } catch (err) {
+                        console.error("Upload failed:", err);
+                        alert("Error processing invoice for " + filename);
+                        reject(err);
+                    }
                 }
-            }
+            });
         });
     };
 
-
     const handleShowDetails = async (invoice) => {
-        const instalments = await getInstallmentDetails(invoice.driverId._id)
-        setCurrentInvoice({ invoice, instalments })
-    }
+        let instalments = await getInstallmentDetails(invoice.driverId._id);
+        setCurrentInvoice({ invoice, instalments });
+    };
 
     const handleUpdateInvoice = async (currentInvoice) => {
         try {
-            const res = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/update`, { weeklyInvoiceId: currentInvoice.invoice._id, installmentDetail: currentInvoice.invoice.installmentDetail, weeklyTotal: currentInvoice.invoice.total, instalments: currentInvoice.instalments })
-            setChanged(false)
-            setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.weeklyInvoice }))
-            setInvoices(allinvoices => (allinvoices.map((inv) => {
+            const res = await axios.put(`${API_BASE_URL}/api/weeklyInvoice/update`, {
+                weeklyInvoiceId: currentInvoice.invoice._id,
+                installmentDetail: currentInvoice.invoice.installmentDetail,
+                weeklyTotal: currentInvoice.invoice.total,
+                instalments: currentInvoice.instalments
+            });
+            setChanged(false);
+            setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.weeklyInvoice }));
+            setInvoices(allinvoices => allinvoices.map((inv) => {
                 if (inv.driverId._id === currentInvoice?.invoice?.driverId?._id && inv.serviceWeek === currentInvoice?.invoice?.serviceWeek)
-                    return res.data.weeklyInvoice
-                else
-                    return inv
-            })))
-        }
-        catch (err) {
+                    return res.data.weeklyInvoice;
+                return inv;
+            }));
+        } catch (err) {
             console.error("Upload failed:", err);
             alert("Error uploading invoice.");
         }
-    }
+    };
 
     const tableData = (driver) => {
         return weeks.map((week) => {
             const key = `${driver._id}_${week.week}`;
             const invoice = groupedInvoices[key];
-            const isToday = moment(week, 'week').format('YYYY-[W]ww') === moment().format('YYYY-[W]ww')
+            const isToday = moment(week, 'week').format('YYYY-[W]ww') === moment().format('YYYY-[W]ww');
             const cellClass = isToday ? 'bg-amber-100/30' : '';
-            const allCompleted = invoice?.count === invoice?.invoices.filter((inv) => inv.approvalStatus === 'completed').length
+            const allCompleted = invoice?.count === invoice?.invoices.filter((inv) => inv.approvalStatus === 'completed').length;
             return (
-                <td key={week.week} className={cellClass} >
-                    {(() => {
-                        // Render invoice cell
-                        if (invoice) {
-                            return (
-                                <div className={`relative flex justify-center h-full w-full `}>
-                                    <div className='relative max-w-40 w-full'>
-                                        <div onClick={() => { handleShowDetails(invoice) }} className={`${!allCompleted || invoice.unsigned && 'border-dashed border-gray-300'} cursor-pointer relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
-                                            <div className='grid grid-cols-[3fr_1fr] w-full'>
-                                                <strong className='text-xs'>Total Invoice count:</strong>
-                                                <div className='text-xs overflow-auto max-h-[4rem] w-full text-center'> {invoice?.count}</div>
-                                                <strong className='text-xs'>Completed: </strong>
-                                                <div className='overflow-auto max-h-[4rem] w-full text-center'>{invoice.invoices.filter((inv) => inv.approvalStatus === 'completed').length}</div>
-                                            </div>
-                                            {(() => {
-                                                if (!invoice.unsigned)
-                                                    return <div className='flex items-center gap-2 text-xs bg-yellow-200 text-yellow-800 rounded-full px-3 py-1'> <i class="flex items-center fi fi-sr-seal-exclamation"></i>unsigned docs</div>
-                                                if (allCompleted)
-                                                    return <div className='flex gap-2 text-xs bg-sky-200 rounded-full px-3 py-1'> <i class="flex items-center fi fi-rr-document"></i>Ready to print</div>
-                                            }
-                                            )()}
-                                        </div>
+                <td key={week.week} className={cellClass}>
+                    {invoice && (
+                        <div className="relative flex justify-center h-full w-full">
+                            <div className="relative max-w-40 w-full">
+                                <div
+                                    onClick={() => handleShowDetails(invoice)}
+                                    className={`${!allCompleted || invoice.unsigned ? 'border-dashed border-gray-300' : ''} cursor-pointer relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}
+                                >
+                                    <div className="grid grid-cols-[3fr_1fr] w-full">
+                                        <strong className="text-xs">Total Invoice count:</strong>
+                                        <div className="text-xs overflow-auto max-h-[4rem] w-full text-center">{invoice?.count}</div>
+                                        <strong className="text-xs">Completed:</strong>
+                                        <div className="overflow-auto max-h-[4rem] w-full text-center">{invoice.invoices.filter((inv) => inv.approvalStatus === 'completed').length}</div>
                                     </div>
-                                </div>)
-                        }
-                    })()}
+                                    {!invoice.unsigned ? (
+                                        <div className="flex items-center gap-2 text-xs bg-yellow-200 text-yellow-800 rounded-full px-3 py-1">
+                                            <i className="flex items-center fi fi-sr-seal-exclamation"></i>unsigned docs
+                                        </div>
+                                    ) : allCompleted ? (
+                                        <div className="flex gap-2 text-xs bg-sky-200 rounded-full px-3 py-1">
+                                            <i className="flex items-center fi fi-rr-document"></i>Ready to print
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </td>
-            )
-        })
-    }
+            );
+        });
+    };
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white rounded-xl">
-            <h2 className='self-start text-xl mb-1 font-bold dark:text-white'>Weekly Invoice</h2>
+            <h2 className="self-start text-xl mb-1 font-bold dark:text-white">Weekly Invoice</h2>
             <div className="flex flex-col gap-3 w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-3 shadow overflow-hidden">
                 <div className="grid grid-cols-2 md:grid-cols-4 p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
                     <div className="flex flex-col gap-1">
@@ -319,8 +344,8 @@ const WeeklyInvoice = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="flex flex-col items-center justify-center gap-1 ">
-                        <label className="text-xs font-semibold">Select Month:</label>
+                    <div className="flex flex-col items-center justify-center gap-1">
+                        <label className="self-start ml-8 text-xs font-semibold">Select Month:</label>
                         <div className="relative flex items-center justify-center w-full h-full gap-2">
                             <button
                                 onClick={() => handleMonthChange('previous')}
@@ -329,15 +354,15 @@ const WeeklyInvoice = () => {
                                 <FaChevronLeft size={13} />
                             </button>
                             <Flatpickr
-                                className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 text-center w-full max-w-[150px] outline-none dark:border-primary-dark-gray-5"
+                                className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 text-center w-full outline-none dark:border-primary-dark-gray-5"
                                 value={selectedMonth}
                                 options={{
                                     plugins: [new monthSelectPlugin({
                                         shorthand: true,
                                         dateFormat: "F Y",
                                         theme: "light"
-                                    })], // initialized in useEffect
-                                    dateFormat: "Y-m", // fallback
+                                    })],
+                                    dateFormat: "Y-m",
                                     altFormat: "F Y",
                                 }}
                                 onChange={([date]) => setSelectedMonth(date)}
@@ -348,8 +373,35 @@ const WeeklyInvoice = () => {
                             >
                                 <FaChevronRight size={14} />
                             </button>
-
                         </div>
+                    </div>
+                    <div className="border-[1.5px] border-neutral-300 rounded-md p-2 justify-self-start self-end">
+                        <button
+                            disabled={changed || Object.values(groupedInvoices).length === 0}
+                            className="flex gap-2 bg-sky-400/50 items-center text-sm text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
+                            onClick={async () => {
+                                try {
+                                    const zip = new JSZip();
+                                    for (const invoice of Object.values(groupedInvoices)) {
+                                        const instalments = await getInstallmentDetails(invoice.driverId._id);
+                                        const updatedInvoice = { ...invoice, instalments };
+
+                                        const pdfBlob = await generatePDF(updatedInvoice, 'downloadAllInvoices');
+                                        const filename = `${invoice.driverId.firstName}_${invoice.driverId.lastName}_${invoice.serviceWeek}.pdf`;
+                                        zip.file(filename, pdfBlob);
+                                    }
+
+                                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                                    saveAs(zipBlob, `all_Invoices_${moment(selectedMonth).format('MMMM_YYYY')}.zip`);
+                                } catch (error) {
+                                    console.error("Error zipping invoices:", error);
+                                    alert("Error zipping invoices.");
+                                }
+                            }}
+                        >
+                            <i className="flex items-center fi fi-sr-download"></i>
+                            Download All
+                        </button>
                     </div>
                 </div>
                 <div className="relative rounded-t-lg flex-1 overflow-auto">
@@ -400,7 +452,7 @@ const WeeklyInvoice = () => {
                     </table>
                 </div>
             </div>
-            <Modal isOpen={currentInvoice} >
+            <Modal isOpen={currentInvoice && mode === 'single'}>
                 <h2 className="text-xl font-semibold px-2 md:px-6 py-2 text-gray-800 dark:text-white border-b border-neutral-300">
                     Weekly Invoice Details
                 </h2>
@@ -433,7 +485,6 @@ const WeeklyInvoice = () => {
                                         {currentInvoice?.invoice.driverId.typeOfDriver}
                                     </p>
                                 </div>
-
                                 {currentInvoice?.invoice.driverId.vatDetails?.vatNo && (
                                     <>
                                         <div>
@@ -450,7 +501,6 @@ const WeeklyInvoice = () => {
                                         </div>
                                     </>
                                 )}
-
                                 {currentInvoice?.invoice.driverId.companyVatDetails?.vatNo && (
                                     <>
                                         <div>
@@ -469,9 +519,7 @@ const WeeklyInvoice = () => {
                                 )}
                             </div>
                         </InputWrapper>
-
                     </div>
-
                     {/* Invoice Summary */}
                     <div className="mb-6">
                         <InputWrapper title={'Invoice Summary'}>
@@ -498,8 +546,7 @@ const WeeklyInvoice = () => {
                     {/* Installments Wrapper */}
                     {currentInvoice?.instalments?.length > 0 &&
                         (currentInvoice?.instalments?.some((insta) => insta.installmentPending > 0 || currentInvoice?.invoice?.installmentDetail.some(
-                            (cinsta) => cinsta._id.toString() === insta._id.toString())))
-                        && (
+                            (cinsta) => cinsta._id.toString() === insta._id.toString()))) && (
                             <InputWrapper title="Instalments">
                                 {currentInvoice.instalments.filter((insta) => insta.installmentPending > 0 || currentInvoice?.invoice?.installmentDetail.some(
                                     (cinsta) => cinsta._id.toString() === insta._id.toString())).map((insta) => {
@@ -510,7 +557,6 @@ const WeeklyInvoice = () => {
                                         const matchedDetail = existingDetails.find(
                                             (cinsta) => cinsta._id.toString() === insta._id.toString()
                                         );
-
                                         const currentTotal = currentInvoice?.invoice?.total ?? 0;
                                         const deductionAmount = matchedDetail
                                             ? matchedDetail.deductionAmount.toFixed(2)
@@ -519,7 +565,6 @@ const WeeklyInvoice = () => {
                                                 Math.min(insta.spreadRate, currentTotal, insta.installmentPending)
                                             ).toFixed(2);
                                         const isDisabled = Number(deductionAmount) === 0 && !isChecked;
-
                                         return (
                                             <div
                                                 key={insta._id}
@@ -531,54 +576,41 @@ const WeeklyInvoice = () => {
                                                     checked={isChecked}
                                                     disabled={isDisabled}
                                                     onChange={(e) => {
-                                                        setChanged(true)
+                                                        setChanged(true);
                                                         const checked = e.target.checked;
                                                         setCurrentInvoice((prev) => {
                                                             const prevInvoice = prev.invoice || {};
                                                             const prevDetails = prevInvoice.installmentDetail || [];
                                                             const toggledId = insta._id.toString();
-
                                                             if (!checked) {
-                                                                // UNCHECK LOGIC with reset
                                                                 const uncheckedDetail = prevDetails.find(
                                                                     (d) => d._id.toString() === toggledId
                                                                 );
                                                                 const uncheckedDeduction = uncheckedDetail?.deductionAmount ?? 0;
-
-                                                                // Restore total from all deductions
                                                                 let restoredTotal = (prevInvoice.total ?? 0) + prevDetails.reduce(
                                                                     (sum, d) => sum + d.deductionAmount,
                                                                     0
                                                                 );
-
                                                                 restoredTotal = parseFloat(restoredTotal.toFixed(2));
-
-                                                                // Recompute only with remaining checked items (excluding this one)
                                                                 const remainingIds = prevDetails
                                                                     .map((d) => d._id.toString())
                                                                     .filter((id) => id !== toggledId);
-
                                                                 let newTotal = restoredTotal;
                                                                 const newInstallmentDetail = [];
-
                                                                 const updatedInstalments = (prev.instalments || []).map((item) => {
                                                                     const id = item._id.toString();
-
                                                                     if (remainingIds.includes(id)) {
                                                                         const deduction = Math.max(
                                                                             0,
                                                                             Math.min(item.spreadRate, newTotal, item.installmentPending + (prevDetails.find(d => d._id.toString() === id)?.deductionAmount || 0))
                                                                         );
                                                                         const roundedDeduction = parseFloat(deduction.toFixed(2));
-
                                                                         newTotal = parseFloat((newTotal - roundedDeduction).toFixed(2));
-
                                                                         newInstallmentDetail.push({
                                                                             _id: item._id,
                                                                             installmentType: item.installmentType,
                                                                             deductionAmount: roundedDeduction,
                                                                         });
-
                                                                         return {
                                                                             ...item,
                                                                             installmentPending: parseFloat(
@@ -592,8 +624,6 @@ const WeeklyInvoice = () => {
                                                                             ),
                                                                         };
                                                                     }
-
-                                                                    // If this was the one just unchecked, restore its pending fully
                                                                     if (id === toggledId) {
                                                                         return {
                                                                             ...item,
@@ -607,10 +637,8 @@ const WeeklyInvoice = () => {
                                                                             ),
                                                                         };
                                                                     }
-
                                                                     return item;
                                                                 });
-
                                                                 return {
                                                                     ...prev,
                                                                     invoice: {
@@ -621,12 +649,10 @@ const WeeklyInvoice = () => {
                                                                     instalments: updatedInstalments,
                                                                 };
                                                             } else {
-                                                                // CHECK LOGIC - apply deduction directly
                                                                 const isAlreadySelected = prevDetails.some(
                                                                     (d) => d._id.toString() === toggledId
                                                                 );
                                                                 if (isAlreadySelected) return prev;
-
                                                                 const newTotal = prevInvoice.total ?? 0;
                                                                 const deduction = Math.max(
                                                                     0,
@@ -634,7 +660,6 @@ const WeeklyInvoice = () => {
                                                                 );
                                                                 const roundedDeduction = parseFloat(deduction.toFixed(2));
                                                                 if (roundedDeduction === 0) return prev;
-
                                                                 const newInstallmentDetail = [
                                                                     ...prevDetails,
                                                                     {
@@ -643,7 +668,6 @@ const WeeklyInvoice = () => {
                                                                         deductionAmount: roundedDeduction,
                                                                     },
                                                                 ];
-
                                                                 const newInstalments = (prev.instalments || []).map((instaItem) => {
                                                                     if (instaItem._id.toString() === toggledId) {
                                                                         return {
@@ -657,7 +681,6 @@ const WeeklyInvoice = () => {
                                                                     }
                                                                     return instaItem;
                                                                 });
-
                                                                 return {
                                                                     ...prev,
                                                                     invoice: {
@@ -687,7 +710,7 @@ const WeeklyInvoice = () => {
                                                     <InputGroup
                                                         disabled={true}
                                                         label="Instalment Tenure"
-                                                        value={`${insta.tenure} week${insta.tenure > 1 && 's'}`}
+                                                        value={`${insta.tenure} week${insta.tenure > 1 ? 's' : ''}`}
                                                     />
                                                     <InputGroup
                                                         disabled={true}
@@ -727,7 +750,6 @@ const WeeklyInvoice = () => {
                                     })}
                             </InputWrapper>
                         )}
-
                     {/* Daily Invoices */}
                     <div className="mb-6">
                         <InputWrapper title={'Invoices'}>
@@ -757,7 +779,9 @@ const WeeklyInvoice = () => {
                                                 )}
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>
                                             {currentInvoice?.invoice.invoices.some(
-                                                (invoice) => invoice.deductionDetail.length > 0) && <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Deductions</th>}
+                                                (invoice) => invoice.deductionDetail.length > 0) && (
+                                                    <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Deductions</th>
+                                                )}
                                             {currentInvoice?.invoice.invoices.some(
                                                 (invoice) =>
                                                     (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
@@ -767,7 +791,6 @@ const WeeklyInvoice = () => {
                                             ) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
                                                 )}
-
                                             <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total</th>
                                         </tr>
                                     </thead>
@@ -822,7 +845,11 @@ const WeeklyInvoice = () => {
                                                                         {invoice.additionalServiceApproval === 'Requested' ? (
                                                                             <div className="bg-red-200/40 text-red-400 text-xs px-2 py-1 rounded">Waiting for approval</div>
                                                                         ) : (
-                                                                            invoice.serviceRateforAdditional ? <p className='text-sm font-medium text-green-600'>£ {(invoice.serviceRateforAdditional - invoice.incentiveDetailforAdditional?.rate).toFixed(2)}</p> : '-'
+                                                                            invoice.serviceRateforAdditional ? (
+                                                                                <p className="text-sm font-medium text-green-600">
+                                                                                    £{(invoice.serviceRateforAdditional - invoice.incentiveDetailforAdditional?.rate).toFixed(2)}
+                                                                                </p>
+                                                                            ) : '-'
                                                                         )}
                                                                     </td>
                                                                 </>
@@ -831,9 +858,11 @@ const WeeklyInvoice = () => {
                                                             £{(invoice.incentiveDetailforMain?.rate || 0) + (invoice.incentiveDetailforAdditional?.rate || 0)}
                                                         </td>
                                                         {currentInvoice?.invoice.invoices.some(
-                                                            (invoice) => invoice.deductionDetail.length > 0) && <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                                {totalDeductions > 0 ? `-£${totalDeductions}` : `-`}
-                                                            </td>}
+                                                            (invoice) => invoice.deductionDetail.length > 0) && (
+                                                                <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                    {totalDeductions > 0 ? `-£${totalDeductions}` : `-`}
+                                                                </td>
+                                                            )}
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (inv) =>
                                                                 (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
@@ -845,7 +874,6 @@ const WeeklyInvoice = () => {
                                                                     {hasDriverVat || hasCompanyVat ? '20%' : '-'}
                                                                 </td>
                                                             )}
-
                                                         <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             £{invoice.total}
                                                         </td>
@@ -888,10 +916,9 @@ const WeeklyInvoice = () => {
                                 </table>
                             </div>
                             <div className="grid grid-cols-2 w-full gap-2">
-                                {/* Installment Info Table */}
                                 {currentInvoice?.invoice.installmentDetail?.length > 0 && (
-                                    <div className='rounded-lg w-full overflow-hidden'>
-                                        <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
+                                    <div className="rounded-lg w-full overflow-hidden">
+                                        <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5">
                                             <thead>
                                                 <tr className="bg-primary-800 text-white">
                                                     <th className="text-xs px-4 py-2 border-r border-primary-600">Instalment Type</th>
@@ -911,8 +938,8 @@ const WeeklyInvoice = () => {
                                 )}
                                 {currentInvoice?.invoice.invoices.some(
                                     (invoice) => invoice.deductionDetail.length > 0) && (
-                                        <div className='rounded-lg w-full overflow-hidden'>
-                                            <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
+                                        <div className="rounded-lg w-full overflow-hidden">
+                                            <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5">
                                                 <thead>
                                                     <tr className="bg-primary-800 text-white">
                                                         <th className="text-xs px-4 py-2 border-r border-primary-600">Deduction Date</th>
@@ -937,11 +964,11 @@ const WeeklyInvoice = () => {
                                         </div>
                                     )}
                                 {currentInvoice?.invoice.additionalChargesDetail?.length > 0 && (
-                                    <div className='rounded-lg w-full overflow-hidden'>
-                                        <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5 ">
+                                    <div className="rounded-lg w-full overflow-hidden">
+                                        <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5">
                                             <thead>
                                                 <tr>
-                                                    <th colspan={2} className="text-xs bg-primary-800 text-white px-4 py-1 border-b border-primary-600">Additional Charges</th>
+                                                    <th colSpan={2} className="text-xs bg-primary-800 text-white px-4 py-1 border-b border-primary-600">Additional Charges</th>
                                                 </tr>
                                                 <tr className="bg-primary-800 text-white">
                                                     <th className="text-xs px-4 py-2 border-r border-primary-600">Charge Title</th>
@@ -960,11 +987,8 @@ const WeeklyInvoice = () => {
                                     </div>
                                 )}
                             </div>
-
                         </InputWrapper>
                     </div>
-
-
                     {/* Weekly Total */}
                     <div className="mt-6 flex justify-between">
                         <div>
@@ -973,28 +997,24 @@ const WeeklyInvoice = () => {
                                 £{currentInvoice?.invoice.total}
                             </p>
                         </div>
-
                     </div>
-
-                    {/*Download or Send Invoice */}
-                    <div className='flex gap-3 p-3 rounded border-2 border-neutral-300 mt-2 w-full'>
-                        <div className='w-full'>
+                    {/* Download or Send Invoice */}
+                    <div className="flex gap-3 p-3 rounded-lg border-2 border-neutral-300 mt-2 w-full">
+                        <div className="w-full">
                             <button
                                 disabled={changed}
-                                className='flex gap-2 bg-sky-400/50 items-center text-sm text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white'
-                                onClick={() => generatePDF(contentRef.current, currentInvoice.driverName, currentInvoice.serviceWeek, 'downloadInvoice')}
+                                className="flex gap-2 bg-sky-400/50 items-center text-sm text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
+                                onClick={() => generatePDF(currentInvoice.invoice, 'downloadInvoice')}
                             >
                                 <i className="flex items-center fi fi-sr-download"></i>
                                 Download Invoice
                             </button>
                             {currentInvoice?.invoice?.downloadInvoice?.length > 0 && (
-                                <div className='rounded-lg overflow-auto border border-neutral-200 mt-2 max-h-[15rem]'>
-                                    <table className='table-general'>
-                                        <thead className='sticky top-0 bg-white'>
+                                <div className="rounded-lg overflow-auto border border-neutral-200 mt-2 max-h-[15rem]">
+                                    <table className="table-general">
+                                        <thead className="sticky top-0 bg-white">
                                             <tr>
-                                                <th colSpan={3}>
-                                                    History of Downloaded Invoices
-                                                </th>
+                                                <th colSpan={3}>History of Downloaded Invoices</th>
                                             </tr>
                                             <tr>
                                                 <th>Downloaded On</th>
@@ -1003,44 +1023,44 @@ const WeeklyInvoice = () => {
                                         </thead>
                                         <tbody>
                                             {currentInvoice.invoice?.downloadInvoice?.sort((a, b) => new Date(b.date) - new Date(a.date)).map((dInvoice) => (
-                                                <tr >
+                                                <tr key={dInvoice.date}>
                                                     <td>{new Date(dInvoice.date).toLocaleString()}</td>
-                                                    <td ><div className='flex justify-center'><a className='flex w-fit bg-purple-300/50 text-purple-500 rounded p-2' target='_blank' href={dInvoice.document}><i class="flex items-center fi text-[1rem] fi-sr-file-download"></i></a></div></td>
+                                                    <td>
+                                                        <div className="flex justify-center">
+                                                            <a className="flex w-fit bg-purple-300/50 text-purple-500 rounded p-2" target="_blank" href={dInvoice.document}>
+                                                                <i className="flex items-center fi text-[1rem] fi-sr-file-download"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                </div>)}
+                                </div>
+                            )}
                         </div>
-                        <div className='w-full'>
+                        <div className="w-full">
                             <button
                                 disabled={changed}
                                 className="flex gap-2 items-center text-sm bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                 onClick={() => {
                                     setSendingInvoice(true);
-                                    generatePDF(contentRef.current, currentInvoice.driverName, currentInvoice.serviceWeek, 'sentInvoice');
+                                    generatePDF(currentInvoice.invoice, 'sentInvoice').then(() => setSendingInvoice(false));
                                 }}
                             >
                                 {sendingInvoice ? (
                                     <div className="w-3 h-3 border-3 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
                                 ) : (
-                                    <i
-                                        className={`fi fi-sr-paper-plane
-                                        } flex items-center`}
-                                    ></i>
+                                    <i className="fi fi-sr-paper-plane flex items-center"></i>
                                 )}
                                 Send Invoice
                             </button>
                             {currentInvoice?.invoice?.sentInvoice?.length > 0 && (
-
-                                <div className='rounded-lg overflow-auto border border-neutral-200 mt-2 max-h-[15rem]'>
-
-                                    <table className='table-general'>
-                                        <thead className='sticky top-0 bg-white'>
+                                <div className="rounded-lg overflow-auto border border-neutral-200 mt-2 max-h-[15rem]">
+                                    <table className="table-general">
+                                        <thead className="sticky top-0 bg-white">
                                             <tr>
-                                                <th colSpan={3}>
-                                                    History of Sent Invoices
-                                                </th>
+                                                <th colSpan={3}>History of Sent Invoices</th>
                                             </tr>
                                             <tr>
                                                 <th>Sent On</th>
@@ -1049,21 +1069,28 @@ const WeeklyInvoice = () => {
                                         </thead>
                                         <tbody>
                                             {currentInvoice.invoice?.sentInvoice?.sort((a, b) => new Date(b.date) - new Date(a.date)).map((sInvoice) => (
-                                                <tr>
+                                                <tr key={sInvoice.date}>
                                                     <td>{new Date(sInvoice.date).toLocaleString()}</td>
-                                                    <td ><div className='flex justify-center'><a className='flex w-fit bg-purple-300/50 text-purple-500 rounded p-2' target='_blank' href={sInvoice.document}><i class="flex items-center fi text-[1rem] fi-sr-file-download"></i></a></div></td>
+                                                    <td>
+                                                        <div className="flex justify-center">
+                                                            <a className="flex w-fit bg-purple-300/50 text-purple-500 rounded p-2" target="_blank" href={sInvoice.document}>
+                                                                <i className="flex items-center fi text-[1rem] fi-sr-file-download"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                </div>)}
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div >
+                </div>
                 <div className="border-t border-neutral-300 flex px-2 md:px-6 py-2 justify-end gap-2 items-center">
                     <button
                         className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600"
-                        onClick={() => { setCurrentInvoice(null); setChanged(false) }}
+                        onClick={() => { setCurrentInvoice(null); setChanged(false); }}
                     >
                         Close
                     </button>
@@ -1076,23 +1103,17 @@ const WeeklyInvoice = () => {
                     </button>
                     <button
                         disabled={changed}
-                        onClick={() => generatePDF(contentRef.current, currentInvoice.driverName, currentInvoice.serviceWeek, 'print')}
+                        onClick={() => generatePDF(currentInvoice.invoice, 'print')}
                         className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                     >
                         Print Weekly Invoice
                     </button>
                 </div>
-            </Modal >
-            <div style={{
-                visibility: 'hidden',
-                position: 'absolute',
-                left: '-9999px'
-            }}>
-
-                {currentInvoice && (<PrintableContent ref={contentRef} invoice={currentInvoice.invoice} driverDetails={currentInvoice.invoice.driverId} />)}
-
-            </div>
-        </div >
+            </Modal>
+            {/* <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px' }}>
+                {currentInvoice && <PrintableContent ref={contentRef} invoice={currentInvoice.invoice} driverDetails={currentInvoice.invoice.driverId} />}
+            </div> */}
+        </div>
     );
 };
 
