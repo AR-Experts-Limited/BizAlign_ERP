@@ -88,7 +88,55 @@ button:disabled {
 
 }
 
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false
+}
 
+
+.card::after,
+.card::before {
+  content: '';
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  background-image: conic-gradient(from var(--angle), transparent 10%, orange);
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: 1;
+  border-radius: 8px;
+  opacity: 0;
+  animation:
+    spinBorder 2s linear infinite,
+    fadeIn 0.2s ease-in forwards;
+}
+
+.card::before {
+  filter: blur(0.2rem);
+  opacity: 0.05;
+}
+
+@keyframes spinBorder {
+  from {
+    --angle: 0deg;
+  }
+
+  to {
+    --angle: 360deg;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 
 @media (prefers-color-scheme: light) {
   :root {

@@ -30,7 +30,10 @@ moment.updateLocale('en', {
 
 const WeeklyInvoice = () => {
     const dispatch = useDispatch();
-    const contentRef = useRef(null);
+    const sentCountRef = useRef(0);
+    const stopSendingRef = useRef(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(true)
+
     const { userDetails } = useSelector((state) => state.auth);
     const { list: sites, siteStatus } = useSelector((state) => state.sites);
     const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
@@ -46,9 +49,10 @@ const WeeklyInvoice = () => {
     const [invoices, setInvoices] = useState([]);
     const [groupedInvoices, setGroupedInvoices] = useState([]);
     const [currentInvoice, setCurrentInvoice] = useState(null);
-    const [mode, setMode] = useState('single');
-    const [sendingInvoice, setSendingInvoice] = useState(false);
+    const [sendingInvoice, setSendingInvoice] = useState(null);
+    const [selectedInvoices, setSelectedInvoices] = useState([])
     const [changed, setChanged] = useState(false);
+
 
     useEffect(() => {
         if (siteStatus === 'idle') dispatch(fetchSites());
@@ -205,11 +209,16 @@ const WeeklyInvoice = () => {
                     }
 
                     const formData = new FormData();
+                    const actionMap = {
+                        downloadAllInvoices: 'downloadInvoice',
+                        sendAllInvoices: 'sentInvoice',
+                    };
                     formData.append('weeklyInvoiceId', invoice._id);
                     formData.append('driverId', invoice.driverId._id);
+                    formData.append('user_ID', invoice.driverId.user_ID);
                     formData.append('driverEmail', invoice.driverId.Email);
                     formData.append('driverName', invoice.driverId.firstName + ' ' + invoice.driverId.lastName);
-                    formData.append('actionType', actionType === 'downloadAllInvoices' ? 'downloadInvoice' : actionType);
+                    formData.append('actionType', actionMap[actionType] || actionType);
                     formData.append('document', new File([mergedPdfBlob], filename, { type: 'application/pdf' }));
 
                     try {
@@ -224,11 +233,9 @@ const WeeklyInvoice = () => {
                             link.download = filename;
                             link.click();
                             URL.revokeObjectURL(url);
-                        } else if (actionType === 'sentInvoice') {
-                            alert("Invoice sent and saved successfully.");
                         }
 
-                        if (actionType !== 'downloadAllInvoices') setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.updatedWeeklyInvoice }))
+                        if (actionType !== 'downloadAllInvoices' && actionType !== 'sendAllInvoices' && currentInvoice) setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.updatedWeeklyInvoice }))
 
                         // Update invoices state
                         setInvoices(allinvoices => allinvoices.map((inv) => {
@@ -274,6 +281,37 @@ const WeeklyInvoice = () => {
             alert("Error uploading invoice.");
         }
     };
+    const LastSentTime = ({ sentInvoice }) => {
+        let displayTime;
+        const [, setTick] = useState(0); // used to trigger re-render every 60s
+
+        if (sentInvoice?.length > 0) {
+            const latestSent = [...sentInvoice].sort(
+                (a, b) => new Date(b.date) - new Date(a.date)
+            )[0];
+            displayTime = latestSent.date;
+        }
+
+
+        useEffect(() => {
+            if (!displayTime) return;
+
+            // Update state every 60 seconds to re-render component and update moment.fromNow()
+            const interval = setInterval(() => {
+                setTick(tick => tick + 1);
+            }, 60000);
+
+            return () => clearInterval(interval);
+        }, []);
+
+        if (!displayTime) return null;
+
+        return (
+            <div className="bg-purple-300/50 rounded-full px-1.5 py-0.5 text-purple-700 text-[0.7rem]">
+                last sent {moment(displayTime).fromNow()}
+            </div>
+        );
+    };
 
     const tableData = (driver) => {
         return weeks.map((week) => {
@@ -286,26 +324,49 @@ const WeeklyInvoice = () => {
                 <td key={week.week} className={cellClass}>
                     {invoice && (
                         <div className="relative flex justify-center h-full w-full">
-                            <div className="relative max-w-40 w-full">
+                            <div className={`${sendingInvoice === invoice._id && 'card '} p-0.5 relative w-full flex justify-center items-center `}>
                                 <div
-                                    onClick={() => handleShowDetails(invoice)}
-                                    className={`${!allCompleted || invoice.unsigned ? 'border-dashed border-gray-300' : ''} cursor-pointer relative z-6 w-full h-full flex flex-col gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}
+                                    onClick={(e) => {
+                                        if (sendingInvoice) return
+                                        if (e.metaKey || e.ctrlKey) {
+                                            setSelectedInvoices(prev =>
+                                                prev.includes(key)
+                                                    ? prev.filter(k => k !== key)
+                                                    : [...prev, key]
+                                            );
+                                        }
+                                        else if (selectedInvoices.some((k) => k === key)) {
+                                            setSelectedInvoices(prev =>
+                                                prev.filter(k => k !== key)
+                                            );
+                                        }
+                                        else {
+                                            handleShowDetails(invoice)
+                                        }
+                                    }}
+                                    className={`cursor-pointer relative z-6 w-full h-full flex flex-col justify-center gap-1 items-center overflow-auto dark:bg-dark-4 dark:text-white w-full bg-gray-100 border 
+                                    ${selectedInvoices.includes(key) && sendingInvoice !== invoice._id
+                                            ? 'border-[1.5px] border-primary-500' : 'border-gray-300 dark:border-dark-5'} rounded-md text-sm p-2 `}
                                 >
-                                    <div className="grid grid-cols-[3fr_1fr] w-full">
+                                    <div className="grid grid-cols-[6fr_1fr] w-full">
                                         <strong className="text-xs">Total Invoice count:</strong>
                                         <div className="text-xs overflow-auto max-h-[4rem] w-full text-center">{invoice?.count}</div>
                                         <strong className="text-xs">Completed:</strong>
                                         <div className="overflow-auto max-h-[4rem] w-full text-center">{invoice.invoices.filter((inv) => inv.approvalStatus === 'completed').length}</div>
                                     </div>
+                                    {invoice.sentInvoice.length > 0 &&
+                                        <LastSentTime sentInvoice={invoice.sentInvoice} />
+                                    }
                                     {!invoice.unsigned ? (
-                                        <div className="flex items-center gap-2 text-xs bg-yellow-200 text-yellow-800 rounded-full px-3 py-1">
+                                        <div className="flex items-center gap-1 text-[0.7rem] bg-yellow-200 text-yellow-800 rounded-full px-1.5 py-0.5">
                                             <i className="flex items-center fi fi-sr-seal-exclamation"></i>unsigned docs
                                         </div>
                                     ) : allCompleted ? (
-                                        <div className="flex gap-2 text-xs bg-sky-200 rounded-full px-3 py-1">
+                                        <div className="flex gap-1 text-[0.7rem] bg-sky-200 rounded-full px-1 py-0.5">
                                             <i className="flex items-center fi fi-rr-document"></i>Ready to print
                                         </div>
                                     ) : null}
+
                                 </div>
                             </div>
                         </div>
@@ -317,142 +378,217 @@ const WeeklyInvoice = () => {
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white rounded-xl">
-            <h2 className="self-start text-xl mb-1 font-bold dark:text-white">Weekly Invoice</h2>
-            <div className="flex flex-col gap-3 w-full h-full bg-white dark:bg-dark-3 rounded-xl p-2 md:p-3 shadow overflow-hidden">
-                <div className="grid grid-cols-2 md:grid-cols-4 p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold">Search Personnel Name:</label>
-                        <input
-                            type="text"
-                            onChange={(e) => setSearchDriver(e.target.value)}
-                            className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200"
-                            placeholder="Personnel name"
-                        />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold">Select Site:</label>
-                        <select
-                            disabled={userDetails?.site}
-                            className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5 disabled:border-gray-200 disabled:text-gray-500"
-                            value={selectedSite}
-                            onChange={(e) => setSelectedSite(e.target.value)}
-                        >
-                            {sites.map((site) => (
-                                <option key={site.siteKeyword} value={site.siteKeyword}>
-                                    {site.siteName}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="flex flex-col items-center justify-center gap-1">
-                        <label className="self-start ml-8 text-xs font-semibold">Select Month:</label>
-                        <div className="relative flex items-center justify-center w-full h-full gap-2">
-                            <button
-                                onClick={() => handleMonthChange('previous')}
-                                className="dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5"
-                            >
-                                <FaChevronLeft size={13} />
-                            </button>
-                            <Flatpickr
-                                className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 text-center w-full outline-none dark:border-primary-dark-gray-5"
-                                value={selectedMonth}
-                                options={{
-                                    plugins: [new monthSelectPlugin({
-                                        shorthand: true,
-                                        dateFormat: "F Y",
-                                        theme: "light"
-                                    })],
-                                    dateFormat: "Y-m",
-                                    altFormat: "F Y",
-                                }}
-                                onChange={([date]) => setSelectedMonth(date)}
-                            />
-                            <button
-                                onClick={() => handleMonthChange('next')}
-                                className="dark:bg-dark flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5"
-                            >
-                                <FaChevronRight size={14} />
-                            </button>
+            <div className="flex flex-col gap-1 w-full h-full bg-white dark:bg-dark-3 rounded-xl shadow overflow-hidden">
+                <div className='flex font-bold text-lg justify-between items-center z-5 rounded-t-lg w-full px-3 py-1.5 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                    <h3>Weekly Invoice</h3>
+                    <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded-lg p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
+                </div >
+                <div className='flex flex-col p-2 overflow-auto'>
+                    <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
+                        <div className="grid grid-cols-2 md:grid-cols-[3fr_2fr_2fr_4fr] p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold">Search Personnel Name:</label>
+                                <input
+                                    type="text"
+                                    onChange={(e) => setSearchDriver(e.target.value)}
+                                    className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 dark:border-dark-5 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200"
+                                    placeholder="Personnel name"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold">Select Site:</label>
+                                <select
+                                    disabled={userDetails?.site}
+                                    className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5 disabled:border-gray-200 disabled:text-gray-500"
+                                    value={selectedSite}
+                                    onChange={(e) => setSelectedSite(e.target.value)}
+                                >
+                                    {sites.map((site) => (
+                                        <option key={site.siteKeyword} value={site.siteKeyword}>
+                                            {site.siteName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col items-center justify-center gap-1">
+                                <label className="self-start ml-8 text-xs font-semibold">Select Month:</label>
+                                <div className="relative flex items-center justify-center w-full h-full gap-2">
+                                    <button
+                                        onClick={() => handleMonthChange('previous')}
+                                        className="dark:bg-dark-3 flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5"
+                                    >
+                                        <FaChevronLeft size={13} />
+                                    </button>
+                                    <Flatpickr
+                                        className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300 px-2 py-1 h-8 md:h-10 text-center w-full outline-none dark:border-primary-dark-gray-5"
+                                        value={selectedMonth}
+                                        options={{
+                                            plugins: [new monthSelectPlugin({
+                                                shorthand: true,
+                                                dateFormat: "F Y",
+                                                theme: "light"
+                                            })],
+                                            dateFormat: "Y-m",
+                                            altFormat: "F Y",
+                                        }}
+                                        onChange={([date]) => setSelectedMonth(date)}
+                                    />
+                                    <button
+                                        onClick={() => handleMonthChange('next')}
+                                        className="dark:bg-dark flex justify-center items-center bg-white rounded-md w-7 h-7 shadow-sm border border-neutral-200 dark:border-dark-5"
+                                    >
+                                        <FaChevronRight size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex gap-1 justify-evenly border-[1.5px] border-neutral-300 rounded-md p-2 justify-self-start self-end w-full overflow-auto">
+                                <button
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice}
+                                    className="flex gap-1 bg-sky-400/50 items-center text-xs text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
+                                    onClick={async () => {
+                                        try {
+                                            const zip = new JSZip();
+                                            for (const invoice of Object.values(groupedInvoices)) {
+                                                if (selectedInvoices.length > 0) {
+                                                    const ids = selectedInvoices.map((si) => groupedInvoices[si]._id)
+                                                    if (!ids.includes(invoice._id)) continue
+                                                }
+                                                const instalments = await getInstallmentDetails(invoice.driverId._id);
+                                                const updatedInvoice = { ...invoice, instalments };
+
+                                                const pdfBlob = await generatePDF(updatedInvoice, 'downloadAllInvoices');
+                                                const filename = `${invoice.driverId.firstName}_${invoice.driverId.lastName}_${moment(selectedMonth).format('MMMM_YYYY')}/${invoice.driverId.firstName}_${invoice.driverId.lastName}_${invoice.serviceWeek}.pdf`;
+                                                zip.file(filename, pdfBlob);
+                                            }
+
+                                            const zipBlob = await zip.generateAsync({ type: 'blob' });
+                                            saveAs(zipBlob, `${selectedInvoices?.length > 0 ? 'selected' : 'all'}_Invoices_${moment(selectedMonth).format('MMMM_YYYY')}.zip`);
+                                        } catch (error) {
+                                            console.error("Error zipping invoices:", error);
+                                            alert("Error zipping invoices.");
+                                        }
+                                    }}
+                                >
+                                    <i className="flex items-center fi fi-sr-download text-[0.6rem]"></i>
+                                    Download {selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}
+                                </button>
+                                <button
+                                    disabled={changed || Object.values(groupedInvoices).length === 0}
+                                    className="flex gap-1 items-center text-xs bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
+                                    onClick={async () => {
+                                        try {
+                                            stopSendingRef.current = false;
+                                            for (const invoice of Object.values(groupedInvoices)) {
+                                                if (stopSendingRef.current) break; // Check Ref instead of state
+                                                if (selectedInvoices.length > 0) {
+                                                    const ids = selectedInvoices.map((si) => groupedInvoices[si]._id)
+                                                    if (!ids.includes(invoice._id)) continue
+                                                }
+                                                setSendingInvoice(invoice._id);
+                                                const instalments = await getInstallmentDetails(invoice.driverId._id);
+                                                const updatedInvoice = { ...invoice, instalments };
+                                                await generatePDF(updatedInvoice, 'sendAllInvoices');
+                                                sentCountRef.current += 1;
+                                            }
+                                        } catch (error) {
+                                            console.error("Error sending invoices:", error);
+                                            alert('Error sending invoice');
+                                        } finally {
+                                            setSendingInvoice(null);
+                                            sentCountRef.current = 0;
+                                            stopSendingRef.current = false;
+                                        }
+                                    }}
+                                >
+                                    {sendingInvoice ? (
+                                        <div className="w-3 h-3 border-3 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <i className="fi fi-sr-paper-plane flex items-center text-[0.6rem]"></i>
+                                    )}
+                                    {sendingInvoice ? `Sent ${sentCountRef.current}/${selectedInvoices.length > 0 ? selectedInvoices.length : Object.values(groupedInvoices).length}` : `Send ${selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}`}
+                                </button>
+                                {sendingInvoice && <button className='text-xs bg-red-600 text-white rounded-md px-2 py-1' onClick={() => { stopSendingRef.current = true; setSendingInvoice('stop') }}>{sendingInvoice === 'stop' ? 'Stopping..' : 'Stop'}</button>
+                                }
+                                {
+                                    selectedInvoices.length > 0 && !sendingInvoice &&
+                                    <button className='text-xs bg-red-600 text-white rounded-md px-2 py-1' onClick={() => setSelectedInvoices([])}>Clear</button>
+                                }
+                                {selectedInvoices.length !== Object.values(groupedInvoices).length && <button disabled={sendingInvoice} onClick={() => setSelectedInvoices(Object.values(groupedInvoices).map((ginv) => `${ginv.driverId._id}_${ginv.serviceWeek}`))} className='text-xs bg-primary-600 text-white rounded-md px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Select All</button>}
+                            </div>
                         </div>
                     </div>
-                    <div className="border-[1.5px] border-neutral-300 rounded-md p-2 justify-self-start self-end">
-                        <button
-                            disabled={changed || Object.values(groupedInvoices).length === 0}
-                            className="flex gap-2 bg-sky-400/50 items-center text-sm text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
-                            onClick={async () => {
-                                try {
-                                    const zip = new JSZip();
-                                    for (const invoice of Object.values(groupedInvoices)) {
-                                        const instalments = await getInstallmentDetails(invoice.driverId._id);
-                                        const updatedInvoice = { ...invoice, instalments };
+                    <div className="relative rounded-t-lg flex-1 overflow-auto">
+                        <table className="calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4">
+                            <thead>
+                                <tr className="text-white">
+                                    <th className="sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-500 font-medium max-sm:!max-w-25 max-sm:!whitespace-normal">
+                                        Personnel List
+                                    </th>
+                                    {weeks.map((week) => (
+                                        <th
+                                            className="sticky top-0 z-10 bg-primary-800 border-r-[1.5px] border-primary-500 font-light"
+                                            key={week.week}
+                                        >
+                                            <div className="flex flex-col gap-1 items-center">
+                                                <div>{week.week}</div>
+                                            </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {driversList.map((driver) => {
 
-                                        const pdfBlob = await generatePDF(updatedInvoice, 'downloadAllInvoices');
-                                        const filename = `${invoice.driverId.firstName}_${invoice.driverId.lastName}_${invoice.serviceWeek}.pdf`;
-                                        zip.file(filename, pdfBlob);
-                                    }
+                                    return (
+                                        <tr key={driver._id}>
+                                            <td className="z-10 sticky left-0 bg-white dark:bg-dark-3">
+                                                <div className="flex max-sm:flex-col gap-2 justify-between items-center">
+                                                    <p>{driver.firstName + ' ' + driver.lastName}</p>
+                                                    <button
+                                                        disabled={Object.values(groupedInvoices).filter(ginv => ginv.driverId._id === driver._id).length === 0}
+                                                        onClick={() =>
+                                                            setSelectedInvoices(prev => {
+                                                                const newSelections = Object.values(groupedInvoices)
+                                                                    .filter(ginv => ginv.driverId._id === driver._id)
+                                                                    .map(ginv => `${driver._id}_${ginv.serviceWeek}`);
 
-                                    const zipBlob = await zip.generateAsync({ type: 'blob' });
-                                    saveAs(zipBlob, `all_Invoices_${moment(selectedMonth).format('MMMM_YYYY')}.zip`);
-                                } catch (error) {
-                                    console.error("Error zipping invoices:", error);
-                                    alert("Error zipping invoices.");
-                                }
-                            }}
-                        >
-                            <i className="flex items-center fi fi-sr-download"></i>
-                            Download All
-                        </button>
+                                                                const allSelected = newSelections.every(id => prev.includes(id));
+
+                                                                if (allSelected) {
+                                                                    // Remove all
+                                                                    return prev.filter(id => !newSelections.includes(id));
+                                                                } else {
+                                                                    // Add missing
+                                                                    const merged = new Set([...prev, ...newSelections]);
+                                                                    return Array.from(merged);
+                                                                }
+                                                            })
+                                                        }
+                                                        className={`h-8 w-8 rounded-full p-2 bg-gray-100 shadow border border-gray-200 disabled:!text-gray-300 ${Object.values(groupedInvoices)
+                                                            .filter(ginv => ginv.driverId._id === driver._id)
+                                                            .every(ginv => selectedInvoices.includes(`${driver._id}_${ginv.serviceWeek}`))
+                                                            ? 'text-primary-200'
+                                                            : 'text-neutral-500'
+                                                            }`}
+                                                    >
+                                                        <i
+                                                            className={`flex items-center fi fi-rr-choose text-[1rem]`}
+                                                        ></i>
+                                                    </button>
+
+                                                </div>
+                                            </td>
+                                            {tableData(driver)}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div className="relative rounded-t-lg flex-1 overflow-auto">
-                    <table className="calendar-table text-xs md:text-base w-full border border-neutral-200 dark:border-dark-4">
-                        <thead>
-                            <tr className="text-white">
-                                <th className="sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-500 font-medium max-sm:!max-w-20 max-sm:!whitespace-normal">
-                                    Personnel List
-                                </th>
-                                {weeks.map((week) => (
-                                    <th
-                                        className="sticky top-0 z-10 bg-primary-800 border-r-[1.5px] border-primary-500 font-light"
-                                        key={week.week}
-                                    >
-                                        <div className="flex flex-col gap-1 items-center">
-                                            <div>{week.week}</div>
-                                        </div>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {driversList.map((driver) => {
-                                const disableDriver = driver.activeStatus !== 'Active' ? driver.activeStatus : null;
-                                const standbydriver = standbydriversList.some((sdriver) => sdriver._id === driver._id);
-                                return (
-                                    <tr key={driver._id}>
-                                        <td className="z-10 sticky left-0 bg-white dark:bg-dark-3">
-                                            <div className="flex flex-col gap-3">
-                                                <p>{driver.firstName + ' ' + driver.lastName}</p>
-                                                {disableDriver && (
-                                                    <div className="text-xs md:text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm">
-                                                        {disableDriver}
-                                                    </div>
-                                                )}
-                                                {standbydriver && (
-                                                    <div className="text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs">
-                                                        Stand by driver from {driver.siteSelection}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        {tableData(driver)}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
             </div>
-            <Modal isOpen={currentInvoice && mode === 'single'}>
+            <Modal isOpen={currentInvoice}>
                 <h2 className="text-xl font-semibold px-2 md:px-6 py-2 text-gray-800 dark:text-white border-b border-neutral-300">
                     Weekly Invoice Details
                 </h2>
@@ -1110,10 +1246,7 @@ const WeeklyInvoice = () => {
                     </button>
                 </div>
             </Modal>
-            {/* <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px' }}>
-                {currentInvoice && <PrintableContent ref={contentRef} invoice={currentInvoice.invoice} driverDetails={currentInvoice.invoice.driverId} />}
-            </div> */}
-        </div>
+        </div >
     );
 };
 
