@@ -11,6 +11,7 @@ const getModels = (req) => ({
   Installment: req.db.model('Installment', require('../models/installments').schema),
   Driver: req.db.model('Driver', require('../models/Driver').schema),
   AdditionalCharges: req.db.model('AdditionalCharges', require('../models/additionalCharges').schema),
+  Schedule: req.db.model('Schedule', require('../models/Schedule').schema),
 });
 
 // Get all rate cards
@@ -465,27 +466,284 @@ router.put('/active', async (req, res) => {
   }
 });
 
-// Delete a rate card
+// Delete rate cards and associated records
 router.delete('/', async (req, res) => {
+  const round2 = (num) => +parseFloat(num || 0).toFixed(2);
+
   try {
-    const { RateCard } = getModels(req);
-    const { ids } = req.body; // Expecting an array of rate card IDs
+    const { RateCard, DayInvoice, Schedule, WeeklyInvoice, Driver, Installment, AdditionalCharges } = getModels(req);
+    const { ids, confirm } = req.body; // Expecting array of rate card IDs and confirmation flag
 
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ message: 'No rate card IDs provided' });
     }
 
-    const result = await RateCard.deleteMany({ _id: { $in: ids } });
+    if (!ids.every(id => mongoose.Types.ObjectId.isValid(id))) {
+      return res.status(400).json({ message: 'Invalid RateCard IDs provided' });
+    }
+
+    // Find affected RateCards
+    const rateCards = await RateCard.find({ _id: { $in: ids } });
+    if (!rateCards.length) {
+      return res.status(404).json({ message: 'No rate cards found for provided IDs' });
+    }
+
+    // Collect unique combinations of serviceWeek, driverVehicleType, and serviceTitle
+    const affectedCriteria = [...new Set(rateCards.map(card => ({
+      serviceWeek: card.serviceWeek,
+      driverVehicleType: card.vehicleType,
+      serviceTitle: card.serviceTitle,
+    })))];
+
+    // Find associated DayInvoices and Schedules
+    const dayInvoices = [];
+    const schedules = [];
+
+    for (const { serviceWeek, driverVehicleType, serviceTitle } of affectedCriteria) {
+      // Find DayInvoices matching serviceWeek, driverVehicleType, and either mainService or additionalServiceDetails.service
+      const invoices = await DayInvoice.find({
+        $or: [
+          { serviceWeek, driverVehicleType, mainService: serviceTitle },
+          {
+            serviceWeek,
+            driverVehicleType,
+            'additionalServiceDetails.service': serviceTitle
+          }
+        ]
+      }).select('driverId serviceWeek driverVehicleType mainService additionalServiceDetails _id total date serviceRateforAdditional incentiveDetailforAdditional');
+      dayInvoices.push(...invoices);
+
+      // Find Schedules matching serviceWeek and serviceTitle
+      const scheds = await Schedule.find({
+        week: serviceWeek,
+        service: serviceTitle
+      }).select('driverId serviceWeek vehicleType serviceTitle _id');
+      schedules.push(...scheds);
+    }
+
+    // If confirmation is not provided, return associated records
+    if (!confirm && (dayInvoices.length > 0 || schedules.length > 0)) {
+      return res.status(200).json({
+        confirm,
+        message: 'Confirmation required to delete associated records',
+        associatedRecords: {
+          dayInvoices: dayInvoices.map(inv => ({
+            _id: inv._id,
+            driverId: inv.driverId,
+            serviceWeek: inv.serviceWeek,
+            driverVehicleType: inv.driverVehicleType,
+            mainService: inv.mainService,
+            additionalServiceDetails: inv.additionalServiceDetails || []
+          })),
+          schedules: schedules.map(sched => ({
+            _id: sched._id,
+            driverId: sched.driverId,
+            serviceWeek: sched.serviceWeek,
+            vehicleType: sched.vehicleType,
+            serviceTitle: sched.serviceTitle
+          })),
+        },
+      });
+    }
+
+    // Separate DayInvoices by whether they need deletion (main service) or update (additional service)
+    const invoicesToDelete = [];
+    const invoicesToUpdate = [];
+
+    for (const invoice of dayInvoices) {
+      if (invoice.mainService === affectedCriteria.find(c => c.serviceWeek === invoice.serviceWeek && c.driverVehicleType === invoice.driverVehicleType)?.serviceTitle) {
+        invoicesToDelete.push(invoice);
+      } else if (invoice.additionalServiceDetails && invoice.additionalServiceDetails.service === affectedCriteria.find(c => c.serviceWeek === invoice.serviceWeek && c.driverVehicleType === invoice.driverVehicleType)?.serviceTitle) {
+        invoicesToUpdate.push(invoice);
+      }
+    }
+
+    // Update DayInvoices with affected additionalServiceDetails
+    const updateOperations = invoicesToUpdate.map(invoice => {
+      // Calculate deductions
+      let totalDeduction = round2(invoice.serviceRateforAdditional || 0);
+      if (invoice.incentiveDetailforAdditional?.rate) {
+        totalDeduction += round2(invoice.incentiveDetailforAdditional.rate);
+      }
+
+      return {
+        updateOne: {
+          filter: { _id: invoice._id },
+          update: {
+            $set: {
+              additionalServiceDetails: null,
+              serviceRateforAdditional: 0,
+              total: round2(invoice.total - totalDeduction)
+            }
+          }
+        }
+      };
+    });
+
+    // Perform updates for additionalServiceDetails
+    if (updateOperations.length > 0) {
+      await DayInvoice.bulkWrite(updateOperations);
+    }
+
+    // Proceed with deletion of main service invoices
+    const dayInvoiceIds = invoicesToDelete.map(inv => inv._id);
+    const rateCardResult = await RateCard.deleteMany({ _id: { $in: ids } });
+    const dayInvoiceResult = await DayInvoice.deleteMany({ _id: { $in: dayInvoiceIds } });
+    const scheduleResult = await Schedule.deleteMany({ _id: { $in: schedules.map(sched => sched._id) } });
+
+    // Find affected drivers and service weeks
+    const affectedDriverIds = [...new Set(dayInvoices.map(inv => inv.driverId.toString()))];
+    const affectedServiceWeeks = [...new Set(dayInvoices.map(inv => inv.serviceWeek))];
+
+    // Update WeeklyInvoices for affected drivers and weeks
+    for (const driverId of affectedDriverIds) {
+      for (const serviceWeek of affectedServiceWeeks) {
+        const driverData = await Driver.findById(driverId);
+        const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
+        if (!weeklyInvoice) continue;
+
+        // Remove deleted DayInvoice IDs from WeeklyInvoice.invoices
+        await WeeklyInvoice.updateOne(
+          { driverId, serviceWeek },
+          { $pull: { invoices: { $in: dayInvoiceIds } } }
+        );
+
+        // Fetch updated WeeklyInvoice to check remaining invoices
+        const updatedWeeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek }).lean();
+
+        // If no invoices remain, restore installments and delete WeeklyInvoice
+        if (!updatedWeeklyInvoice.invoices.length) {
+          // Restore installment deductions
+          const allInstallments = await Installment.find({ driverId });
+          for (const detail of updatedWeeklyInvoice.installmentDetail || []) {
+            const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+            if (inst && detail.deductionAmount > 0) {
+              inst.installmentPending = round2(inst.installmentPending + detail.deductionAmount);
+              await inst.save();
+            }
+          }
+
+          // Delete WeeklyInvoice
+          await WeeklyInvoice.deleteOne({ driverId, serviceWeek });
+          continue;
+        }
+
+        // Fetch remaining DayInvoices
+        const allInvoices = await DayInvoice.find({ driverId, serviceWeek }).lean();
+        let weeklyBaseTotal = 0;
+        let weeklyVatTotal = 0;
+
+        const isVatApplicable = (date) => {
+          return (
+            (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
+            (driverData?.companyVatDetails?.vatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+          );
+        };
+
+        // Sum remaining DayInvoice totals
+        for (const inv of allInvoices) {
+          const invBaseTotal = round2(inv.total);
+          weeklyBaseTotal += invBaseTotal;
+          if (isVatApplicable(new Date(inv.date))) {
+            weeklyVatTotal += round2(invBaseTotal * 0.2);
+          }
+        }
+
+        // Add AdditionalCharges contributions
+        let additionalChargesTotal = 0;
+        for (const charge of updatedWeeklyInvoice.additionalChargesDetail || []) {
+          let rateAdjustment = round2(charge.rate);
+          if (charge.type === 'deduction') {
+            rateAdjustment = -rateAdjustment;
+          }
+          additionalChargesTotal += rateAdjustment;
+          if (isVatApplicable(new Date(charge.week))) {
+            weeklyVatTotal += round2(rateAdjustment * 0.2);
+          }
+        }
+
+        weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
+        weeklyVatTotal = round2(weeklyVatTotal);
+        const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
+
+        // Restore previous installment deductions
+        const allInstallments = await Installment.find({ driverId });
+        for (const detail of updatedWeeklyInvoice.installmentDetail || []) {
+          const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+          if (inst && detail.deductionAmount > 0) {
+            inst.installmentPending = round2(inst.installmentPending + detail.deductionAmount);
+            await inst.save();
+          }
+        }
+
+        // Calculate new installment deductions
+        const installmentMap = new Map();
+        let remainingTotal = weeklyTotalBeforeInstallments;
+
+        for (const inst of allInstallments) {
+          const instId = inst._id.toString();
+          if (inst.installmentPending <= 0) continue;
+
+          const deduction = Math.min(
+            round2(inst.spreadRate),
+            round2(inst.installmentPending),
+            remainingTotal
+          );
+          if (deduction <= 0) continue;
+
+          inst.installmentPending = round2(inst.installmentPending - deduction);
+          await inst.save();
+
+          installmentMap.set(instId, {
+            _id: inst._id,
+            installmentRate: round2(inst.installmentRate),
+            installmentType: inst.installmentType,
+            installmentDocument: inst.installmentDocument,
+            installmentPending: round2(inst.installmentPending),
+            deductionAmount: round2(deduction),
+            signed: inst.signed,
+          });
+
+          remainingTotal = round2(remainingTotal - deduction);
+        }
+
+        const mergedInstallments = Array.from(installmentMap.values());
+        const totalInstallmentDeduction = round2(
+          mergedInstallments.reduce((sum, inst) => sum + (inst.deductionAmount || 0), 0)
+        );
+
+        const finalWeeklyTotal = round2(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction));
+
+        // Update WeeklyInvoice
+        await WeeklyInvoice.findOneAndUpdate(
+          { driverId, serviceWeek },
+          {
+            $set: {
+              vatTotal: weeklyVatTotal,
+              total: finalWeeklyTotal,
+              installmentDetail: mergedInstallments,
+              invoices: allInvoices.map(inv => inv._id), // Update invoices array with remaining IDs
+            },
+          },
+          { new: true }
+        );
+      }
+    }
 
     sendToClients(req.db, {
       type: 'rateCardUpdated', // Notify clients of data change
     });
 
-    res.json({ message: `${result.deletedCount} rate card(s) deleted successfully` });
+    res.json({
+      confirm: true,
+      message: `${rateCardResult.deletedCount} rate card(s), ${dayInvoiceResult.deletedCount} day invoice(s), ${updateOperations.length} day invoice(s) updated, and ${scheduleResult.deletedCount} schedule(s) deleted successfully`
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting rate cards', error: error.message });
+    console.error('Error deleting rate cards and associated records:', error.stack);
+    res.status(500).json({ message: 'Error deleting rate cards and associated records', error: error.message });
   }
 });
+
 
 
 module.exports = router;

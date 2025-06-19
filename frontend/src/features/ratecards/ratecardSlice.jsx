@@ -24,9 +24,9 @@ export const updateRatecardActive = createAsyncThunk('Ratecards/updateRatecardAc
     return response.data;
 });
 
-export const deleteRatecard = createAsyncThunk('Ratecards/deleteRatecard', async (ids) => {
-    await axios.delete(`${API_BASE_URL}/api/ratecards`, { data: { ids } });
-    return ids;
+export const deleteRatecard = createAsyncThunk('Ratecards/deleteRatecard', async (data) => {
+    const response = await axios.delete(`${API_BASE_URL}/api/ratecards`, { data: data });
+    return { response, ids: data.ids };
 });
 
 const RatecardSlice = createSlice({
@@ -108,7 +108,8 @@ const RatecardSlice = createSlice({
             })
             .addCase(deleteRatecard.fulfilled, (state, action) => {
                 state.deleteStatus = 'succeeded';
-                state.list = state.list.filter((d) => !action.payload.includes(d._id));
+                if (action.payload.response.data.confirm)
+                    state.list = state.list.filter((d) => !action.payload.ids.includes(d._id));
             })
             .addCase(deleteRatecard.rejected, (state, action) => {
                 state.deleteStatus = 'failed';

@@ -8,6 +8,8 @@ import RateCardTable from './RateCardTable';
 import './Ratecard.scss'
 import TrashBin from '../../components/UIElements/TrashBin';
 import SuccessTick from '../../components/UIElements/SuccessTick'
+import Modal from '../../components/Modal/Modal'
+import InputGroup from '../../components/InputGroup/InputGroup'
 
 const Ratecard = () => {
     const dispatch = useDispatch();
@@ -25,6 +27,8 @@ const Ratecard = () => {
         vanRentHours: 1,
         hourlyRate: '',
     }
+    const [deleteInput, setDeleteInput] = useState('')
+    const [deleteRatecards, setDeleteRatecards] = useState([])
     const [rateCard, setRateCard] = useState(clearRateCard);
     const [toastOpen, setToastOpen] = useState(false);
 
@@ -36,15 +40,22 @@ const Ratecard = () => {
         if (serviceStatus === 'idle') dispatch(fetchServices());
     }, [ratecardStatus, serviceStatus, dispatch]);
 
-    const handleDeleteRatecard = async (ids) => {
-        dispatch(deleteRatecard(ids))
-        setToastOpen({
-            content: <>
-                <TrashBin width={27} height={27} />
-                <p className='text-sm font-bold text-red-500'>{ids.length > 1 ? 'Rate cards ' : 'Rate card '}deleted successfully</p>
-            </>
-        })
-        setTimeout(() => setToastOpen(null), 3000);
+    const handleDeleteRatecard = async (ids, confirm = false) => {
+        const reduxReturn = await dispatch(deleteRatecard({ ids, confirm })).unwrap()
+        console.log(reduxReturn.response.data)
+        if (!reduxReturn.response.data.confirm) {
+            setDeleteRatecards(ids)
+        }
+        else {
+            setDeleteRatecards([])
+            setToastOpen({
+                content: <>
+                    <TrashBin width={27} height={27} />
+                    <p className='text-sm font-bold text-red-500'>{ids.length > 1 ? 'Rate cards ' : 'Rate card '}deleted successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
+        }
     };
 
     const handleAddRateCard = async (rateCard, newService, newServiceInfo, existingweek) => {
@@ -115,7 +126,20 @@ const Ratecard = () => {
                     onUpdateActive={handleUpdateActiveStatus}
                 />
             </div>
-        </div>
+            <Modal isOpen={deleteRatecards.length > 0}>
+                <div className='max-w-120 max-h-75 p-6'>
+                    <>
+                        <p>Delete User?</p>
+                        <p className='text-sm italic'>Confirmation required for deleting associated schedules and invoices. Type "Permanently delete" to proceed.</p>
+                        <InputGroup type='text' onChange={(e) => setDeleteInput(e.target.value)} />
+                        <div className='flex gap-2 justify-end m-2'>
+                            <button onClick={() => setDeleteRatecards([])} className='bg-amber-500 text-white text-xs border-1 border-amber-500 rounded-lg p-1 hover:bg-white hover:text-amber-500 dark:hover:bg-dark-4'>Cancel</button>
+                            <button onClick={() => handleDeleteRatecard(deleteRatecards, true)} disabled={deleteInput !== "Permanently delete"} className='disabled:bg-neutral-300 disabled:border-neutral-300 disabled:text-neutral-100 bg-red border-1 border-red-500 p-1 rounded-md text-white text-sm hover:bg-white hover:text-red-500'>Delete</button>
+                        </div>
+                    </>
+                </div>
+            </Modal >
+        </div >
     );
 };
 
