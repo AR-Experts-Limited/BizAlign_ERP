@@ -421,6 +421,50 @@ router.put('/', async (req, res) => {
   }
 });
 
+// Update active status for selected RateCards
+router.put('/active', async (req, res) => {
+  try {
+    const { RateCard } = getModels(req);
+    const { selectedIds, active } = req.body;
+
+    if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
+      return res.status(400).json({ message: 'selectedIds must be a non-empty array' });
+    }
+
+    if (!selectedIds.every(id => mongoose.Types.ObjectId.isValid(id))) {
+      return res.status(400).json({ message: 'Invalid RateCard IDs provided' });
+    }
+
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ message: 'active must be a boolean' });
+    }
+
+    const updatedRateCards = [];
+
+    // Update active status for selected RateCards
+    for (const id of selectedIds) {
+      const updatedRateCard = await RateCard.findOneAndUpdate(
+        { _id: id },
+        { $set: { active } },
+        { new: true }
+      );
+
+      if (updatedRateCard) {
+        updatedRateCards.push(updatedRateCard);
+      }
+    }
+
+    sendToClients(req.db, {
+      type: 'rateCardActiveStatusUpdated', // Custom event to signal active status update
+    });
+
+    res.status(200).json({ added: [], updated: updatedRateCards });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating RateCard active status', error: error.message });
+  }
+});
+
 // Delete a rate card
 router.delete('/', async (req, res) => {
   try {

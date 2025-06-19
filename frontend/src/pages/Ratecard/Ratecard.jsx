@@ -1,7 +1,7 @@
 // src/features/ratecards/Ratecard.jsx
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchRatecards, addRatecard, updateRatecard, deleteRatecard } from '../../features/ratecards/ratecardSlice';
+import { fetchRatecards, addRatecard, updateRatecard, deleteRatecard, updateRatecardActive } from '../../features/ratecards/ratecardSlice';
 import { fetchServices, addService } from '../../features/services/serviceSlice';
 import RateCardForm from './RateCardForm';
 import RateCardTable from './RateCardTable';
@@ -80,6 +80,10 @@ const Ratecard = () => {
         setTimeout(() => setToastOpen(null), 3000);
     }
 
+    const handleUpdateActiveStatus = async (ratecard) => {
+        dispatch(updateRatecardActive(ratecard))
+    }
+
     return (
         <div className='flex flex-col relative h-full w-full p-4 overflow-hidden'>
             <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
@@ -108,6 +112,7 @@ const Ratecard = () => {
                     mode={mode}
                     onDelete={handleDeleteRatecard}
                     onUpdate={onUpdateSelect}
+                    onUpdateActive={handleUpdateActiveStatus}
                 />
             </div>
         </div>

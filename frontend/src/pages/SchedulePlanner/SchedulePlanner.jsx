@@ -26,7 +26,7 @@ const rateCardFinder = (ratecards, week, service, typeOfDriver) => {
         (rc) =>
             rc.serviceWeek === week &&
             rc.serviceTitle === service &&
-            rc.vehicleType === typeOfDriver
+            rc.vehicleType === typeOfDriver && rc.active
     );
 };
 

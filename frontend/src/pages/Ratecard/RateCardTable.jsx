@@ -8,7 +8,7 @@ import { groupRateCards } from './groupRateCards';
 import WeekInput from '../../components/Calendar/WeekInput';
 import moment from 'moment'
 
-const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
+const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActive, mode }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
     const [dropdownPositions, setDropdownPositions] = useState({});
     const [groupedRateCards, setGroupedRateCards] = useState([])
@@ -123,7 +123,7 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
                 </div>
             </div>
 
-            <div className="max-h-[35rem] px-2 overflow-auto">
+            <div className="max-h-[35rem] flex-1  px-2 overflow-auto">
                 <table className="ratecard-table w-full text-sm text-center">
                     <thead>
                         <tr className="sticky top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
@@ -141,119 +141,143 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, mode }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {groupedRateCards.map((group, index) => {
-                            const selectedWeek = selectedWeeks[group._id] || group.serviceWeeks[0];
-                            const selectedIds = (Array.isArray(selectedWeek) ? selectedWeek : []).map((it) => group.weekIdMap[it]);
-                            const currentCard = group.cards.find(card => card.serviceWeek === selectedWeek);
+                        {groupedRateCards
+                            .sort((a, b) => Number(b.active) - Number(a.active)) // Active (true) first, inactive (false) last
+                            .map((group, index, array) => {
+                                const selectedWeek = selectedWeeks[group._id] || group.serviceWeeks[0];
+                                const selectedIds = (Array.isArray(selectedWeek) ? selectedWeek : []).map((it) => group.weekIdMap[it]);
+                                const currentCard = group.cards.find(card => card.serviceWeek === selectedWeek);
 
-                            return (
-                                <tr
-                                    key={index}
-                                    className={` dark:hover:bg-dark-4 ${!group.active ? 'text-gray-400' : 'dark:text-white'} ${selectedGroupUpdate === group._id && mode === 'edit' ? 'bg-amber-200/30' : 'hover:bg-neutral-50'}`}
-                                    ref={(el) => setDropdownRef(el, group._id)}
-                                >
-                                    <td className="border-b border-neutral-200">
-                                        <div className="flex justify-center">
-                                            <InputGroup type="toggleswitch" checked={group.active} />
-                                        </div>
-                                    </td>
-                                    <td className="border-b border-neutral-200">
-                                        {group.vehicleType}
-                                    </td>
-                                    <td className="border-b border-neutral-200">£ {group.minimumRate}</td>
-                                    <td className="border-b border-neutral-200">{group.serviceTitle}</td>
-                                    <td className="border-b border-neutral-200">
-                                        <div className="relative group">
-                                            <button className="w-full max-h-13 h-fit overflow-auto text-left border-[1.5px] border-neutral-200 rounded-md bg-white px-1 py-2 outline-none focus:border-primary-400">
-                                                <div className={`flex flex-nowrap gap-2 ${(selectedWeeks[group._id]?.length > 1) ? 'pb-5' : ''}`}>
-                                                    {selectedWeeks[group._id]?.length > 0 ?
-                                                        selectedWeeks[group._id].map((week) => (
-                                                            <div key={week} className="whitespace-nowrap break-keep w-full bg-gray-100 px-1 py-1 rounded-lg text-[0.7rem]">
-                                                                {week}
-                                                            </div>)) : <div>{group.serviceWeeks[0]}</div>}
+                                const isFirstInactive = !group.active && (index === 0 || array[index - 1].active);
+
+                                return (
+                                    <>
+                                        {isFirstInactive && (
+                                            <tr>
+                                                <td colSpan="10" className="!p-1 border-b border-neutral-200 bg-neutral-50 dark:bg-dark-4 text-lg font-light text-gray-700 dark:text-white py-2">
+                                                    Disabled
+                                                </td>
+                                            </tr>
+                                        )}
+                                        <tr
+                                            key={index}
+                                            className={`dark:hover:bg-dark-4 ${!group.active ? 'text-gray-400' : 'dark:text-white'} ${selectedGroupUpdate === group._id && mode === 'edit' ? 'bg-amber-200/30' : 'hover:bg-neutral-50'}`}
+                                            ref={(el) => setDropdownRef(el, group._id)}
+                                        >
+                                            <td className="border-b border-neutral-200">
+                                                <div className="flex justify-center">
+                                                    <InputGroup
+                                                        type="toggleswitch"
+                                                        checked={group.active}
+                                                        onChange={(e) => {
+                                                            const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]]);
+                                                            onUpdateActive({ selectedIds: selectedIdsList, active: e.target.checked });
+                                                            setSelectedWeeks([])
+                                                        }}
+                                                    />
                                                 </div>
-                                            </button>
-
-                                            <div className={`absolute z-10 hidden px-3 py-2 w-max bg-white border-[1.5px] border-neutral-200 rounded-md shadow-lg group-hover:block ${dropdownPositions[group._id] === 'top'
-                                                ? 'bottom-full '
-                                                : 'top-full'
-                                                }`}>
-                                                <div className="max-h-30 overflow-y-auto pr-3">
-                                                    <div>
-                                                        <label className="flex items-center gap-3 mb-1 text-sm">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedWeeks[group._id]?.length === group.serviceWeeks.length}
-                                                                onChange={(e) => {
-                                                                    const allWeeks = group.serviceWeeks;
-                                                                    setSelectedWeeks((prev) => ({
-                                                                        ...prev,
-                                                                        [group._id]: e.target.checked ? allWeeks : [],
-                                                                    }));
-                                                                }}
-                                                            />
-                                                            Select All
-                                                        </label>
-                                                    </div>
-                                                    {group.serviceWeeks.map((week, i) => (
-                                                        <label key={i} className="flex items-center gap-3 mb-1 text-sm">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedWeeks[group._id]?.includes(week) || false}
-                                                                onChange={(e) => {
-                                                                    const prevSelected = selectedWeeks[group._id] || [];
-                                                                    const updated = e.target.checked
-                                                                        ? [...prevSelected, week]
-                                                                        : prevSelected.filter((w) => w !== week);
-                                                                    setSelectedWeeks((prev) => ({
-                                                                        ...prev,
-                                                                        [group._id]: updated,
-                                                                    }));
-                                                                }}
-                                                            />
-                                                            {week}
-                                                        </label>
-                                                    ))}
+                                            </td>
+                                            <td className="border-b border-neutral-200">{group.vehicleType}</td>
+                                            <td className="border-b border-neutral-200">£ {group.minimumRate}</td>
+                                            <td className="border-b border-neutral-200">{group.serviceTitle}</td>
+                                            <td className="border-b border-neutral-200">
+                                                <div className="relative group">
+                                                    <button className={`w-full max-h-13 h-fit overflow-auto text-left ${group.serviceWeeks?.length > 1 && 'border-[1.5px] bg-white'} border-neutral-200 rounded-md  px-1 py-2 outline-none focus:border-primary-400`}>
+                                                        <div className={`flex flex-nowrap gap-2 ${(selectedWeeks[group._id]?.length > 1) ? 'pb-5' : ''}`}>
+                                                            {selectedWeeks[group._id]?.length > 0 ?
+                                                                selectedWeeks[group._id].map((week) => (
+                                                                    <div key={week} className="whitespace-nowrap break-keep w-full bg-gray-100 px-1 py-1 rounded-lg text-[0.7rem]">
+                                                                        {week}
+                                                                    </div>
+                                                                )) : <div>{group.serviceWeeks[0]}</div>}
+                                                        </div>
+                                                    </button>
+                                                    {group.serviceWeeks?.length > 1 && <div className={`absolute z-10 hidden px-3 py-2 w-max bg-white border-[1.5px] border-neutral-200 rounded-md shadow-lg group-focus-within:block group-hover:block ${dropdownPositions[group._id] === 'top' ? 'bottom-full' : 'top-full'}`}>
+                                                        <div className="max-h-30 overflow-y-auto pr-3">
+                                                            <div>
+                                                                <label className="flex items-center gap-3 mb-1 text-sm">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedWeeks[group._id]?.length === group.serviceWeeks.length}
+                                                                        onChange={(e) => {
+                                                                            const allWeeks = group.serviceWeeks;
+                                                                            setSelectedWeeks((prev) => ({
+                                                                                ...prev,
+                                                                                [group._id]: e.target.checked ? allWeeks : [],
+                                                                            }));
+                                                                        }}
+                                                                    />
+                                                                    Select All
+                                                                </label>
+                                                            </div>
+                                                            {group.serviceWeeks.map((week, i) => (
+                                                                <label key={i} className="flex items-center gap-3 mb-1 text-sm">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedWeeks[group._id]?.includes(week) || false}
+                                                                        onChange={(e) => {
+                                                                            const prevSelected = selectedWeeks[group._id] || [];
+                                                                            const updated = e.target.checked
+                                                                                ? [...prevSelected, week]
+                                                                                : prevSelected.filter((w) => w !== week);
+                                                                            setSelectedWeeks((prev) => ({
+                                                                                ...prev,
+                                                                                [group._id]: updated,
+                                                                            }));
+                                                                        }}
+                                                                    />
+                                                                    {week}
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>}
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.serviceRate ? 'text-orange-400 ' : ''}`}>£ {group.serviceRate}</td>
-                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.hourlyRate ? 'text-orange-400 ' : ''}`}>£ {group.hourlyRate}</td>
-                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.mileage ? 'text-orange-400 ' : ''}`}>£ {group.mileage}</td>
-                                    <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.byodRate ? 'text-orange-400 ' : ''}`}>£ {group.byodRate}</td>
-                                    <td className="border-b border-neutral-200">
-                                        <div className="flex justify-center gap-2">
-                                            <button onClick={() => {
-                                                setSelectedGroupUpdate(group._id)
-                                                const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]])
-                                                const selectedWeekList = selectedWeeks[group._id] || Array(group.serviceWeeks[0]);
-                                                onUpdate({ selectedIds: selectedIdsList, hourlyRate: group.hourlyRate, vehicleType: group.vehicleType, minimumRate: group.minimumRate, serviceTitle: group.serviceTitle, serviceWeek: selectedWeekList, mileage: group.mileage, serviceRate: group.serviceRate, byodRate: group.byodRate, vanRent: group.vanRent, vanRentHours: group.vanRentHours })
-                                            }}
-                                                className="p-2 rounded-md hover:bg-neutral-200 text-amber-300">
-                                                <FiEdit3 size={17} />
-                                            </button>
-                                            <button
-                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400 disabled:text-gray-300"
-                                                disabled={toastOpen}
-                                                onClick={() => { if (!toastOpen) onDelete(selectedIds.length > 0 ? selectedIds : [group.weekIdMap[group.serviceWeeks[0]]]); setSelectedWeeks({}) }}
-                                            >
-                                                <MdOutlineDelete size={17} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                    {/* <td className="border-b border-neutral-200">
-                                        <div className="relative flex justify-center cursor-pointer group">
-                                            <div className="z-4 absolute -left-5 -top-5 text-white -translate-x-1/2 whitespace-normal break-words rounded-sm bg-black/40 mt-1 backdrop-blur-md p-2 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity dark:bg-dark-4">
-                                                Added By: {group?.addedBy?.name} on {new Date(group.dateAdded).toLocaleDateString()}
-                                            </div>
-                                            <FcInfo size={18} />
-                                        </div>
-                                    </td> */}
-                                </tr>
-                            );
-                        })}
+                                            </td>
+                                            <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.serviceRate ? 'text-orange-400' : ''}`}>£ {group.serviceRate}</td>
+                                            <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.hourlyRate ? 'text-orange-400' : ''}`}>{group.hourlyRate > 0 ? `£ ${group.hourlyRate}` : 'N/A'}</td>
+                                            <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.mileage ? 'text-orange-400' : ''}`}>£ {group.mileage}</td>
+                                            <td className={`border-b border-neutral-200 transition-all duration-600 ease-out ${glowMap[group._id]?.byodRate ? 'text-orange-400' : ''}`}>£ {group.byodRate}</td>
+                                            <td className="border-b border-neutral-200">
+                                                <div className="flex justify-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedGroupUpdate(group._id);
+                                                            const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]]);
+                                                            const selectedWeekList = selectedWeeks[group._id] || Array(group.serviceWeeks[0]);
+                                                            onUpdate({
+                                                                selectedIds: selectedIdsList,
+                                                                hourlyRate: group.hourlyRate,
+                                                                vehicleType: group.vehicleType,
+                                                                minimumRate: group.minimumRate,
+                                                                serviceTitle: group.serviceTitle,
+                                                                serviceWeek: selectedWeekList,
+                                                                mileage: group.mileage,
+                                                                serviceRate: group.serviceRate,
+                                                                byodRate: group.byodRate,
+                                                                vanRent: group.vanRent,
+                                                                vanRentHours: group.vanRentHours,
+                                                            });
+                                                        }}
+                                                        className="p-2 rounded-md hover:bg-neutral-200 text-amber-300"
+                                                    >
+                                                        <FiEdit3 size={17} />
+                                                    </button>
+                                                    <button
+                                                        className="p-2 rounded-md hover:bg-neutral-200 text-red-400 disabled:text-gray-300"
+                                                        disabled={toastOpen}
+                                                        onClick={() => {
+                                                            if (!toastOpen) onDelete(selectedIds.length > 0 ? selectedIds : [group.weekIdMap[group.serviceWeeks[0]]]);
+                                                            setSelectedWeeks({});
+                                                        }}
+                                                    >
+                                                        <MdOutlineDelete size={17} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </>
+                                );
+                            })}
                     </tbody>
                 </table>
             </div>
