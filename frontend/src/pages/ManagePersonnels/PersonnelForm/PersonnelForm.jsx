@@ -82,19 +82,19 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
             'ecsExpiry'
         ] : [],
         vehicleInsuranceDetails: newDriver.typeOfDriver === 'Own Vehicle' ? [
-            ...(!newDriver.ownVehicleInsuranceNA.mvi ? [
+            ...(!newDriver.ownVehicleInsuranceNA?.mvi ? [
                 'insuranceProvider',
                 'policyNumber',
                 'policyStartDate',
                 'policyEndDate',
             ] : []),
-            ...(!newDriver.ownVehicleInsuranceNA.goods ? [
+            ...(!newDriver.ownVehicleInsuranceNA?.goods ? [
                 'insuranceProviderG',
                 'policyNumberG',
                 'policyStartDateG',
                 'policyEndDateG',
             ] : []),
-            ...(!newDriver.ownVehicleInsuranceNA.public ? [
+            ...(!newDriver.ownVehicleInsuranceNA?.public ? [
                 'insuranceProviderP',
                 'policyNumberP',
                 'policyStartDateP',
@@ -128,7 +128,9 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
     const objectFields = [
         "ownVehicleInsuranceNA",
         "vatDetails",
-        "companyVatDetails"
+        "companyVatDetails",
+        "customTypeOfDriver",
+        "typeOfDriverTrace"
     ]
 
     const validateFields = () => {
@@ -296,8 +298,8 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
             formData.append('companyVatDetails', JSON.stringify(newDriver.companyVatDetails));
 
         formData.append('vatDetails', JSON.stringify(newDriver.vatDetails));
-
-
+        formData.append('customTypeOfDriver', JSON.stringify(newDriver.customTypeOfDriver));
+        formData.append('typeOfDriverTrace', JSON.stringify(newDriver.typeOfDriverTrace));
 
         if (personnelMode === 'create') {
             let userID = 0;
@@ -395,7 +397,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                 </div>
             </div>
             {/* Form Actions */}
-            <div className='sticky bottom-0 bg-white flex justify-end items-center p-3 border-t border-neutral-200'>
+            <div className='sticky bottom-0 bg-white flex justify-end items-center z-5 p-3 border-t border-neutral-200'>
                 <div className='flex gap-3 text-sm'>
                     <button
                         onClick={() => {

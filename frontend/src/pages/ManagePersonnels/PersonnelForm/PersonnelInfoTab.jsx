@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
 import DatePicker from '../../../components/Datepicker/Datepicker';
 import { FaHouseUser, FaUser, FaEnvelope, FaIdCard, FaGlobe, FaCar, FaPhone, FaTruck } from 'react-icons/fa';
 import { FaBuildingUser } from "react-icons/fa6";
 import { GoNumber } from 'react-icons/go';
 import countries from '../../../lib/countries';
+import VehicleTypeCal from '../../../components/Calendar/VehicleTypeCal';
+import { FcInfo } from 'react-icons/fc';
 
 const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, errors, age, setAge }) => {
+    const initialTypeOfDriver = useRef()
+
+    useEffect(() => {
+        if (!initialTypeOfDriver.current) {
+            initialTypeOfDriver.current = newDriver.typeOfDriver; // shallow copy
+        }
+    }, []);
 
     const handleVatDetailsChange = (name, value) => {
         setNewDriver(prev => ({
@@ -15,8 +24,33 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
         }));
     };
 
+    const setCustomTypeOfDriver = (customTypeOfDriver) => {
+        setNewDriver(prev => ({
+            ...prev,
+            customTypeOfDriver
+        }));
+    }
+
+    const handleChangeOfTypeOfDriver = (e) => {
+        let updatedTypeOfDriverTrace = [...newDriver.typeOfDriverTrace]
+        if (initialTypeOfDriver.current !== '') {
+            if (e.target.value != initialTypeOfDriver.current) {
+                updatedTypeOfDriverTrace.push({ from: newDriver.typeOfDriver, to: e.target.value, timestamp: new Date(Date.now() + 86400000).toLocaleDateString() })
+            }
+            else {
+                updatedTypeOfDriverTrace.remove()
+            }
+        }
+        setNewDriver(prev => ({
+            ...prev, typeOfDriver: e.target.value
+            , typeOfDriverTrace: updatedTypeOfDriverTrace
+        }))
+
+    }
     return (
+
         <div className='p-6'>
+            {console.log(newDriver)}
             <h1 className='text-center font-bold'>Personnel Information</h1>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5">
                 {/* First Name */}
@@ -195,23 +229,50 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                 </div>
 
                 {/* Vehicle Type */}
-                <div>
-                    <InputGroup type='dropdown'
-                        name='typeOfDriver'
-                        label='Vehicle Type'
-                        className={`${newDriver.typeOfDriver === '' && 'text-gray-400'}`}
-                        value={newDriver.typeOfDriver}
-                        onChange={(e) => onInputChange(e)}
-                        error={errors.typeOfDriver}
-                        iconPosition="left"
-                        icon={<FaCar className='text-neutral-300' />}
-                        required={true}>
-                        <option disabled value="">Select Vehicle Type</option>
-                        <option value='Own Vehicle'>Own Vehicle</option>
-                        <option value='Company Vehicle'>Company Vehicle</option>
-                    </InputGroup>
-                    <p className={`${errors.typeOfDriver ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide vehicle type</p>
+                <div className='flex gap-2 justify-between cursor-pointer'>
+                    <div className='flex-1'>
+                        <InputGroup type='dropdown'
+                            name='typeOfDriver'
+                            label='Vehicle Type'
+                            className={`${newDriver.typeOfDriver === '' && 'text-gray-400'}`}
+                            value={newDriver.typeOfDriver}
+                            onChange={handleChangeOfTypeOfDriver}
+                            error={errors.typeOfDriver}
+                            iconPosition="left"
+                            icon={<FaCar className='text-neutral-300' />}
+                            required={true}>
+                            <option disabled value="">Select Vehicle Type</option>
+                            <option value='Own Vehicle'>Own Vehicle</option>
+                            <option value='Company Vehicle'>Company Vehicle</option>
+                        </InputGroup>
+                        <p className={`${errors.typeOfDriver ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide vehicle type</p>
+                    </div>
+                    {newDriver.typeOfDriverTrace.length > 0 && (<div className='group relative self-center rounded-lg '>
+                        <div className='absolute top-5 right-3 z-3 hidden group-hover:block bg-white  border border-neutral-200 max-h-[20rem] overflow-auto'>
+                            <table className='table-general'>
+                                <thead>
+                                    {newDriver.typeOfDriverTrace.length > 0 && <tr style={{ position: 'sticky', top: '1px', fontWeight: 'bold', borderBottom: '1px solid black', backgroundColor: 'white' }}>
+                                        <td>Changed from</td>
+                                        <td>Changed to</td>
+                                        <td>Effective Date</td>
+                                    </tr>}
+                                </thead>
+                                <tbody>
+                                    {newDriver.typeOfDriverTrace.length > 0 ? newDriver.typeOfDriverTrace.map((ToD) => (
+                                        <tr>
+                                            <td>{ToD.from}</td>
+                                            <td>{ToD.to}</td>
+                                            <td>{ToD.timestamp}</td>
+                                        </tr>
+                                    )) : <tr><td colSpan={3}>--No Changes recorded--</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                        <FcInfo size={25} />
+                    </div>)}
                 </div>
+
+                <VehicleTypeCal typeOfDriver={newDriver.typeOfDriver} typeOfDriverTrace={newDriver.typeOfDriverTrace} customTypeOfDriver={newDriver.customTypeOfDriver} setCustomTypeOfDriver={setCustomTypeOfDriver} />
 
                 {(newDriver.typeOfDriver === 'Company Vehicle') && <div>
                     <InputGroup
@@ -364,7 +425,6 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                     />
                     <p className={`${errors.vatEffectiveDate ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid VAT effective date</p>
                 </div>
-                {console.log('Newdriver:', newDriver)}
                 <div>
                     <DatePicker
                         label="Date of Joining"

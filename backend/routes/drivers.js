@@ -337,6 +337,10 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
   if (driverData.typeOfDriver === 'Own Vehicle') {
     driverData.ownVehicleInsuranceNA = parseJsonField(driverData, 'ownVehicleInsuranceNA');
   }
+  if (driverData.customTypeOfDriver) {
+    driverData.customTypeOfDriver = parseJsonField(driverData, 'customTypeOfDriver');
+  }
+  driverData.typeOfDriverTrace = parseJsonField(driverData, 'typeOfDriverTrace');
 
   const updateFields = {
     firstName: driverData.firstName,

@@ -1,0 +1,34 @@
+.flatpickr-day.default-own-vehicle {
+    color: #03be29 !important;
+}
+
+.flatpickr-day.default-company-vehicle {
+    color: #e9984d !important;
+}
+
+.flatpickr-day.own-vehicle {
+    background-color: rgba(7, 198, 45, 0.5) !important;
+    color: white !important;
+
+}
+
+.flatpickr-day.company-vehicle {
+    background-color: rgba(255, 123, 0, 0.575) !important;
+    color: white !important;
+}
+
+
+.vehicletype-cal .flatpickr-calendar {
+    border-radius: 10px !important;
+    box-shadow: none
+}
+
+
+.vehicletype-cal .flatpickr-days {
+    border-left: none;
+    border-right: none;
+}
+
+.vehicletype-cal .flatpickr-input {
+    display: none;
+}

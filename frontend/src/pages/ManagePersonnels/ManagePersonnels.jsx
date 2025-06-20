@@ -6,8 +6,6 @@ import PersonnelForm from './PersonnelForm/PersonnelForm';
 import { fetchSites } from '../../features/sites/siteSlice';
 import TableFeatures from '../../components/TableFeatures/TableFeatures';
 
-
-
 const ManagePersonnels = () => {
     const [personnelMode, setPersonnelMode] = useState('view')
     const dispatch = useDispatch();
@@ -41,6 +39,7 @@ const ManagePersonnels = () => {
             goods: false,
             public: false
         },
+        typeOfDriverTrace: []
     };
 
     const [newDriver, setNewDriver] = useState(clearDriver);
@@ -49,7 +48,7 @@ const ManagePersonnels = () => {
     const driversBySite = useSelector((state) => state.drivers.bySite);
 
     const [driversList, setDriversList] = useState(Object.values(driversBySite).flat())
-    const colList = { 'Vehicle Size': 'vehicleSize', 'First Name': 'firstName', 'Last Name': 'lastName', 'Transport Id': 'transportId', 'Site': 'siteSelection' }
+    const colList = { 'First Name': 'firstName', 'Last Name': 'lastName', 'Vehicle Size': 'vehicleSize', 'Transport Id': 'transportId', 'Site': 'siteSelection' }
     const [columns, setColumns] = useState(colList)
     const [toastOpen, setToastOpen] = useState(null)
 
@@ -102,7 +101,6 @@ const ManagePersonnels = () => {
     }
 
     const handleDisableDriver = async ({ driver, email, disabled }) => {
-        console.log(driver, email, disabled)
         try {
             dispatch(disableDriver({ driver, email, disabled })).unwrap()
         }
