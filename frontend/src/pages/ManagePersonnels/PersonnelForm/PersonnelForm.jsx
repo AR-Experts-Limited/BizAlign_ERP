@@ -316,7 +316,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                 setPersonnelMode('view');
                 setToastOpen({
                     content: <>
-                        <SuccessTick width={16} height={16} />
+                        <SuccessTick width={17} height={17} />
                         <p className='text-sm font-bold text-green-600'>Personnel Added Successfully</p>
                     </>
                 })
@@ -334,8 +334,8 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                 setPersonnelMode('view');
                 setToastOpen({
                     content: <>
-                        <SuccessTick width={16} height={16} />
-                        <p className='text-sm font-bold text-green-600'>Personnel Update Successfully</p>
+                        <SuccessTick width={17} height={17} />
+                        <p className='text-sm font-bold text-green-600'>Personnel Updated Successfully</p>
                     </>
                 })
                 setTimeout(() => {

@@ -1,93 +1,110 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { FaTrashAlt } from "react-icons/fa";
-import TableFeatures from '../../components/TableFeatures/TableFeatures';
-import InputGroup from '../../components/InputGroup/InputGroup'
+import { FixedSizeList } from 'react-window';
+import InputGroup from '../../components/InputGroup/InputGroup';
 
 const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteDriver, onDisableDriver }) => {
+    const sortedDriversList = useMemo(() => {
+        return [...driversList].sort((a, b) => Number(a.disabled) - Number(b.disabled));
+    }, [driversList]);
+
+    const Row = ({ index, style }) => {
+        const driver = sortedDriversList[index];
+        const isFirstInactive = driver.disabled && (index === 0 || !sortedDriversList[index - 1].disabled);
+
+        return (<div className='flex flex-col'>
+
+            <div style={{ ...style, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '5px' }} key={driver._id}>
+                <div
+                    className={`${driver.disabled ? 'bg-gray-100 text-gray-400' : ''} cursor-pointer hover:bg-gray-50 flex w-full`}
+                    onClick={() => handleEditDriver(driver)}
+                >
+                    <div className="flex justify-center items-center p-3 text-center w-15 max-w-15 text-sm border-b border-gray-300">{index + 1}</div>
+
+                    <div className="flex justify-center items-center p-3 text-center w-32 max-w-32 border-b border-gray-300">
+                        <div
+                            className="flex justify-center"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <InputGroup
+                                type="toggleswitch"
+                                checked={!driver.disabled}
+                                onChange={(e) => {
+                                    e.stopPropagation();
+                                    onDisableDriver({
+                                        driver,
+                                        email: driver.Email,
+                                        disabled: !e.target.checked,
+                                    });
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="p-3 text-center w-30 max-w-30 border-b border-gray-300">
+                        <div className="flex justify-center items-center w-full group relative">
+                            <div className="z-0 flex justify-center items-center bg-gray-100 w-12 h-12 rounded-full border border-gray-300 overflow-hidden">
+                                {driver.profilePicture.length < 1 ? (
+                                    <i className="flex items-center text-base text-gray-400 fi fi-sr-driver-man" />
+                                ) : (
+                                    <img src={driver.profilePicture[0].original} alt="Profile" loading="lazy" />
+                                )}
+                            </div>
+                            {driver.profilePicture?.length > 0 && (
+                                <div className="z-10 border border-gray-100 rounded-lg overflow-hidden scale-0 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 delay-500 origin-top-left block h-44 w-44 absolute top-1/2 left-12">
+                                    <img src={driver.profilePicture[0].original} alt="Profile Preview" loading="lazy" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {Object.values(columns).map((col, i) => (
+                        <div key={`${driver._id}-${i}`} className="flex-1 flex items-center justify-center p-3 text-center min-w-32 text-sm border-b border-gray-300">
+                            {driver[col]}
+                        </div>
+                    ))}
+
+                    <div className="flex items-center justify-center p-3 text-center w-20 border-b border-gray-300">
+                        <div className="flex justify-center">
+                            <div
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDriver(driver._id, driver.siteSelection, driver.user_ID);
+                                }}
+                                className="flex justify-center items-center w-7 h-7 rounded-md p-1 hover:bg-gray-200 text-red-500"
+                            >
+                                <FaTrashAlt size={16} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>);
+    };
 
     return (
-        <div className='overflow-auto'>
-            {/* <div className='w-full px-3 pt-2 flex justify-end'><TableFeatures columns={columns} setColumns={setColumns} content={driversList} setContent={setDriversList} /></div> */}
-            <table className='table-general'>
-                <thead>
-                    <tr className='text-sm md:text-base sticky top-0 bg-white z-20 text-neutral-400'>
-                        <th>#</th>
-                        <th>Enable/Disable</th>
-                        <th>Profile picture</th>
-                        {Object.keys(columns).map((col) => (<th>{col}</th>))}
-                        <th>Options</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {driversList.sort((a, b) => Number(a.disabled) - Number(b.disabled)).map((driver, index, array) => {
-                        // const isFirstInactive = driver.disabled && (index === 0 || !array[index - 1].disabled);
-                        return (<>
-                            {/* {isFirstInactive && (
-                                <tr>
-                                    <td colSpan="10" className="!p-1 border-b border-neutral-200 bg-neutral-50 dark:bg-dark-4 text-lg font-light text-gray-700 dark:text-white py-2">
-                                        Disabled
-                                    </td>
-                                </tr>
-                            )} */}
-                            <tr
-                                onClick={() => handleEditDriver(driver)}
-                                className={`${driver.disabled ? 'bg-neutral-100 text-gray-400' : ''} cursor-pointer hover:bg-neutral-50`}
-                            >
-                                <td>{index + 1}</td>
-                                <td className="border-b border-neutral-200">
-                                    <div
-                                        className="flex justify-center"
-                                        onClick={(e) => {
-                                            e.stopPropagation(); // prevents tr click
-                                        }}
-                                    >
-                                        <InputGroup
-                                            type="toggleswitch"
-                                            checked={!driver.disabled}
-                                            onChange={(e) => {
-                                                e.stopPropagation(); // extra safety in case InputGroup itself bubbles up
-                                                onDisableDriver({
-                                                    driver,
-                                                    email: driver.Email,
-                                                    disabled: !e.target.checked,
-                                                })
-                                            }}
-                                        />
-                                    </div>
-                                </td>
-                                <td>
-                                    <div className='flex justify-center items-center w-full group relative'>
-                                        <div className='z-0 flex justify-center items-center bg-gray-100 w-12 h-12 rounded-full border border-neutral-300 overflow-hidden'>{driver.profilePicture.length < 1 ? <i class="flex items-center text-[1rem] text-neutral-400 fi fi-sr-driver-man" /> : <img src={driver.profilePicture[0].original} />}</div>
-                                        {driver.profilePicture?.length > 0 && <div className='z-10 border border-gray-100 rounded-lg overflow-hidden scale-0 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 delay-500 origin-top-left block h-45 w-45 absolute top-1/2 left-12'>
-                                            <img src={driver.profilePicture[0].original} />
-                                        </div>}
-                                    </div>
-                                </td>
+        <div className="overflow-auto">
+            {/* Header */}
+            <div className="w-full flex text-sm md:text-base sticky top-0 bg-white z-8 text-gray-400 border-b border-gray-300">
+                <div className="font-light py-2 px-0 text-center w-15 max-w-15">#</div>
+                <div className="font-light py-2 px-2 text-center w-32 max-w-32 break-words whitespace-normal">Enable/Disable</div>
+                <div className="font-light py-2 px-2 text-center w-30 max-w-30">Profile picture</div>
+                {Object.keys(columns).map((col) => (
+                    <div key={col} className="flex-1 font-light py-2 px-0 text-center min-w-32">{col}</div>
+                ))}
+                <div className="font-light py-2 px-0 text-center w-20">Options</div>
+            </div>
 
-                                {Object.values(columns).map((col, i) => (
-                                    <td key={i}>{driver[col]}</td>
-                                ))}
-                                <td>
-                                    <div className="flex justify-center">
-                                        <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteDriver(driver._id, driver.siteSelection, driver.user_ID);
-                                            }}
-                                            className="flex justify-center items-center w-7 h-7 rounded-md p-1 hover:bg-neutral-200 text-red-500"
-                                        >
-                                            <FaTrashAlt size={16} />
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-
-                        </>)
-                    })}
-                </tbody>
-            </table>
-        </div >
+            {/* Body */}
+            <FixedSizeList
+                height={700}
+                width="100%"
+                itemCount={sortedDriversList.length}
+                itemSize={70}
+            >
+                {Row}
+            </FixedSizeList>
+        </div>
     );
 };
 

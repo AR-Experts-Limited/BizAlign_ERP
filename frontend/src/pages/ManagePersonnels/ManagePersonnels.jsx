@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import PersonnelForm from './PersonnelForm/PersonnelForm';
 import { fetchSites } from '../../features/sites/siteSlice';
 import TableFeatures from '../../components/TableFeatures/TableFeatures';
+import { useCallback } from 'react';
 
 const ManagePersonnels = () => {
     const [personnelMode, setPersonnelMode] = useState('view')
@@ -94,30 +95,39 @@ const ManagePersonnels = () => {
         setPersonnelMode('edit')
     }
 
-    const handleDeleteDriver = async (id, siteSelection, user_ID) => {
-        dispatch(deleteDriver({ id, siteSelection }))
-        //await axios.delete(`${API_BASE_URL}/api/auth/deleteByUserID/${user_ID}`);
-
-    }
-
-    const handleDisableDriver = async ({ driver, email, disabled }) => {
+    const handleDeleteDriver = useCallback(async (id, siteSelection, user_ID) => {
         try {
-            dispatch(disableDriver({ driver, email, disabled })).unwrap()
+            await dispatch(deleteDriver({ id, siteSelection })).unwrap();
+            setToastOpen({ content: 'Driver deleted successfully' });
+        } catch (err) {
+            console.error('Delete driver failed:', err);
+            setToastOpen({ content: 'Failed to delete driver' });
         }
-        catch (err) {
-            console.log(err)
-        }
+        setTimeout(() => setToastOpen(null), 2000)
         //await axios.delete(`${API_BASE_URL}/api/auth/deleteByUserID/${user_ID}`);
+    }, [dispatch, setToastOpen]);
 
-    }
+    const handleDisableDriver = useCallback(async ({ driver, email, disabled }) => {
+        try {
+            await dispatch(disableDriver({ driver, email, disabled })).unwrap();
+            setToastOpen({ content: `Driver ${disabled ? 'disabled' : 'enabled'} successfully` });
+        } catch (err) {
+            console.error('Disable driver failed:', err);
+            setToastOpen({ content: 'Failed to disable driver' });
+        }
+        setTimeout(() => setToastOpen(null), 2000)
+        //await axios.delete(`${API_BASE_URL}/api/auth/deleteByUserID/${user_ID}`);
+    }, [dispatch, setToastOpen]);
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5'>
-            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all duration-200 border border-stone-200  fixed flex justify-center items-center top-4 left-1/2 -translate-x-1/2 bg-stone-50/30 dark:bg-dark/20 px-3 py-2 rounded-xl shadow-lg`}>
                 <div className='flex gap-2 items-center'>
                     {toastOpen?.content}
                 </div>
             </div>
+
             <h2 className='text-sm md:text-xl mb-2 font-bold dark:text-white'>Manage Personnels</h2>
             <div className='flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-auto'>
                 <div className='z-15 sticky top-0 flex items-center justify-between items-center bg-white/60 backdrop-blur-md p-2 rounded-t-lg border-b border-neutral-200'>
