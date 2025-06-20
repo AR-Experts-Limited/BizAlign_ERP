@@ -52,6 +52,7 @@ const InputGroup = forwardRef(({
   min,
   step,
   inputStyles,
+  maxLength,
 }, ref) => {
   const id = useId();
 
@@ -191,6 +192,7 @@ const InputGroup = forwardRef(({
             required={required}
             disabled={disabled}
             data-active={active}
+            maxLength={maxLength}
           />
         );
     }

@@ -25,7 +25,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
 
     useEffect(() => {
         if (Object.keys(driversBySite).length > 0 && selectedSite !== '') {
-            let driversList = driversBySite[selectedSite] || []
+            let driversList = driversBySite[selectedSite].filter((driver) => !driver.disabled) || []
             let standbydriversIds = standbydrivers.map((sdriver) => { if (sdriver.site !== selectedSite) return (sdriver.driverId) })
             let standbydriversList = driversList.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
 

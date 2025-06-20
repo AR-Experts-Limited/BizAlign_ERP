@@ -9,7 +9,6 @@ import countries from '../../../lib/countries';
 const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, errors, age, setAge }) => {
 
     const handleVatDetailsChange = (name, value) => {
-        console.log(value)
         setNewDriver(prev => ({
             ...prev,
             vatDetails: { ...prev.vatDetails, [name]: value }

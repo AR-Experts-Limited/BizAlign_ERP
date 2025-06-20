@@ -42,7 +42,6 @@ const Ratecard = () => {
 
     const handleDeleteRatecard = async (ids, confirm = false) => {
         const reduxReturn = await dispatch(deleteRatecard({ ids, confirm })).unwrap()
-        console.log(reduxReturn.response.data)
         if (!reduxReturn.response.data.confirm) {
             setDeleteRatecards(ids)
         }

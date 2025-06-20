@@ -111,8 +111,8 @@ const WeeklyInvoice = () => {
     }, [selectedMonth]);
 
     useEffect(() => {
-        if (Object.keys(driversBySite).length > 0) {
-            let driversList = Object.values(driversBySite).flat();
+        if (Object.keys(driversBySite).length > 0 && selectedSite) {
+            let driversList = driversBySite[selectedSite].filter((driver) => !driver.disabled) || []
             let standbydriversIds = standbydrivers.map((sdriver) =>
                 sdriver.site !== selectedSite ? sdriver.driverId : null
             );

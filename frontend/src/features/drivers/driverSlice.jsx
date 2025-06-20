@@ -18,19 +18,50 @@ export const addDriver = createAsyncThunk('drivers/addDriver', async (driver) =>
     return response.data;
 });
 
-export const updateDriver = createAsyncThunk('drivers/updateDriver', async (driver) => {
-    const id = driver.get('_id');
-    const response = await axios.put(`${API_BASE_URL}/api/drivers/newupdate/${id}`, driver, {
-        headers: {
-            'Content-Type': 'multipart/form-data'
-        }
-    });
-    return response.data;
-});
+export const updateDriver = createAsyncThunk(
+    'drivers/updateDriver',
+    async (driver, { getState }) => {
+        const id = driver.get('_id');
+        const state = getState();
 
-export const deleteDriver = createAsyncThunk('drivers/deleteDriver', async (id) => {
+        // Flatten all drivers from all sites to find the driver by _id
+        const allDrivers = Object.values(state.drivers.bySite).flat();
+        const existingDriver = allDrivers.find((d) => d._id === id);
+        const previousSiteSelection = existingDriver?.siteSelection;
+
+        const response = await axios.put(
+            `${API_BASE_URL}/api/drivers/newupdate/${id}`,
+            driver,
+            {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+
+        return { updatedDriver: response.data, previousSiteSelection };
+    }
+);
+
+export const disableDriver = createAsyncThunk(
+    'drivers/disableDriver',
+    async ({ driver, email, disabled }) => {
+        console.log(driver.siteSelection, email, disabled)
+
+        const id = driver._id;
+        const siteSelection = driver.siteSelection
+        const response = await axios.post(
+            `${API_BASE_URL}/api/drivers/toggleDriver/${id}`, {
+            email, disabled
+        });
+
+        return { disabledDriver: response.data.disabledDriver, siteSelection };
+    }
+);
+
+export const deleteDriver = createAsyncThunk('drivers/deleteDriver', async ({ id, siteSelection }) => {
     await axios.delete(`${API_BASE_URL}/api/drivers/${id}`);
-    return id;
+    return { driverId: id, siteSelection };
 });
 
 // Helper function to group drivers by site
@@ -54,6 +85,7 @@ const driverSlice = createSlice({
         error: null,
         addStatus: 'idle',
         updateStatus: 'idle',
+        disableStatus: 'idle',
         deleteStatus: 'idle',
     },
     reducers: {},
@@ -99,15 +131,39 @@ const driverSlice = createSlice({
             })
             .addCase(updateDriver.fulfilled, (state, action) => {
                 state.updateStatus = 'succeeded';
-                const updatedDriver = action.payload;
-                // const index = state.list.findIndex((d) => d._id === updatedDriver._id);
-                // if (index !== -1) state.list[index] = updatedDriver;
-
-                // Re-group the updated list
-                state.bySite = groupBySite(state.list);
+                const { updatedDriver, previousSiteSelection } = action.payload;
+                if (updatedDriver.siteSelection === previousSiteSelection) {
+                    const index = state.bySite[updatedDriver.siteSelection].findIndex((d) => d._id === updatedDriver._id);
+                    if (index !== -1) state.bySite[updatedDriver.siteSelection][index] = updatedDriver;
+                }
+                else {
+                    state.bySite[previousSiteSelection] = state.bySite[previousSiteSelection].filter(driver => driver._id !== updatedDriver._id);
+                    if (!state.bySite[updatedDriver.siteSelection]) {
+                        state.bySite[updatedDriver.siteSelection] = [];
+                    }
+                    state.bySite[updatedDriver.siteSelection].push(updatedDriver)
+                }
             })
             .addCase(updateDriver.rejected, (state, action) => {
                 state.updateStatus = 'failed';
+                state.error = action.error.message;
+            })
+
+            // disableDriver
+            .addCase(disableDriver.pending, (state) => {
+                state.disableStatus = 'loading';
+            })
+
+            .addCase(disableDriver.fulfilled, (state, action) => {
+                state.disableStatus = 'succeeded';
+                const { disabledDriver, siteSelection } = action.payload;
+                const index = state.bySite[siteSelection].findIndex((d) => d._id === disabledDriver?._id);
+                if (index !== -1) state.bySite[siteSelection][index] = disabledDriver;
+
+            })
+
+            .addCase(disableDriver.rejected, (state, action) => {
+                state.disableStatus = 'failed';
                 state.error = action.error.message;
             })
 
@@ -115,13 +171,18 @@ const driverSlice = createSlice({
             .addCase(deleteDriver.pending, (state) => {
                 state.deleteStatus = 'loading';
             })
+
             .addCase(deleteDriver.fulfilled, (state, action) => {
                 state.deleteStatus = 'succeeded';
-                // state.list = state.list.filter((d) => d._id !== action.payload);
+                const { driverId, siteSelection: site } = action.payload; // should contain at least `_id` and `siteSelection`
 
-                // Re-group after deletion
-                state.bySite = groupBySite(state.list);
+                if (site && state.bySite[site]) {
+                    // Remove driver from that site array
+                    state.bySite[site] = state.bySite[site].filter(driver => driver._id !== driverId);
+                }
+
             })
+
             .addCase(deleteDriver.rejected, (state, action) => {
                 state.deleteStatus = 'failed';
                 state.error = action.error.message;

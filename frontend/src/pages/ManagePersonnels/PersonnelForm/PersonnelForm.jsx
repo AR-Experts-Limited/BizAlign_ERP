@@ -297,17 +297,18 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
 
         formData.append('vatDetails', JSON.stringify(newDriver.vatDetails));
 
-        let userID = 0;
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/idcounter/Driver`);
-            userID = response.data[0].counterValue;
-        } catch (error) {
-            console.error('Error Fetching ID Counter', error.response ? error.response.data : error.message);
-        }
-        const formattedUserID = userID.toString().padStart(6, '0');
-        formData.append('user_ID', formattedUserID);
 
-        if (personnelMode === 'create')
+
+        if (personnelMode === 'create') {
+            let userID = 0;
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/idcounter/Driver`);
+                userID = response.data[0].counterValue;
+            } catch (error) {
+                console.error('Error Fetching ID Counter', error.response ? error.response.data : error.message);
+            }
+            const formattedUserID = userID.toString().padStart(6, '0');
+            formData.append('user_ID', formattedUserID);
             try {
                 const response = await dispatch(addDriver(formData));
                 setPersonnelMode('view');
@@ -320,13 +321,14 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                 setTimeout(() => {
                     setToastOpen(null)
                 }, 2000);
+                setNewDriver(clearDriver)
             } catch (error) {
                 alert('Error adding driver');
             }
+        }
         else if (personnelMode === 'edit') {
             try {
-                console.log('Form data:', formData)
-                const response = await dispatch(updateDriver(formData));
+                await dispatch(updateDriver(formData)).unwrap();
                 setPersonnelMode('view');
                 setToastOpen({
                     content: <>
@@ -338,7 +340,8 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                     setToastOpen(null)
                 }, 2000);
             } catch (error) {
-                alert('Error adding driver');
+                console.log(error)
+                alert('Error updating driver', error);
             }
         }
     };

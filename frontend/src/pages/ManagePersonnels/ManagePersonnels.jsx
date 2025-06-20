@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PersonnelsTable from './PersonnelsTable';
-import { fetchDrivers, deleteDriver } from '../../features/drivers/driverSlice';
+import { fetchDrivers, deleteDriver, disableDriver } from '../../features/drivers/driverSlice';
 import { useSelector, useDispatch } from 'react-redux';
 import PersonnelForm from './PersonnelForm/PersonnelForm';
 import { fetchSites } from '../../features/sites/siteSlice';
@@ -16,86 +16,31 @@ const ManagePersonnels = () => {
         employmentStatus: 'Sole Trader',
         firstName: '',
         lastName: '',
-        address: '',
         postcode: '',
         nationalInsuranceNumber: '',
         dateOfBirth: '',
         nationality: '',
-        dateOfJoining: '',
-        vatDetails: {
-            vatNo: '',
-            vatEffectiveDate: ''
-        },
-        transportId: '',
-        transporterName: '',
-        utrNo: '',
-        utrUpdatedOn: '',
-        companyUtrNo: '',
-        companyName: '',
-        companyRegAddress: '',
-        companyRegNo: '',
-        companyRegExpiry: '',
-        companyVatDetails: {
-            companyVatNo: '',
-            companyVatEffectiveDate: ''
-        },
         typeOfDriver: '',
         vehicleSize: '',
+        siteSelection: '',
         Email: '',
         PhoneNo: '',
-        bankName: '',
-        sortCode: '',
-        bankAccountNumber: '',
-        accountName: '',
-        bankNameCompany: '',
-        sortCodeCompany: '',
-        bankAccountNumberCompany: '',
-        accountNameCompany: '',
         bankChoice: 'Personal',
         drivingLicenseNumber: '',
         dlValidity: '',
         dlExpiry: '',
-        issueDrivingLicense: '',
         passportIssuedFrom: '',
         passportNumber: '',
         passportValidity: '',
         passportExpiry: '',
         rightToWorkValidity: '',
         rightToWorkExpiry: '',
-        siteSelection: '',
         ecsInformation: false,
-        ecsValidity: '',
-        ecsExpiry: '',
-        profilePicture: '',
-        insuranceDocument: '',
-        drivingLicenseFrontImage: '',
-        drivingLicenseBackImage: '',
-        passportDocument: '',
-        ecsCard: '',
-        rightToWorkCard: '',
-        signature: '',
         ownVehicleInsuranceNA: {
             mvi: false,
             goods: false,
             public: false
         },
-        insuranceProvider: '',
-        policyNumber: '',
-        policyStartDate: '',
-        policyEndDate: '',
-        insuranceProviderG: '',
-        policyNumberG: '',
-        policyStartDateG: '',
-        policyEndDateG: '',
-        insuranceProviderP: '',
-        policyNumberP: '',
-        policyStartDateP: '',
-        policyEndDateP: '',
-        MotorVehicleInsuranceCertificate: '',
-        GoodsInTransitInsurance: '',
-        PublicLiablity: '',
-        ninoDocument: '',
-        companyRegistrationCertificate: ''
     };
 
     const [newDriver, setNewDriver] = useState(clearDriver);
@@ -150,8 +95,20 @@ const ManagePersonnels = () => {
         setPersonnelMode('edit')
     }
 
-    const handleDeleteDriver = async (id, user_ID) => {
-        dispatch(deleteDriver(id))
+    const handleDeleteDriver = async (id, siteSelection, user_ID) => {
+        dispatch(deleteDriver({ id, siteSelection }))
+        //await axios.delete(`${API_BASE_URL}/api/auth/deleteByUserID/${user_ID}`);
+
+    }
+
+    const handleDisableDriver = async ({ driver, email, disabled }) => {
+        console.log(driver, email, disabled)
+        try {
+            dispatch(disableDriver({ driver, email, disabled })).unwrap()
+        }
+        catch (err) {
+            console.log(err)
+        }
         //await axios.delete(`${API_BASE_URL}/api/auth/deleteByUserID/${user_ID}`);
 
     }
@@ -174,7 +131,7 @@ const ManagePersonnels = () => {
                         </div>
                     }
                 </div>
-                {personnelMode === 'view' ? <PersonnelsTable handleEditDriver={handleEditDriver} handleDeleteDriver={handleDeleteDriver} columns={columns} driversList={driversList} /> :
+                {personnelMode === 'view' ? <PersonnelsTable handleEditDriver={handleEditDriver} handleDeleteDriver={handleDeleteDriver} columns={columns} driversList={driversList} onDisableDriver={handleDisableDriver} /> :
                     <PersonnelForm clearDriver={clearDriver}
                         newDriver={newDriver}
                         setNewDriver={setNewDriver}
