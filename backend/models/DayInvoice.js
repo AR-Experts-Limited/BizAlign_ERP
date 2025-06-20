@@ -51,7 +51,7 @@ const dayInvoiceSchema = new mongoose.Schema({
 
 const DayInvoice = mongoose.model('DayInvoice', dayInvoiceSchema);
 
-dayInvoiceSchema.index({ driverId: 1, date: 1 });
+dayInvoiceSchema.index({ driverId: 1, date: 1 }, { unique: true });
 dayInvoiceSchema.index({ site: 1, serviceWeek: 1 });
 dayInvoiceSchema.index({ driverId: 1, serviceWeek: 1 });
 

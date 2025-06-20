@@ -63,10 +63,6 @@ router.put('/update', async (req, res) => {
         const { WeeklyInvoice, Installment } = getModels(req);
         const { weeklyInvoiceId, installmentDetail, weeklyTotal, instalments } = req.body;
 
-        // if (!weeklyInvoiceId || !installmentDetail || !weeklyTotal || !instalments) {
-        //     return res.status(400).json({ message: 'Missing required fields in request body' });
-        // }
-
         // Validate ObjectId format
         if (!mongoose.Types.ObjectId.isValid(weeklyInvoiceId)) {
             return res.status(400).json({ message: 'Invalid weeklyInvoiceId format' });
@@ -113,7 +109,7 @@ router.put('/update', async (req, res) => {
 router.put('/document', uploadDoc.single('document'), async (req, res) => {
     try {
         const { WeeklyInvoice, User, Notification } = getModels(req);
-        const { weeklyInvoiceId, driverId, driverEmail, driverName, actionType } = req.body;
+        const { weeklyInvoiceId, driverId, driverEmail, driverName, actionType, serviceWeek } = req.body;
 
         if (!['sentInvoice', 'downloadInvoice'].includes(actionType)) {
             return res.status(400).json({ message: 'Invalid actionType' });
@@ -163,7 +159,7 @@ router.put('/document', uploadDoc.single('document'), async (req, res) => {
                 html: `
           <div style="font-family: Arial, sans-serif; background-color: #f4f8ff; padding: 20px; border-radius: 10px; text-align: center;">
             <h2 style="color: #2a73cc;">Your PaySlip is Ready, ${driverName} </h2>
-            <p style="font-size: 16px; color: #333;">Please check your earnings for the week below:</p>
+            <p style="font-size: 16px; color: #333;">Please check your earnings for the Week ${serviceWeek} below:</p>
             <div style="margin: 20px 0;">
               <a href="${fileUrl}" target="_blank" rel="noopener" 
                 style="background-color: #ff9900; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; display: inline-block;">
@@ -172,8 +168,8 @@ router.put('/document', uploadDoc.single('document'), async (req, res) => {
             </div>
             <p style="color: #555;">Thank you for your hard work!</p>
             <p style="font-weight: bold; color: #2a73cc;">Best wishes,<br>Raina Ltd.</p>
-          </div>
-        `,
+          </div >
+                `,
             };
 
             await transporter.sendMail(mailOptions);
@@ -208,7 +204,7 @@ router.put('/document', uploadDoc.single('document'), async (req, res) => {
         }
 
         res.status(200).json({
-            message: `${actionType === 'sentInvoice' ? 'Invoice sent and saved' : 'Invoice downloaded and saved'}`,
+            message: `${actionType === 'sentInvoice' ? 'Invoice sent and saved' : 'Invoice downloaded and saved'} `,
             url: fileUrl,
             updatedWeeklyInvoice: updated,
         });

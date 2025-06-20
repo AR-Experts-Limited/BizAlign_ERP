@@ -52,7 +52,7 @@ const SchedulePlanner = () => {
     const [prevRangeType, setPrevRangeType] = useState(rangeType)
 
     const [addScheduleData, setAddScheduleData] = useState(null)
-    const events = useSelector((state) => state.sse.events);
+    const { events, connected } = useSelector((state) => state.sse);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
@@ -155,23 +155,28 @@ const SchedulePlanner = () => {
 
 
     const handleAddSchedule = async () => {
-        const newSchedule = await dispatch(addSchedule({
-            driverId: addScheduleData.driver._id,
-            day: addScheduleData.date,
-            service: addScheduleData.service,
-            user_ID: addScheduleData.driver.user_ID,
-            associatedRateCard: addScheduleData.associatedRateCard,
-            week: addScheduleData.week,
-            site: selectedSite,
-            acknowledged: false,
-        }))
-        // setSchedules(prev => [...prev, newSchedule.payload])
-        setAddScheduleData(null)
+        try {
+            const newSchedule = await dispatch(addSchedule({
+                driverId: addScheduleData.driver._id,
+                day: addScheduleData.date,
+                service: addScheduleData.service,
+                user_ID: addScheduleData.driver.user_ID,
+                associatedRateCard: addScheduleData.associatedRateCard,
+                week: addScheduleData.week,
+                site: selectedSite,
+                acknowledged: false,
+            })).unwrap();
+            if (!connected) setSchedules(prev => [...prev, newSchedule])
+            setAddScheduleData(null)
+        }
+        catch (err) {
+            alert('Schedule exist for selected driver and date')
+        }
     }
 
     const handleDeleteSchedule = async (id) => {
         await axios.delete(`${API_BASE_URL}/api/schedule/${id}`);
-        // setSchedules(prev => prev.filter((item) => item._id !== id))
+        if (!connected) setSchedules(prev => prev.filter((item) => item._id !== id))
     }
 
     const tableData = (driver, disabledDriver, standbyDriver) => {

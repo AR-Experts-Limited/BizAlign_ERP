@@ -68,6 +68,7 @@ const Rota = () => {
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
     const { userDetails } = useSelector((state) => state.auth);
+    const { events, connected } = useSelector((state) => state.sse);
 
     // State management
     const [rangeType, setRangeType] = useState('weekly');

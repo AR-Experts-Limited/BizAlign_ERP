@@ -85,8 +85,10 @@ const WeeklyInvoice = () => {
     useEffect(() => {
         let map = {};
         invoices?.forEach(inv => {
+            let installmentUnsigned = inv.installments.some((id) => !id.signed)
+            let deductionUnsigned = inv.invoices.deductionDetail?.some((dd) => !dd.signed)
             const key = `${inv.driverId._id}_${inv.serviceWeek}`;
-            map[key] = inv;
+            map[key] = { ...inv, unsigned: (installmentUnsigned || deductionUnsigned) }
         });
         setGroupedInvoices(map);
     }, [invoices]);
@@ -216,6 +218,7 @@ const WeeklyInvoice = () => {
                     formData.append('weeklyInvoiceId', invoice._id);
                     formData.append('driverId', invoice.driverId._id);
                     formData.append('user_ID', invoice.driverId.user_ID);
+                    formData.append('serviceWeek', invoice.serviceWeek)
                     formData.append('driverEmail', invoice.driverId.Email);
                     formData.append('driverName', invoice.driverId.firstName + ' ' + invoice.driverId.lastName);
                     formData.append('actionType', actionMap[actionType] || actionType);
@@ -357,7 +360,7 @@ const WeeklyInvoice = () => {
                                     {invoice.sentInvoice.length > 0 &&
                                         <LastSentTime sentInvoice={invoice.sentInvoice} />
                                     }
-                                    {!invoice.unsigned ? (
+                                    {invoice.unsigned ? (
                                         <div className="flex items-center gap-1 text-[0.7rem] bg-yellow-200 text-yellow-800 rounded-full px-1.5 py-0.5">
                                             <i className="flex items-center fi fi-sr-seal-exclamation"></i>unsigned docs
                                         </div>
@@ -941,7 +944,7 @@ const WeeklyInvoice = () => {
                                                     currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate);
                                                 const hasCompanyVat =
-                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' && currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate);
                                                 return (
                                                     <tr key={invoice._id} className={index % 2 === 0 ? 'bg-white dark:bg-dark-3' : 'bg-gray-50 dark:bg-dark-4'}>

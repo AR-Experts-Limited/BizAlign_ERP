@@ -19,7 +19,7 @@ const ScheduleSchema = new mongoose.Schema({
 
 ScheduleSchema.index({ user_ID: 1, day: 1 });
 ScheduleSchema.index({ week: 1, site: 1 });
-ScheduleSchema.index({ driverId: 1, day: 1 });
+ScheduleSchema.index({ driverId: 1, day: 1 }, { unique: true });
 
 
 const Schedule = mongoose.model('Schedule', ScheduleSchema);

@@ -231,7 +231,7 @@ router.post('/', async (req, res) => {
       { new: true }
     );
 
-    sendToClients(req.db, { type: 'rotaUpdated' });
+    sendToClients(req.db, { type: 'rotaAdded', data: newInvoice });
     res.status(200).json(newInvoice);
   } catch (error) {
     console.error('Error saving invoice:', error);
