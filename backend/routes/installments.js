@@ -16,6 +16,7 @@ const upload = multer({
       cb(null, { fieldName: file.fieldname });
     },
     contentDisposition: 'inline',
+    contentType: multerS3.AUTO_CONTENT_TYPE,
     key: (req, file, cb) => {
       const databaseName = req.db.db.databaseName
       const installmentDriverId = req.body.driverId;

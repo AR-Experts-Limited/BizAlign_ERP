@@ -21,13 +21,63 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 /**
  * Helper function to find rate card
  */
-const rateCardFinder = (ratecards, week, service, typeOfDriver) => {
+const rateCardFinder = (date, ratecards, week, service, driver) => {
     return ratecards.find(
         (rc) =>
             rc.serviceWeek === week &&
             rc.serviceTitle === service &&
-            rc.vehicleType === typeOfDriver && rc.active
+            rc.vehicleType === getDriverTypeForDate(driver, date) && rc.active
     );
+};
+
+const getDriverTypeForDate = (driver, date) => {
+
+    const dateKey = new Date(date).toLocaleDateString('en-UK');
+
+    // 1. Custom override
+    if (driver?.customTypeOfDriver?.[dateKey]) {
+        return driver.customTypeOfDriver[dateKey];
+    }
+
+    const traces = driver?.typeOfDriverTrace || [];
+    if (traces.length === 0) {
+        return driver?.typeOfDriver;
+    }
+
+    const parseTraceDate = (ts) => {
+        const [day, month, year] = ts.split('/');
+        return new Date(`${year}-${month}-${day}`).setHours(0, 0, 0, 0);
+    };
+
+    const targetDate = new Date(date);
+    let latestTrace = null;
+    for (const trace of traces) {
+        const changeDate = parseTraceDate(trace.timestamp);
+        if (changeDate <= targetDate) {
+            if (
+                !latestTrace ||
+                changeDate > parseTraceDate(latestTrace.timestamp)
+            ) {
+                latestTrace = trace;
+            }
+        }
+    }
+
+    if (latestTrace) {
+        return latestTrace.to;
+    }
+
+    // If no change has occurred yet, return the 'from' type of the first trace
+    const firstTrace = traces
+        .slice()
+        .sort((a, b) => parseTraceDate(a.timestamp) - parseTraceDate(b.timestamp))[0];
+
+    if (targetDate < parseTraceDate(firstTrace.timestamp)) {
+        return firstTrace.from;
+    }
+
+    // Fallback
+    return driver?.typeOfDriver;
 };
 
 const SchedulePlanner = () => {
@@ -179,6 +229,11 @@ const SchedulePlanner = () => {
         if (!connected) setSchedules(prev => prev.filter((item) => item._id !== id))
     }
 
+
+
+
+
+
     const tableData = (driver, disabledDriver, standbyDriver) => {
         return days.map((day) => {
             const dateObj = new Date(day.date);
@@ -264,7 +319,7 @@ const SchedulePlanner = () => {
                             >
                                 <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100" >
                                     <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
-                                        {driver.typeOfDriver}
+                                        {getDriverTypeForDate(driver, day.date)}
                                     </div>
                                 </div>
                             </div></>
@@ -284,7 +339,7 @@ const SchedulePlanner = () => {
                 <div className='p-6 md:w-[30rem] '>
                     <div className='flex-1 flex flex-col gap-3'>
                         <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Driver name:</span> {addScheduleData?.driver.firstName + ' ' + addScheduleData?.driver.lastName}</div>
-                        <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Vehicle Type:</span> {addScheduleData?.driver.typeOfDriver}</div>
+                        <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Vehicle Type:</span>{getDriverTypeForDate(addScheduleData?.driver, addScheduleData?.date)}</div>
                         <div className='grid grid-cols-[2fr_4fr] w-full text-sm '><span className=' font-medium'>Date:</span> {addScheduleData?.date}</div>
 
                         <InputWrapper title={'Services with ratecard available'} >
@@ -295,10 +350,11 @@ const SchedulePlanner = () => {
                                     <option value=''>-Select Service-</option>
                                     {services.map((service) => {
                                         if (rateCardFinder(
+                                            addScheduleData?.date,
                                             ratecards,
                                             addScheduleData?.week,
                                             service.title,
-                                            addScheduleData?.driver.typeOfDriver
+                                            addScheduleData?.driver
                                         )) {
                                             return (
                                                 <option key={service._id} value={service.title}>

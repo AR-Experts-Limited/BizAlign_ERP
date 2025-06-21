@@ -32,21 +32,39 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
     }
 
     const handleChangeOfTypeOfDriver = (e) => {
-        let updatedTypeOfDriverTrace = [...newDriver.typeOfDriverTrace]
+        const nextType = e.target.value;
+        const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString(); // same format used in trace
+
+        let updatedTypeOfDriverTrace = [...(newDriver.typeOfDriverTrace || [])];
+
+        // Only proceed if the initial type isn't empty
         if (initialTypeOfDriver.current !== '') {
-            if (e.target.value != initialTypeOfDriver.current) {
-                updatedTypeOfDriverTrace.push({ from: newDriver.typeOfDriver, to: e.target.value, timestamp: new Date(Date.now() + 86400000).toLocaleDateString() })
-            }
-            else {
-                updatedTypeOfDriverTrace.remove()
+            if (nextType !== initialTypeOfDriver.current) {
+                const existingIndex = updatedTypeOfDriverTrace.findIndex(trace => trace.timestamp === tomorrow);
+
+                const newTrace = {
+                    from: newDriver.typeOfDriver,
+                    to: nextType,
+                    timestamp: tomorrow
+                };
+
+                if (existingIndex !== -1) {
+                    // Replace existing trace with same timestamp
+                    updatedTypeOfDriverTrace[existingIndex] = newTrace;
+                } else {
+                    // Push new trace
+                    updatedTypeOfDriverTrace.push(newTrace);
+                }
             }
         }
-        setNewDriver(prev => ({
-            ...prev, typeOfDriver: e.target.value
-            , typeOfDriverTrace: updatedTypeOfDriverTrace
-        }))
 
-    }
+        setNewDriver(prev => ({
+            ...prev,
+            typeOfDriver: nextType,
+            typeOfDriverTrace: updatedTypeOfDriverTrace
+        }));
+    };
+
     return (
 
         <div className='p-6'>

@@ -32,13 +32,65 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 /**
  * Helper function to find rate card
  */
-const rateCardFinder = (ratecards, week, service, typeOfDriver) => {
+const rateCardFinder = (date, ratecards, week, service, driver) => {
     return ratecards.find(
         (rc) =>
             rc.serviceWeek === week &&
             rc.serviceTitle === service &&
-            rc.vehicleType === typeOfDriver && rc.active
+            rc.vehicleType === getDriverTypeForDate(driver, date) && rc.active
     );
+};
+
+const getDriverTypeForDate = (driver, date) => {
+
+    const dateKey = new Date(date).toLocaleDateString('en-UK');
+
+    // 1. Custom override
+    if (driver?.customTypeOfDriver?.[dateKey]) {
+        return driver.customTypeOfDriver[dateKey];
+    }
+
+    const traces = driver?.typeOfDriverTrace || [];
+    if (traces.length === 0) {
+        return driver?.typeOfDriver;
+    }
+
+    const parseTraceDate = (ts) => {
+        const [day, month, year] = ts.split('/');
+        return new Date(`${year}-${month}-${day}`).setHours(0, 0, 0, 0);
+    };
+
+    const targetDate = new Date(date);
+    let latestTrace = null;
+
+    for (const trace of traces) {
+        const changeDate = parseTraceDate(trace.timestamp);
+
+        if (changeDate <= targetDate) {
+            if (
+                !latestTrace ||
+                changeDate > parseTraceDate(latestTrace.timestamp)
+            ) {
+                latestTrace = trace;
+            }
+        }
+    }
+
+    if (latestTrace) {
+        return latestTrace.to;
+    }
+
+    // If no change has occurred yet, return the 'from' type of the first trace
+    const firstTrace = traces
+        .slice()
+        .sort((a, b) => parseTraceDate(a.timestamp) - parseTraceDate(b.timestamp))[0];
+
+    if (targetDate < parseTraceDate(firstTrace.timestamp)) {
+        return firstTrace.from;
+    }
+
+    // Fallback
+    return driver?.typeOfDriver;
 };
 
 /**
@@ -194,7 +246,7 @@ const Rota = () => {
         const { _id, user_ID, firstName, lastName, Email, typeOfDriver } = driver;
         const { day, site, week, service } = schedule;
 
-        const rateCard = rateCardFinder(ratecards, week, service, typeOfDriver);
+        const rateCard = rateCardFinder(day, ratecards, week, service, driver);
         const deductions = await getDeductionDetails(_id, day);
         const incentives = await getIncentiveDetails(service, site, new Date(day));
 
@@ -207,13 +259,12 @@ const Rota = () => {
             });
             return;
         }
-
         const dayInvoice = {
             driverId: _id,
             user_ID,
             driverName: `${firstName} ${lastName}`,
             driverEmail: Email,
-            driverVehicleType: typeOfDriver,
+            driverVehicleType: getDriverTypeForDate(driver, day),
             date: day,
             site,
             serviceWeek: week,
@@ -243,8 +294,6 @@ const Rota = () => {
         const isAdmin = hasAdminPrivileges(userDetails.role);
 
         const incentiveDetailforAdditional = await getIncentiveDetails(additionalService, site, new Date(date));
-
-        console.log(incentiveDetailforAdditional)
 
         setRotaDetail((prev) => {
             const prevAdditionalServiceDetails = prev.dayInvoice.additionalServiceDetails || {};

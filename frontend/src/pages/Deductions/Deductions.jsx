@@ -12,6 +12,7 @@ import axios from 'axios';
 import { FcPlus } from "react-icons/fc";
 import { FaEye, FaUser } from "react-icons/fa";
 import { FaBuildingUser } from "react-icons/fa6";
+import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
 
 import DatePicker from '../../components/Datepicker/Datepicker';
 
@@ -29,6 +30,7 @@ const Deductions = () => {
         site: '',
         serviceType: '',
         deductionDocument: null,
+        signed: false,
     }
     const [newDeduction, setNewDeduction] = useState(clearDeduction);
     const [deductions, setDeductions] = useState([])
@@ -36,6 +38,7 @@ const Deductions = () => {
     const [vatValue, setVatValue] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [documentView, setDocumentView] = useState(null)
 
     const [errors, setErrors] = useState({
         driverId: false,
@@ -125,7 +128,7 @@ const Deductions = () => {
                     }
                 }
             });
-
+            data.append('signed', false)
             const response = await axios.post(`${API_BASE_URL}/api/deductions`, data);
             setDeductions([...deductions, response.data]);
             setNewDeduction(clearDeduction)
@@ -447,14 +450,15 @@ const Deductions = () => {
                                         <td>
                                             <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
                                                 {deduction.signed ? (
-                                                    <a
-                                                        href={deduction.deductionDocument}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
-                                                    >
-                                                        <i className='flex items-center fi fi-rr-document'></i> Download
-                                                    </a>
+                                                    <div className='flex gap-1'>
+                                                        <a
+                                                            href={deduction.deductionDocument}
+                                                            target='_blank'
+                                                            className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
+                                                        >
+                                                            <i className='flex items-center fi fi-rr-document'></i> Download
+                                                        </a>
+                                                    </div>
                                                 ) : (
                                                     <>
                                                         {!deduction.deductionDocument ? (
@@ -506,10 +510,10 @@ const Deductions = () => {
                                                                     <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">
                                                                         <i class="flex items-center fi fi-rr-file-signature"></i> Pending
                                                                     </span>
-                                                                    <a
-                                                                        href={deduction.deductionDocument} className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full">
-                                                                        <FaEye size={14} />
-                                                                    </a>
+
+                                                                    <button onClick={() => setDocumentView(deduction)} className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full" >
+                                                                        <FaEye className={`${documentView?._id === deduction?._id && 'text-orange-400 '}`} size={14} />
+                                                                    </button>
                                                                     <span
                                                                         onClick={() => handleRemoveFileUploaded(deduction._id)}
                                                                         className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-red-100 text-red-600 rounded-full">
@@ -538,6 +542,7 @@ const Deductions = () => {
                     </div>
                 </div>
             </div>
+            <DocumentViewer document={documentView?.deductionDocument} onClose={() => setDocumentView(null)} />
         </div >
     );
 };

@@ -12,6 +12,7 @@ import { FaBuildingUser } from "react-icons/fa6";
 import axios from 'axios'
 import { FcPlus } from "react-icons/fc";
 import { FaEye } from "react-icons/fa";
+import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -33,6 +34,7 @@ const Instalments = () => {
     const [isUploadingFile, setIsUploadingFile] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [documentView, setDocumentView] = useState(null)
 
 
     const [errors, setErrors] = useState({
@@ -416,14 +418,18 @@ const Instalments = () => {
                                         <td>
                                             <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
                                                 {instalment.signed ? (
-                                                    <a
-                                                        href={instalment.installmentDocument}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
-                                                    >
-                                                        <i className='flex items-center fi fi-rr-document'></i> Download
-                                                    </a>
+                                                    <div className='flex gap-1'>
+
+                                                        <button onClick={() => setDocumentView(instalment)} className="cursor-pointer flex w-fit items-center gap-1 text-xs px-2 py-1 bg-sky-100 text-sky-600 border border-sky-800/60 rounded-md" >
+                                                            <FaEye className={`${documentView?._id === instalment?._id && 'text-orange-400 '}`} size={14} /> View
+                                                        </button>
+                                                        <a
+                                                            href={instalment.installmentDocument}
+                                                            className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
+                                                        >
+                                                            <i className='flex items-center fi fi-rr-document'></i> Download
+                                                        </a>
+                                                    </div>
                                                 ) : (
                                                     <>
                                                         {!instalment.installmentDocument ? (
@@ -475,10 +481,10 @@ const Instalments = () => {
                                                                     <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">
                                                                         <i class="flex items-center fi fi-rr-file-signature"></i> Pending
                                                                     </span>
-                                                                    <a
-                                                                        href={instalment.installmentDocument} className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full">
-                                                                        <FaEye size={14} />
-                                                                    </a>
+
+                                                                    <button onClick={() => setDocumentView(instalment)} className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full" >
+                                                                        <FaEye className={`${documentView?._id === instalment?._id && 'text-orange-400 '}`} size={14} />
+                                                                    </button>
                                                                     <span
                                                                         onClick={() => handleRemoveFileUploaded(instalment._id)}
                                                                         className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-red-100 text-red-600 rounded-full">
@@ -508,6 +514,7 @@ const Instalments = () => {
                     </div>
                 </div >
             </div >
+            <DocumentViewer document={documentView?.installmentDocument} onClose={() => setDocumentView(null)} />
         </div >
     );
 };
