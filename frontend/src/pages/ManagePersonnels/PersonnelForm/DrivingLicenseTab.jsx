@@ -118,7 +118,7 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                 name="drivingLicenseFrontImage"
                                 onChange={(e) => onInputChange(e)}
                             />
-                            {newDriver.drivingLicenseFrontImageArray && <div className='mt-2 overflow-auto rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            {newDriver.drivingLicenseFrontImageArray?.length > 0 && <div className='mt-2 overflow-auto rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                 <table className='table-general'>
                                     <thead className='sticky top-0 bg-white'>
                                         <tr>
@@ -158,7 +158,7 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                 name="drivingLicenseBackImage"
                                 onChange={(e) => onInputChange(e)}
                             />
-                            {newDriver.drivingLicenseBackImageArray && <div className='mt-2 overflow-auto rounded-md max-h-60 w-full border-2 border-neutral-200'>
+                            {newDriver.drivingLicenseBackImageArray?.length > 0 && <div className='mt-2 overflow-auto rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                 <table className='table-general'>
                                     <thead className='sticky top-0 bg-white'>
                                         <tr>

@@ -63,7 +63,6 @@ const ManagePersonnels = () => {
     }, [driverStatus, siteStatus, dispatch]);
 
     const handleEditDriver = (driver) => {
-        console.log('selectedDriver:', driver)
         setNewDriver({
             ...driver,
             passportDocument: '',

@@ -56,6 +56,9 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                     updatedTypeOfDriverTrace.push(newTrace);
                 }
             }
+            else {
+                updatedTypeOfDriverTrace.pop()
+            }
         }
 
         setNewDriver(prev => ({
@@ -68,7 +71,7 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
     return (
 
         <div className='p-6'>
-            {console.log(newDriver)}
+            {console.log('newDriver:', newDriver)}
             <h1 className='text-center font-bold'>Personnel Information</h1>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5">
                 {/* First Name */}
@@ -438,7 +441,7 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                         name="vatEffectiveDate"
                         iconPosition="left"
                         onChange={(value) => handleVatDetailsChange('vatEffectiveDate', value)}
-                        disabled={newDriver.vatDetails?.vatNo === ''}
+                        disabled={!newDriver.vatDetails || newDriver.vatDetails?.vatNo === ''}
                         error={errors.vatEffectiveDate}
                     />
                     <p className={`${errors.vatEffectiveDate ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid VAT effective date</p>

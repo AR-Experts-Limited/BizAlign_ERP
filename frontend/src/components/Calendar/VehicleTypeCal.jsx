@@ -19,7 +19,7 @@ const VehicleTypeCal = ({
     const formatDateKey = (date) => date.toLocaleString().split(',')[0];
 
     const parseDate = (str) => {
-        const [day, month, year] = str.split('/');
+        const [day, month, year] = str?.split('/');
         return new Date(new Date(`${year}-${month}-${day}`).setHours(0, 0, 0, 0));
     };
 

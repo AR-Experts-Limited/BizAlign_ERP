@@ -49,7 +49,8 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
             'typeOfDriver',
             'vehicleSize',
             'siteSelection',
-            ...(newDriver.typeOfDriver === 'Own Vehicle' ? ['vehicleRegPlate'] : [])
+            ...(newDriver.typeOfDriver === 'Own Vehicle' ? ['vehicleRegPlate'] : []),
+            ...(newDriver.vatDetails && newDriver.vatDetails?.vatNo !== '' ? ['vatEffectiveDate'] : [])
         ],
         bankDetails: newDriver.bankChoice === 'Personal' ? [
             'bankName',
@@ -105,7 +106,9 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
             'companyName',
             'companyRegAddress',
             'companyRegNo',
-            'companyRegExpiry'
+            'companyRegExpiry',
+            ...(newDriver.companyVatDetails || newDriver.companytVatDetails?.compantVatNo !== '' ? ['companyVatEffectiveDate'] : [])
+
         ] : []
     };
 
@@ -133,12 +136,13 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
         "typeOfDriverTrace"
     ]
 
+
     const validateFields = () => {
         const newErrors = {};
         const currentTabFields = requiredFields[selectedTab] || [];
 
         currentTabFields.forEach((key) => {
-            if (String(newDriver[key]).trim() === "") {
+            if (String(newDriver[key]).trim() === "" || !newDriver[key]) {
                 newErrors[key] = true;
             }
         });
@@ -187,7 +191,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
 
         Object.keys(requiredFields).forEach(tab => {
             requiredFields[tab].forEach((key) => {
-                if (String(newDriver[key]).trim() === "") {
+                if (String(newDriver[key]).trim() === "" || !newDriver[key]) {
                     newErrors[key] = true;
                 }
             });
@@ -215,7 +219,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
         let updatedTabs = [...tabsInfo];
 
         // Add or remove Self Employment Details tab based on employment status
-        if (newDriver.employmentStatus === 'Limited Company') {
+        if (newDriver.employmentStatus === 'Limited Company' && newDriver.typeOfDriver === 'Company Vehicle') {
             if (!updatedTabs.some(tab => tab.id === 'selfEmploymentDetails')) {
                 updatedTabs.splice(1, 0, { id: 'selfEmploymentDetails', label: 'Self Employment Details', component: SelfEmploymentDetails });
             }
@@ -299,7 +303,8 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
 
         formData.append('vatDetails', JSON.stringify(newDriver.vatDetails));
         formData.append('customTypeOfDriver', JSON.stringify(newDriver.customTypeOfDriver));
-        formData.append('typeOfDriverTrace', JSON.stringify(newDriver.typeOfDriverTrace));
+        if (typeOfDriverTrace.length > 0)
+            formData.append('typeOfDriverTrace', JSON.stringify(newDriver.typeOfDriverTrace));
 
         if (personnelMode === 'create') {
             let userID = 0;
@@ -363,6 +368,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
         <>
 
             <div className='flex-1 p-2'>
+                {console.log(requiredFields)}
                 {/* Tabs Navigation */}
                 <div className='flex justify-between overflow-x-auto snap-x snap-mandatory scrollbar-hide h-12 bg-primary-200/30 py-1 rounded-t-lg backdrop-blur-xl border border-primary-500'>
                     {tabs.map((tab, index) => (
@@ -396,6 +402,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                     />
                 </div>
             </div>
+
             {/* Form Actions */}
             <div className='sticky bottom-0 bg-white flex justify-end items-center z-5 p-3 border-t border-neutral-200'>
                 <div className='flex gap-3 text-sm'>

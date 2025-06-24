@@ -126,7 +126,7 @@ const SelfEmploymentDetails = ({ newDriver, setNewDriver, onInputChange, errors 
                         name="companyRegistrationCertificate"
                         onChange={(e) => onInputChange(e)}
                     />
-                    {newDriver.companyRegistrationCertificateArray &&
+                    {newDriver.companyRegistrationCertificateArray?.length > 0 &&
                         <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                             <table className='table-general'>
                                 <thead className='sticky top-0 bg-white'>

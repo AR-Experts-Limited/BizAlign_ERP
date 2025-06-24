@@ -113,12 +113,13 @@ const ManageUsers = () => {
 
 
     return (
-        <div className='w-full h-full p-3.5'>
+        <div className='flex flex-col w-full h-full p-3.5'>
             <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
                 <div className='flex gap-2 items-center'>
                     {toastOpen?.content}
                 </div>
             </div>
+            <h2 className='text-xl mb-3 font-bold dark:text-white'>Manage Users</h2>
             <div className='flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-auto'>
                 <div className='z-15 sticky top-0 flex justify-between items-center bg-white/60 backdrop-blur-md p-3 rounded-t-lg border-b border-neutral-200'>
                     <div>{userMode === 'create' ? 'Add User' : 'Users List'}</div>

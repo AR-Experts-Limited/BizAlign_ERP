@@ -112,7 +112,7 @@ const WeeklyInvoice = () => {
 
     useEffect(() => {
         if (Object.keys(driversBySite).length > 0 && selectedSite) {
-            let driversList = driversBySite[selectedSite].filter((driver) => !driver.disabled) || []
+            let driversList = driversBySite[selectedSite]?.filter((driver) => !driver.disabled) || []
             let standbydriversIds = standbydrivers.map((sdriver) =>
                 sdriver.site !== selectedSite ? sdriver.driverId : null
             );
@@ -599,7 +599,7 @@ const WeeklyInvoice = () => {
                     {/* Driver Information */}
                     <div className="mb-6">
                         <InputWrapper title={'Driver Information'}>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-[4fr_5fr_2fr_2fr] gap-4">
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
                                     <p className="text-base font-medium text-gray-900 dark:text-white">
@@ -924,9 +924,9 @@ const WeeklyInvoice = () => {
                                             {currentInvoice?.invoice.invoices.some(
                                                 (invoice) =>
                                                     (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
-                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate)) ||
                                                     (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
-                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate))
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate))
                                             ) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
                                                 )}
@@ -942,10 +942,10 @@ const WeeklyInvoice = () => {
                                                 }, 0);
                                                 const hasDriverVat =
                                                     currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
-                                                    new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate);
+                                                    new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate);
                                                 const hasCompanyVat =
-                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' && currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate &&
-                                                    new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate);
+                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' && currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate &&
+                                                    new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate);
                                                 return (
                                                     <tr key={invoice._id} className={index % 2 === 0 ? 'bg-white dark:bg-dark-3' : 'bg-gray-50 dark:bg-dark-4'}>
                                                         <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
@@ -1005,9 +1005,9 @@ const WeeklyInvoice = () => {
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (inv) =>
                                                                 (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
-                                                                    new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
+                                                                    new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate)) ||
                                                                 (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
-                                                                    new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate))
+                                                                    new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate))
                                                         ) && (
                                                                 <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                                     {hasDriverVat || hasCompanyVat ? '20%' : '-'}
@@ -1039,9 +1039,9 @@ const WeeklyInvoice = () => {
                                             {currentInvoice?.invoice.invoices.some(
                                                 (invoice) =>
                                                     (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
-                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.vatDetails.vatEffectiveDate)) ||
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate)) ||
                                                     (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
-                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId.companyVatDetails.companyVatEffectiveDate))
+                                                        new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate))
                                             ) && (
                                                     <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                         £{currentInvoice?.invoice.vatTotal}

@@ -59,7 +59,7 @@ const Sidebar = ({ sidebarIsOpen }) => {
         { path: "/add-ons", name: "Additional Charges", icon: <i className="fi fi-rr-plus-hexagon hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/print-invoices", name: "Print Invoices", icon: <i className="fi fi-rr-print hover:text-primary-800 text-[1.5rem]"></i> },
         { path: "/profit-loss", name: "Profit / Loss", icon: <i className="fi fi-rr-chart-histogram hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/manage-users", name: "Manage users", icon: <i className="fi fi-rr-id-card-clip-alt hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/manage-users", name: "Manage Users", icon: <i className="fi fi-rr-id-card-clip-alt hover:text-primary-800 text-[1.5rem]"></i> },
     ];
 
     return (

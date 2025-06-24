@@ -255,6 +255,7 @@ router.delete('/:id', async (req, res) => {
     if (!installment) {
       return res.status(404).json({ message: 'Installment not found' });
     }
+    await Installment.findByIdAndDelete(installmentId);
 
     // Step 2: Get WeeklyInvoices that included this installment
     const weeklyInvoices = await WeeklyInvoice.find({ installments: installmentId });
@@ -370,8 +371,6 @@ router.delete('/:id', async (req, res) => {
       );
     }
 
-    // Step 4: Delete the Installment
-    await Installment.findByIdAndDelete(installmentId);
 
     // Step 5: Notify clients
     sendToClients(req.db, { type: 'installmentUpdated' });

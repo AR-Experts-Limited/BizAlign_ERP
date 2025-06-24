@@ -17,7 +17,7 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                         name="profilePicture"
                         onChange={(e) => onInputChange(e)}
                     />
-                    {newDriver.profilePictureArray &&
+                    {newDriver.profilePictureArray?.length > 0 &&
                         <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                             <table className='table-general'>
                                 <thead className='sticky top-0 bg-white'>
@@ -59,7 +59,7 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                         name="ninoDocument"
                         onChange={(e) => onInputChange(e)}
                     />
-                    {newDriver.ninoDocumentArray &&
+                    {newDriver.ninoDocumentArray?.length > 0 &&
                         <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                             <table className='table-general'>
                                 <thead className='sticky top-0 bg-white'>
@@ -100,7 +100,7 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                         name="signature"
                         onChange={(e) => onInputChange(e)}
                     />
-                    {newDriver.signatureArray &&
+                    {newDriver.signatureArray?.length > 0 &&
                         <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                             <table className='table-general'>
                                 <thead className='sticky top-0 bg-white'>

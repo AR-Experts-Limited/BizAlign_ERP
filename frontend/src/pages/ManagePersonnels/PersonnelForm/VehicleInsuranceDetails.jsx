@@ -24,14 +24,14 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={newDriver.ownVehicleInsuranceNA.mvi}
+                            checked={newDriver.ownVehicleInsuranceNA?.mvi}
                             onChange={handleNAChange('mvi')}
                         />
                         Not Applicable
                     </label>
                 </div>
 
-                {!newDriver.ownVehicleInsuranceNA.mvi && (
+                {!newDriver.ownVehicleInsuranceNA?.mvi && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <InputGroup
@@ -101,7 +101,7 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                             />
                             {errors.MotorVehicleInsuranceCertificate && <p className='text-sm font-light text-red'>* Please provide motor vehicle insurance certificate</p>}
 
-                            {newDriver.MotorVehicleInsuranceCertificateArray &&
+                            {newDriver.MotorVehicleInsuranceCertificateArray?.length > 0 &&
                                 <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                     <table className='table-general'>
                                         <thead className='sticky top-0 bg-white'>
@@ -145,14 +145,14 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={newDriver.ownVehicleInsuranceNA.goods}
+                            checked={newDriver.ownVehicleInsuranceNA?.goods}
                             onChange={handleNAChange('goods')}
                         />
                         Not Applicable
                     </label>
                 </div>
 
-                {!newDriver.ownVehicleInsuranceNA.goods && (
+                {!newDriver.ownVehicleInsuranceNA?.goods && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <InputGroup
@@ -221,7 +221,7 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                             // error={errors.GoodsInTransitInsurance}
                             />
                             {errors.GoodsInTransitInsurance && <p className='text-sm font-light text-red'>* Please provide goods in transit insurance</p>}
-                            {newDriver.GoodsInTransitInsuranceArray &&
+                            {newDriver.GoodsInTransitInsuranceArray?.length > 0 &&
                                 <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                     <table className='table-general'>
                                         <thead className='sticky top-0 bg-white'>
@@ -265,14 +265,14 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={newDriver.ownVehicleInsuranceNA.public}
+                            checked={newDriver.ownVehicleInsuranceNA?.public}
                             onChange={handleNAChange('public')}
                         />
                         Not Applicable
                     </label>
                 </div>
 
-                {!newDriver.ownVehicleInsuranceNA.public && (
+                {!newDriver.ownVehicleInsuranceNA?.public && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <InputGroup
@@ -341,7 +341,7 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                             // error={errors.PublicLiablity}
                             />
                             {errors.PublicLiablity && <p className='text-sm font-light text-red'>* Please provide public liability insurance</p>}
-                            {newDriver.PublicLiablityArray &&
+                            {newDriver.PublicLiablityArray?.length > 0 &&
                                 <div className='col-span-3 mt-2 rounded-md max-h-60 w-full border-2 border-neutral-200'>
                                     <table className='table-general'>
                                         <thead className='sticky top-0 bg-white'>
