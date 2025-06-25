@@ -515,10 +515,10 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
   }
 
   // Store original details for comparison
-  const originalVatDetails = { ...driver.vatDetails };
-  const originalCompanyVatDetails = { ...driver.companyVatDetails };
-  const originalCustomTypeOfDriver = { ...driver.customTypeOfDriver };
-  const originalTypeOfDriverTrace = [...driver.typeOfDriverTrace];
+  const originalVatDetails = { ...(driver.vatDetails ?? {}) };
+  const originalCompanyVatDetails = { ...(driver.companyVatDetails ?? {}) };
+  const originalCustomTypeOfDriver = { ...(driver.customTypeOfDriver ?? {}) };
+  const originalTypeOfDriverTrace = [...(driver.typeOfDriverTrace ?? [])];
 
   // Update the driver in the database
   const updatedDriver = await Driver.findByIdAndUpdate(
@@ -529,10 +529,10 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
 
   // Check if VAT details, company VAT details, customTypeOfDriver, or typeOfDriverTrace have changed
   const vatChanged =
-    (originalVatDetails.vatNo !== updatedDriver.vatDetails.vatNo ||
-      originalVatDetails.vatEffectiveDate !== updatedDriver.vatDetails.vatEffectiveDate) ||
-    (originalCompanyVatDetails.vatNo !== updatedDriver.companyVatDetails?.vatNo ||
-      originalCompanyVatDetails.companyVatEffectiveDate !== updatedDriver.companyVatDetails?.companyVatEffectiveDate);
+    (originalVatDetails?.vatNo !== updatedDriver.vatDetails?.vatNo ||
+      originalVatDetails?.vatEffectiveDate !== updatedDriver.vatDetails?.vatEffectiveDate) ||
+    (originalCompanyVatDetails?.vatNo !== updatedDriver.companyVatDetails?.vatNo ||
+      originalCompanyVatDetails?.companyVatEffectiveDate !== updatedDriver?.companyVatDetails?.companyVatEffectiveDate);
 
   const customTypeChanged = JSON.stringify(originalCustomTypeOfDriver) !== JSON.stringify(updatedDriver.customTypeOfDriver);
   const traceChanged = JSON.stringify(originalTypeOfDriverTrace) !== JSON.stringify(updatedDriver.typeOfDriverTrace);

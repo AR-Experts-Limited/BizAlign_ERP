@@ -43,11 +43,18 @@ export const updateDriver = createAsyncThunk(
     }
 );
 
+export const updateDriverDoc = createAsyncThunk(
+    'drivers/updateDriverDoc',
+    async ({ driver, updates }) => {
+        const id = driver._id;
+        const response = await axios.put(`${API_BASE_URL}/api/drivers/docUpdate/${id}`, updates);
+        return { updatedDriver: response.data };
+    }
+);
+
 export const disableDriver = createAsyncThunk(
     'drivers/disableDriver',
     async ({ driver, email, disabled }) => {
-        console.log(driver.siteSelection, email, disabled)
-
         const id = driver._id;
         const siteSelection = driver.siteSelection
         const response = await axios.post(
@@ -145,6 +152,22 @@ const driverSlice = createSlice({
                 }
             })
             .addCase(updateDriver.rejected, (state, action) => {
+                state.updateStatus = 'failed';
+                state.error = action.error.message;
+            })
+
+            //UpdateDriverDoc
+            .addCase(updateDriverDoc.pending, (state) => {
+                state.updateStatus = 'loading';
+            })
+            .addCase(updateDriverDoc.fulfilled, (state, action) => {
+                state.updateStatus = 'succeeded';
+                const { updatedDriver } = action.payload;
+                const index = state.bySite[updatedDriver.siteSelection].findIndex((d) => d._id === updatedDriver._id);
+                if (index !== -1) state.bySite[updatedDriver.siteSelection][index] = updatedDriver;
+
+            })
+            .addCase(updateDriverDoc.rejected, (state, action) => {
                 state.updateStatus = 'failed';
                 state.error = action.error.message;
             })

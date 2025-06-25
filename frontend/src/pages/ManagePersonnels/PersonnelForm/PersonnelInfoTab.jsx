@@ -270,18 +270,18 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                         </InputGroup>
                         <p className={`${errors.typeOfDriver ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide vehicle type</p>
                     </div>
-                    {newDriver.typeOfDriverTrace.length > 0 && (<div className='group relative self-center rounded-lg '>
+                    {newDriver.typeOfDriverTrace?.length > 0 && (<div className='group relative self-center rounded-lg '>
                         <div className='absolute top-5 right-3 z-3 hidden group-hover:block bg-white  border border-neutral-200 max-h-[20rem] overflow-auto'>
                             <table className='table-general'>
                                 <thead>
-                                    {newDriver.typeOfDriverTrace.length > 0 && <tr style={{ position: 'sticky', top: '1px', fontWeight: 'bold', borderBottom: '1px solid black', backgroundColor: 'white' }}>
+                                    {newDriver.typeOfDriverTrace?.length > 0 && <tr style={{ position: 'sticky', top: '1px', fontWeight: 'bold', borderBottom: '1px solid black', backgroundColor: 'white' }}>
                                         <td>Changed from</td>
                                         <td>Changed to</td>
                                         <td>Effective Date</td>
                                     </tr>}
                                 </thead>
                                 <tbody>
-                                    {newDriver.typeOfDriverTrace.length > 0 ? newDriver.typeOfDriverTrace.map((ToD) => (
+                                    {newDriver.typeOfDriverTrace?.length > 0 ? newDriver.typeOfDriverTrace.map((ToD) => (
                                         <tr>
                                             <td>{ToD.from}</td>
                                             <td>{ToD.to}</td>
@@ -295,7 +295,7 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                     </div>)}
                 </div>
 
-                <VehicleTypeCal typeOfDriver={newDriver.typeOfDriver} typeOfDriverTrace={newDriver.typeOfDriverTrace} customTypeOfDriver={newDriver.customTypeOfDriver} setCustomTypeOfDriver={setCustomTypeOfDriver} />
+                <VehicleTypeCal typeOfDriver={newDriver.typeOfDriver} typeOfDriverTrace={newDriver.typeOfDriverTrace || []} customTypeOfDriver={newDriver.customTypeOfDriver || {}} setCustomTypeOfDriver={setCustomTypeOfDriver} />
 
                 {(newDriver.typeOfDriver === 'Company Vehicle') && <div>
                     <InputGroup
