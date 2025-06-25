@@ -33,7 +33,7 @@ const DocumentsTab = ({ newDriver, onInputChange, errors }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(newDriver.profilePictureArray || [])
+                                    {[...(newDriver.profilePictureArray || [])]
                                         .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
                                             <tr>
                                                 <td>{newDriver.profilePictureArray.length - index}</td>

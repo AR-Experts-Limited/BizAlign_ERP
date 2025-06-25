@@ -260,6 +260,7 @@ const Rota = () => {
             return;
         }
         const dayInvoice = {
+            driver,
             driverId: _id,
             user_ID,
             driverName: `${firstName} ${lastName}`,
@@ -290,7 +291,7 @@ const Rota = () => {
     const handleAdditionalService = async (additionalService) => {
         if (!rotaDetail) return;
 
-        const { serviceWeek, driverVehicleType, date, site } = rotaDetail.dayInvoice;
+        const { serviceWeek, driverVehicleType, date, site, driver } = rotaDetail.dayInvoice;
         const isAdmin = hasAdminPrivileges(userDetails.role);
 
         const incentiveDetailforAdditional = await getIncentiveDetails(additionalService, site, new Date(date));
@@ -308,10 +309,11 @@ const Rota = () => {
             let additionalServiceDetails = null;
             if (additionalService) {
                 const additionalServiceRatecard = rateCardFinder(
+                    date,
                     ratecards,
                     serviceWeek,
                     additionalService,
-                    driverVehicleType
+                    driver
                 );
                 additionalServiceDetails = {
                     service: additionalService,
@@ -565,7 +567,10 @@ const Rota = () => {
         const streak = streaks[driver._id]?.[dateKey] || 0;
         const isToday = dateObj.toDateString() === new Date().toDateString();
         const cellClass = isToday ? 'bg-amber-100/30' : '';
-        const isLocked = schedule?.status !== 'completed';
+        const notComplete = schedule?.status !== 'completed'
+        const noRateCard = !rateCardFinder(schedule?.day, ratecards, schedule?.week, schedule?.service, driver)
+        const isLocked = notComplete || noRateCard
+
 
         if (!schedule) return <td key={day.date} className={cellClass} />;
 
@@ -575,14 +580,14 @@ const Rota = () => {
         return (
             <td key={day.date} className={cellClass}>
                 <div className="relative flex justify-center h-full w-full">
-                    <div className="relative max-w-40">
+                    <div className="relative max-w-40 group">
                         <div
                             onClick={() => { if (!isLocked) handleShowDetails(schedule, driver, invoice) }}
                             className={`relative z-6 w-full h-full shadow-md flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
                 ${!isLocked ? 'cursor-pointer' : ''}
                 border-l-4 ${borderColor} 
                 ${isLocked && 'border-[1.5px] border-dashed border-gray-400/70 [border-left-style:solid] text-gray-400/70'} 
-                rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}
+                rounded-md text-sm p-2 transition-all duration-300`}
                         >
                             <div className="overflow-auto max-h-[4rem]">{schedule?.service}</div>
                             <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px]">
@@ -594,6 +599,9 @@ const Rota = () => {
                                     <FaUnlock className="text-orange-400" size={17} />
                                 )}
                             </div>
+                        </div>
+                        <div className={`w-fit text-xs absolute z-15 bottom-6 left-4 text-white bg-gray-800/40 rounded-md px-2 py-1 hidden ${isLocked && 'group-hover:block'}`}>
+                            {notComplete ? 'Schedule not complete' : noRateCard ? 'Ratecard unavailable' : ''}
                         </div>
                     </div>
                 </div>
@@ -775,6 +783,7 @@ const Rota = () => {
                                         <option value="Other">Other</option>
                                         {services.map((service) => {
                                             if (rateCardFinder(
+                                                rotaDetail?.dayInvoice?.date,
                                                 ratecards,
                                                 rotaDetail?.dayInvoice?.serviceWeek,
                                                 service.title,

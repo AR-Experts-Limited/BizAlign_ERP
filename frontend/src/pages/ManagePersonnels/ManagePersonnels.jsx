@@ -40,7 +40,8 @@ const ManagePersonnels = () => {
             goods: false,
             public: false
         },
-        typeOfDriverTrace: []
+        typeOfDriverTrace: [],
+        customTypeOfDriver: {}
     };
 
     const [newDriver, setNewDriver] = useState(clearDriver);

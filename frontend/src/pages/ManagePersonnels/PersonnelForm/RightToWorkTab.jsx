@@ -67,7 +67,7 @@ const RightToWorkTab = ({ newDriver, onInputChange, errors }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(newDriver.rightToWorkCardArray || [])
+                                    {[...(newDriver.rightToWorkCardArray || [])]
                                         .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
                                             <tr>
                                                 <td>{newDriver.rightToWorkCardArray.length - index}</td>

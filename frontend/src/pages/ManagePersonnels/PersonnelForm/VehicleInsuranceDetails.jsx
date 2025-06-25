@@ -117,7 +117,7 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(newDriver.MotorVehicleInsuranceCertificateArray || [])
+                                            {[...(newDriver.MotorVehicleInsuranceCertificateArray || [])]
                                                 .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
                                                     <tr>
                                                         <td>{newDriver.MotorVehicleInsuranceCertificateArray.length - index}</td>
@@ -237,7 +237,7 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(newDriver.GoodsInTransitInsuranceArray || [])
+                                            {[...(newDriver.GoodsInTransitInsuranceArray || [])]
                                                 .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
                                                     <tr>
                                                         <td>{newDriver.GoodsInTransitInsuranceArray.length - index}</td>
@@ -357,7 +357,7 @@ const VehicleInsuranceDetails = ({ newDriver, setNewDriver, onInputChange, error
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(newDriver.PublicLiablityArray || [])
+                                            {[...(newDriver.PublicLiablityArray || [])]
                                                 .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
                                                     <tr>
                                                         <td>{newDriver.PublicLiablityArray.length - index}</td>

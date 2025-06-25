@@ -133,7 +133,7 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(newDriver.drivingLicenseFrontImageArray)
+                                        {[...(newDriver.drivingLicenseFrontImageArray)]
                                             .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((drivingLicFrontImage, index) => (
                                                 <tr>
                                                     <td>{newDriver.drivingLicenseFrontImageArray.length - index}</td>
@@ -173,7 +173,7 @@ const DrivingLicenseTab = ({ newDriver, onInputChange, errors }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(newDriver.drivingLicenseBackImageArray).
+                                        {[...(newDriver.drivingLicenseBackImageArray)].
                                             sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((drivingLicBackImage, index) => (
                                                 <tr>
                                                     <td>{newDriver.drivingLicenseBackImageArray.length - index}</td>

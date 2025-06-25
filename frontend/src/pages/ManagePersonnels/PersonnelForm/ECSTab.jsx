@@ -75,7 +75,7 @@ const ECSTab = ({ newDriver, onInputChange, errors }) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(newDriver.ecsCardArray || [])
+                                            {[...(newDriver.ecsCardArray || [])]
                                                 .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((doc, index) => (
                                                     <tr>
                                                         <td>{newDriver.ecsCardArray.length - index}</td>

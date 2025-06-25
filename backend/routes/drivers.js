@@ -46,8 +46,13 @@ const getFormattedDateTime = () => {
 const getModels = (req) => ({
   Driver: req.db.model('Driver', require('../models/Driver').schema),
   IdCounter: req.db.model('IdCounter', require('../models/IdCounter').schema),
-  Notification: req.db.model('Notification', require('../models/notifications').schema),
+  Installment: req.db.model('Installment', require('../models/installments').schema),
+  WeeklyInvoice: req.db.model('WeeklyInvoice', require('../models/weeklyInvoice').schema),
+  DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
   User: req.db.model('User', require('../models/User').schema),
+  Notification: req.db.model('Notification', require('../models/notifications').schema),
+  AdditionalCharges: req.db.model('AdditionalCharges', require('../models/additionalCharges').schema),
+  RateCard: req.db.model('RateCard', require('../models/RateCard').schema),
 });
 
 const parseJsonField = (data, fieldName) => {
@@ -320,8 +325,68 @@ router.post('/delete-additional-version', asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Version deleted successfully' });
 }));
 
+
+// Server-side implementation of getDriverTypeForDate from Rota.jsx
+const getDriverTypeForDate = (driver, date) => {
+  const dateKey = new Date(date).toLocaleDateString('en-UK');
+
+  // 1. Custom override
+  if (driver?.customTypeOfDriver?.[dateKey]) {
+    return driver.customTypeOfDriver[dateKey];
+  }
+
+  const traces = driver?.typeOfDriverTrace || [];
+  if (traces.length === 0) {
+    return driver?.typeOfDriver;
+  }
+
+  const parseTraceDate = (ts) => {
+    const [day, month, year] = ts.split('/');
+    return new Date(`${year}-${month}-${day}`).setHours(0, 0, 0, 0);
+  };
+
+  const targetDate = new Date(date).setHours(0, 0, 0, 0);
+  let latestTrace = null;
+
+  for (const trace of traces) {
+    const changeDate = parseTraceDate(trace.timestamp);
+    if (changeDate <= targetDate) {
+      if (!latestTrace || changeDate > parseTraceDate(latestTrace.timestamp)) {
+        latestTrace = trace;
+      }
+    }
+  }
+
+  if (latestTrace) {
+    return latestTrace.to;
+  }
+
+  const firstTrace = traces
+    .slice()
+    .sort((a, b) => parseTraceDate(a.timestamp) - parseTraceDate(b.timestamp))[0];
+
+  if (firstTrace && targetDate < parseTraceDate(firstTrace.timestamp)) {
+    return firstTrace.from;
+  }
+
+  return driver?.typeOfDriver;
+};
+
+// Helper function to find rate card (from Rota.jsx)
+const rateCardFinder = async (RateCard, date, serviceWeek, service, driver) => {
+  return await RateCard.findOne({
+    serviceWeek,
+    serviceTitle: service,
+    vehicleType: getDriverTypeForDate(driver, date),
+    active: true,
+  });
+};
+
+const round2 = (num) => +parseFloat(num || 0).toFixed(2);
+
+
 router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
-  const { Driver, Notification, User } = getModels(req);
+  const { Driver, Notification, User, DayInvoice, WeeklyInvoice, AdditionalCharges, Installment, RateCard } = getModels(req);
   const driver = await Driver.findById(req.params.id);
   if (!driver) {
     return res.status(404).json({ message: 'Driver not found' });
@@ -356,6 +421,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
     utrNo: driverData.utrNo,
     utrUpdatedOn: driverData.utrUpdatedOn,
     vatDetails: driverData.vatDetails,
+    companyVatDetails: driverData.companyVatDetails,
     typeOfDriver: driverData.typeOfDriver,
     typeOfDriverTrace: driverData.typeOfDriverTrace,
     customTypeOfDriver: driverData.customTypeOfDriver,
@@ -415,10 +481,6 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
   };
 
   if (req.files?.length > 0) {
-    // Convert existing additionalDocs object to Map
-    // if (driver.additionalDocs)
-    //   updateFields.additionalDocs = new Map(Object.entries(driver.additionalDocs || {}));
-
     req.files.forEach((file) => {
       const isSmallEntry = ['profilePicture', 'signature'].includes(file.fieldname);
       const docEntry = createFileEntry(file, isSmallEntry);
@@ -439,16 +501,24 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
         const docLabel = driverData[`extraDoc${docIndex}_name`];
 
         if (docLabel) {
+          updateFields.additionalDocs = updateFields.additionalDocs || new Map(Object.entries(driver.additionalDocs || {}));
           const currentGroups = updateFields.additionalDocs.get(docLabel) || [];
-          currentGroups.push([docEntry]); // assuming each file is in its own group
+          currentGroups.push([docEntry]);
           updateFields.additionalDocs.set(docLabel, currentGroups);
         }
       }
     });
 
-    // Convert Map back to plain object for MongoDB update
-    updateFields.additionalDocs = Object.fromEntries(updateFields.additionalDocs);
+    if (updateFields.additionalDocs) {
+      updateFields.additionalDocs = Object.fromEntries(updateFields.additionalDocs);
+    }
   }
+
+  // Store original details for comparison
+  const originalVatDetails = { ...driver.vatDetails };
+  const originalCompanyVatDetails = { ...driver.companyVatDetails };
+  const originalCustomTypeOfDriver = { ...driver.customTypeOfDriver };
+  const originalTypeOfDriverTrace = [...driver.typeOfDriverTrace];
 
   // Update the driver in the database
   const updatedDriver = await Driver.findByIdAndUpdate(
@@ -456,6 +526,280 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
     { $set: updateFields },
     { new: true }
   );
+
+  // Check if VAT details, company VAT details, customTypeOfDriver, or typeOfDriverTrace have changed
+  const vatChanged =
+    (originalVatDetails.vatNo !== updatedDriver.vatDetails.vatNo ||
+      originalVatDetails.vatEffectiveDate !== updatedDriver.vatDetails.vatEffectiveDate) ||
+    (originalCompanyVatDetails.vatNo !== updatedDriver.companyVatDetails?.vatNo ||
+      originalCompanyVatDetails.companyVatEffectiveDate !== updatedDriver.companyVatDetails?.companyVatEffectiveDate);
+
+  const customTypeChanged = JSON.stringify(originalCustomTypeOfDriver) !== JSON.stringify(updatedDriver.customTypeOfDriver);
+  const traceChanged = JSON.stringify(originalTypeOfDriverTrace) !== JSON.stringify(updatedDriver.typeOfDriverTrace);
+
+  if (vatChanged || customTypeChanged || traceChanged) {
+    // Determine the date range for affected invoices
+    const vatDates = [
+      originalVatDetails.vatEffectiveDate ? new Date(originalVatDetails.vatEffectiveDate) : null,
+      updatedDriver.vatDetails.vatEffectiveDate ? new Date(updatedDriver.vatDetails.vatEffectiveDate) : null,
+      originalCompanyVatDetails.companyVatEffectiveDate ? new Date(originalCompanyVatDetails.companyVatEffectiveDate) : null,
+      updatedDriver.companyVatDetails?.companyVatEffectiveDate ? new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate) : null,
+    ].filter(Boolean);
+
+    const customTypeDates = [
+      ...Object.keys(originalCustomTypeOfDriver || {}).map((d) => new Date(d.split('/').reverse().join('-'))),
+      ...Object.keys(updatedDriver.customTypeOfDriver || {}).map((d) => new Date(d.split('/').reverse().join('-'))),
+    ].filter(Boolean);
+
+    const traceDates = [
+      ...originalTypeOfDriverTrace.map((t) => {
+        const [day, month, year] = t.timestamp.split('/');
+        return new Date(`${year}-${month}-${day}`);
+      }),
+      ...updatedDriver.typeOfDriverTrace.map((t) => {
+        const [day, month, year] = t.timestamp.split('/');
+        return new Date(`${year}-${month}-${day}`);
+      }),
+    ].filter(Boolean);
+
+
+    const allDates = [...vatDates, ...customTypeDates, ...traceDates];
+    let dateFilter = {}
+    if (allDates.length > 0) {
+      const minDate = new Date(Math.min(...allDates.map(d => new Date(d))));
+      const oneDayBeforeMin = new Date(minDate);
+      oneDayBeforeMin.setDate(minDate.getDate() - 1);
+
+      dateFilter = { date: { $gte: oneDayBeforeMin } };
+      // Use dateFilter in your MongoDB query
+    } else {
+      dateFilter = {};
+    }
+
+    // Fetch affected DayInvoices
+    const affectedDayInvoices = await DayInvoice.find({
+      driverId: req.params.id,
+      ...dateFilter,
+    }).lean();
+
+
+
+    // Group invoices by serviceWeek
+    const invoicesByWeek = affectedDayInvoices.reduce((acc, invoice) => {
+      const week = invoice.serviceWeek;
+      if (!acc[week]) acc[week] = [];
+      acc[week].push(invoice);
+      return acc;
+    }, {});
+
+    // Process each service week
+    for (const [serviceWeek, invoices] of Object.entries(invoicesByWeek)) {
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      // Check VAT applicability for invoices
+      const isVatApplicable = (date) => {
+        return (
+          (updatedDriver.vatDetails?.vatNo && date >= new Date(updatedDriver.vatDetails.vatEffectiveDate)) ||
+          (updatedDriver.companyVatDetails?.vatNo && date >= new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      // Update DayInvoices
+      const updateForMain = [];
+      const updateForAdditional = [];
+
+      for (const invoice of invoices) {
+        const invDate = new Date(invoice.date);
+        const newVehicleType = getDriverTypeForDate(updatedDriver, invDate);
+
+        // Update main service
+        const mainRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.mainService, updatedDriver);
+        if (!mainRateCard) continue
+        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.rate || 0);
+        const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, ded) => sum + round2(ded.rate), 0) || 0;
+        const newIncentiveRate = round2(invoice.incentiveDetailforMain?.rate || 0);
+        const newDeductionTotal = invoice.deductionDetail?.reduce((sum, ded) => sum + round2(ded.rate), 0) || 0;
+
+        updateForMain.push({
+          updateOne: {
+            filter: { _id: invoice._id },
+            update: {
+              $set: {
+                driverVehicleType: newVehicleType,
+                serviceRateforMain: round2(mainRateCard?.serviceRate || 0),
+                byodRate: round2(mainRateCard?.byodRate || 0),
+                mileage: round2(mainRateCard?.mileage || 0),
+                calculatedMileage: round2(invoice.miles * (mainRateCard?.mileage || 0)),
+                total: round2(
+                  invoice.total
+                  - round2(invoice.serviceRateforMain)
+                  - round2(invoice.byodRate)
+                  - round2(invoice.calculatedMileage)
+                  - oldIncentiveRate
+                  + oldDeductionTotal
+                  + round2(mainRateCard?.serviceRate || 0)
+                  + round2(mainRateCard?.byodRate || 0)
+                  + round2(invoice.miles * (mainRateCard?.mileage || 0))
+                  + newIncentiveRate
+                  - newDeductionTotal
+                ),
+              },
+            },
+          },
+        });
+
+        // Update additional service if applicable
+        if (invoice.additionalServiceDetails?.service) {
+          const additionalRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.additionalServiceDetails.service, updatedDriver);
+          if (!additionalRateCard) continue
+          const oldAdditionalIncentiveRate = round2(invoice.incentiveDetailforAdditional?.rate || 0);
+
+          updateForAdditional.push({
+            updateOne: {
+              filter: { _id: invoice._id },
+              update: {
+                $set: {
+                  'additionalServiceDetails.serviceRate': round2(additionalRateCard?.serviceRate || 0),
+                  'additionalServiceDetails.byodRate': round2(additionalRateCard?.byodRate || 0),
+                  'additionalServiceDetails.mileage': round2(additionalRateCard?.mileage || 0),
+                  'additionalServiceDetails.calculatedMileage': round2(invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)),
+                  serviceRateforAdditional: round2(
+                    (additionalRateCard?.serviceRate || 0) +
+                    (additionalRateCard?.byodRate || 0) +
+                    (invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)) +
+                    (invoice.incentiveDetailforAdditional?.rate || 0)
+                  ),
+                  total: round2(
+                    invoice.total
+                    - round2(invoice.additionalServiceDetails.serviceRate || 0)
+                    - round2(invoice.additionalServiceDetails.byodRate || 0)
+                    - round2(invoice.additionalServiceDetails.calculatedMileage || 0)
+                    - oldAdditionalIncentiveRate
+                    + round2(additionalRateCard?.serviceRate || 0)
+                    + round2(additionalRateCard?.byodRate || 0)
+                    + round2(invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0))
+                    + round2(invoice.incentiveDetailforAdditional?.rate || 0)
+                  ),
+                },
+              },
+            },
+          });
+        }
+
+        const invBaseTotal = round2(
+          (mainRateCard?.serviceRate || 0) +
+          (mainRateCard?.byodRate || 0) +
+          (invoice.miles * (mainRateCard?.mileage || 0)) +
+          (invoice.incentiveDetailforMain?.rate || 0) -
+          newDeductionTotal +
+          (invoice.additionalServiceDetails?.service && invoice.additionalServiceApproval === 'Approved'
+            ? (additionalRateCard?.serviceRate || 0) +
+            (additionalRateCard?.byodRate || 0) +
+            (invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)) +
+            (invoice.incentiveDetailforAdditional?.rate || 0)
+            : 0)
+        );
+
+        weeklyBaseTotal += invBaseTotal;
+        if (isVatApplicable(invDate)) {
+          weeklyVatTotal += round2(invBaseTotal * 0.2);
+        }
+      }
+
+      // Perform DayInvoice updates
+      if (updateForMain.length > 0) {
+        await DayInvoice.bulkWrite(updateForMain);
+      }
+      if (updateForAdditional.length > 0) {
+        await DayInvoice.bulkWrite(updateForAdditional);
+      }
+
+      // Fetch AdditionalCharges for the service week
+      const additionalCharges = await AdditionalCharges.find({ driverId: req.params.id, week: serviceWeek }).lean();
+      let additionalChargesTotal = 0;
+      for (const charge of additionalCharges) {
+        let rateAdjustment = round2(charge.rate);
+        if (charge.type === 'deduction') {
+          rateAdjustment = -rateAdjustment;
+        }
+        additionalChargesTotal += rateAdjustment;
+        const chargeDate = new Date(charge.week);
+        if (isVatApplicable(chargeDate)) {
+          weeklyVatTotal += round2(rateAdjustment * 0.2);
+        }
+      }
+
+      weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
+      weeklyVatTotal = round2(weeklyVatTotal);
+      const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
+
+      // Fetch the WeeklyInvoice for the service week
+      const weeklyInvoice = await WeeklyInvoice.findOne({ driverId: req.params.id, serviceWeek }).lean();
+      if (!weeklyInvoice) continue;
+
+      // Restore previous installment deductions
+      const allInstallments = await Installment.find({ driverId: req.params.id });
+      for (const detail of weeklyInvoice.installmentDetail || []) {
+        const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        if (inst && detail.deductionAmount > 0) {
+          inst.installmentPending = round2(inst.installmentPending + detail.deductionAmount);
+          await inst.save();
+        }
+      }
+
+      // Calculate new installment deductions
+      const installmentMap = new Map();
+      let remainingTotal = weeklyTotalBeforeInstallments;
+
+      for (const inst of allInstallments) {
+        const instId = inst._id.toString();
+        if (inst.installmentPending <= 0) continue;
+
+        const deduction = Math.min(
+          round2(inst.spreadRate),
+          round2(inst.installmentPending),
+          remainingTotal
+        );
+        if (deduction <= 0) continue;
+
+        inst.installmentPending = round2(inst.installmentPending - deduction);
+        await inst.save();
+
+        installmentMap.set(instId, {
+          _id: inst._id,
+          installmentRate: round2(inst.installmentRate),
+          installmentType: inst.installmentType,
+          installmentDocument: inst.installmentDocument,
+          installmentPending: round2(inst.installmentPending),
+          deductionAmount: round2(deduction),
+          signed: inst.signed,
+        });
+
+        remainingTotal = round2(remainingTotal - deduction);
+      }
+
+      const mergedInstallments = Array.from(installmentMap.values());
+      const totalInstallmentDeduction = round2(
+        mergedInstallments.reduce((sum, inst) => sum + (inst.deductionAmount || 0), 0)
+      );
+
+      const finalWeeklyTotal = round2(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction));
+
+      // Update WeeklyInvoice
+      await WeeklyInvoice.updateOne(
+        { driverId: req.params.id, serviceWeek },
+        {
+          $set: {
+            vatTotal: weeklyVatTotal,
+            total: finalWeeklyTotal,
+            installmentDetail: mergedInstallments,
+            installments: mergedInstallments.map((inst) => inst._id),
+          },
+        }
+      );
+    }
+  }
 
   // Update associated user if basic details changed
   if (

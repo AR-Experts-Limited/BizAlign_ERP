@@ -8,7 +8,7 @@ import countries from '../../../lib/countries';
 import VehicleTypeCal from '../../../components/Calendar/VehicleTypeCal';
 import { FcInfo } from 'react-icons/fc';
 
-const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, errors, age, setAge }) => {
+const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, errors, setErrors, age, setAge }) => {
     const initialTypeOfDriver = useRef()
 
     useEffect(() => {
@@ -22,6 +22,8 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
             ...prev,
             vatDetails: { ...prev.vatDetails, [name]: value }
         }));
+        setErrors((prevErrors) => ({ ...prevErrors, [name]: false }));
+
     };
 
     const setCustomTypeOfDriver = (customTypeOfDriver) => {

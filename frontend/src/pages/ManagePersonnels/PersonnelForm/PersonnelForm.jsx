@@ -142,10 +142,24 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
         const currentTabFields = requiredFields[selectedTab] || [];
 
         currentTabFields.forEach((key) => {
-            if (String(newDriver[key]).trim() === "" || !newDriver[key]) {
-                newErrors[key] = true;
+            if (key === 'vatEffectiveDate') {
+                if (!newDriver.vatDetails?.vatEffectiveDate) {
+                    newErrors.vatEffectiveDate = true;
+                }
+            }
+            else if (key === 'companyVatEffectiveDate') {
+                if (!newDriver.companyVatDetails?.companyVatEffectiveDate) {
+                    newErrors.companyVatEffectiveDate = true;
+                }
+
+            } else {
+                const value = newDriver[key];
+                if (typeof value === 'string' ? value.trim() === '' : !value) {
+                    newErrors[key] = true;
+                }
             }
         });
+
 
         // Validate email format
         if (selectedTab === 'personnelInfo' && newDriver.Email && !/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(newDriver.Email)) {
@@ -191,8 +205,21 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
 
         Object.keys(requiredFields).forEach(tab => {
             requiredFields[tab].forEach((key) => {
-                if (String(newDriver[key]).trim() === "" || !newDriver[key]) {
-                    newErrors[key] = true;
+                if (key === 'vatEffectiveDate') {
+                    if (!newDriver.vatDetails?.vatEffectiveDate) {
+                        newErrors.vatEffectiveDate = true;
+                    }
+                }
+                else if (key === 'companyVatEffectiveDate') {
+                    if (!newDriver.companyVatDetails?.companyVatEffectiveDate) {
+                        newErrors.companyVatEffectiveDate = true;
+                    }
+
+                } else {
+                    const value = newDriver[key];
+                    if (typeof value === 'string' ? value.trim() === '' : !value) {
+                        newErrors[key] = true;
+                    }
                 }
             });
         });
@@ -302,9 +329,16 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
             formData.append('companyVatDetails', JSON.stringify(newDriver.companyVatDetails));
 
         formData.append('vatDetails', JSON.stringify(newDriver.vatDetails));
-        formData.append('customTypeOfDriver', JSON.stringify(newDriver.customTypeOfDriver));
-        if (typeOfDriverTrace.length > 0)
-            formData.append('typeOfDriverTrace', JSON.stringify(newDriver.typeOfDriverTrace));
+        formData.append(
+            'customTypeOfDriver',
+            JSON.stringify(newDriver.customTypeOfDriver || {})
+        );
+
+        formData.append(
+            'typeOfDriverTrace',
+            JSON.stringify(newDriver.typeOfDriverTrace || [])
+        );
+
 
         if (personnelMode === 'create') {
             let userID = 0;
@@ -396,6 +430,7 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
                         setNewDriver={setNewDriver}
                         onInputChange={onInputChange}
                         errors={errors}
+                        setErrors={setErrors}
                         age={age}
                         setAge={setAge}
                         sites={sites}
