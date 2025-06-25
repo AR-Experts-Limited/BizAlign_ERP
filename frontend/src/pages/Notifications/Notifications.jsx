@@ -14,6 +14,7 @@ const Notifications = () => {
     const [toastOpen, setToastOpen] = useState(null);
     const [newExpiry, setNewExpiry] = useState('');
     const [notificationsList, setNotificationsList] = useState([])
+    const [repopulate, setRepopulate] = useState(false)
     const driversBySite = useSelector((state) => state.drivers.bySite);
     const { driverStatus } = useSelector((state) => state.drivers);
     const { userDetails: currentUser } = useSelector((state) => state.auth);
@@ -46,6 +47,7 @@ const Notifications = () => {
             rightToWorkCard: sortLatestDocument(driver.rightToWorkCard),
             expiredReasons: driver.expiredReasons || [],
         })));
+        setRepopulate(true)
     }, [driversBySite]);
 
     const columns = {
@@ -361,6 +363,8 @@ const Notifications = () => {
                 <div className="z-15 sticky top-0 flex items-center justify-between bg-white backdrop-blur-md p-2 rounded-t-lg border-b border-neutral-200">
                     <div className="text-sm md:text-base">Notifications List</div>
                     <TableFeatures
+                        repopulate={repopulate}
+                        setRepopulate={setRepopulate}
                         columns={columns}
                         setColumns={setDisplayColumns}
                         content={notificationsList}

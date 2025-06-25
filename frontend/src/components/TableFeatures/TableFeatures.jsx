@@ -6,7 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import debounce from "lodash/debounce";
 
-const TableFeatures = ({ columns, setColumns, content, setContent }) => {
+const TableFeatures = ({ columns, setColumns, content, setContent, repopulate, setRepopulate }) => {
   const colKeys = Object.keys(columns);
   const [filterCol, setFilterCol] = useState(colKeys);
   const [search, setSearch] = useState(false);
@@ -16,10 +16,12 @@ const TableFeatures = ({ columns, setColumns, content, setContent }) => {
   const [originalColumns, setOriginalColumns] = useState({});
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // console.log(searchVal)
   // Store original data on mount or content/columns change
   useEffect(() => {
-    if (content.length > 0 && originalContent.length === 0) {
+    if ((content.length > 0 && originalContent.length === 0) || repopulate) {
       setOriginalContent([...content]); // Shallow copy
+      if (setRepopulate) setRepopulate(false)
     }
     if (Object.keys(columns).length > 0 && Object.keys(originalColumns).length === 0) {
       setOriginalColumns({ ...columns }); // Shallow copy
@@ -27,27 +29,25 @@ const TableFeatures = ({ columns, setColumns, content, setContent }) => {
   }, [content, columns, originalContent.length, originalColumns]);
 
   // Debounced search handler
-  const handleSearch = useCallback(
-    debounce((value, column, originalData) => {
-      if (!value.trim()) {
-        setContent([...originalData]);
-        return;
+  const handleSearch = (value, column, originalData) => {
+    console.log(value)
+    if (!value.trim()) {
+      setContent([...originalData]);
+      return;
+    }
+    const filteredContent = originalData.filter((item) => {
+      const itemValue = item[column];
+      if (Array.isArray(itemValue)) {
+        return itemValue.length === parseInt(value, 10);
       }
-      const filteredContent = originalData.filter((item) => {
-        const itemValue = item[column];
-        if (Array.isArray(itemValue)) {
-          return itemValue.length === parseInt(value, 10);
-        }
-        return String(itemValue || "").toLowerCase().includes(value.toLowerCase());
-      });
-      setContent(filteredContent);
-    }, 300),
-    []
-  );
+      return String(itemValue || "").toLowerCase().includes(value.toLowerCase());
+    });
+    setContent(filteredContent);
+  }
 
   useEffect(() => {
     handleSearch(searchVal, searchCol, originalContent);
-  }, [searchVal, searchCol, originalContent, handleSearch]);
+  }, [searchVal, searchCol, originalContent]);
 
   // Memoized downloadExcel
   const downloadExcel = useCallback(() => {
@@ -55,13 +55,30 @@ const TableFeatures = ({ columns, setColumns, content, setContent }) => {
       const keysToExtract = columns;
       const filterData = content.map((item) => {
         let filteredItem = {};
+
         Object.entries(keysToExtract).forEach(([key, value]) => {
-          if (item[value] !== undefined) {
-            filteredItem[key] = Array.isArray(item[value]) ? item[value].length : item[value];
+          const fieldValue = item[value];
+
+          if (fieldValue !== undefined) {
+            if (Array.isArray(fieldValue)) {
+              filteredItem[key] = fieldValue.length;
+            } else {
+              const date = new Date(fieldValue);
+              const isValidDate =
+                typeof fieldValue === 'string' &&
+                fieldValue.includes('-') &&
+                !isNaN(date);
+
+              filteredItem[key] = isValidDate
+                ? date.toLocaleDateString() // e.g., "6/25/2025"
+                : fieldValue;
+            }
           }
         });
+
         return filteredItem;
       });
+
       const worksheet = XLSX.utils.json_to_sheet(filterData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
@@ -83,9 +100,20 @@ const TableFeatures = ({ columns, setColumns, content, setContent }) => {
       const tableColumns = ["#", ...Object.keys(columns)];
       const tableRows = content.map((cust, index) => [
         index + 1,
-        ...Object.values(columns).map((variable) =>
-          Array.isArray(cust[variable]) ? cust[variable].length : cust[variable]
-        ),
+        ...Object.values(columns).map((variable) => {
+          const value = cust[variable];
+
+          if (Array.isArray(value)) {
+            return value.length;
+          }
+
+          const date = new Date(value);
+          if (value && !isNaN(date) && typeof value === 'string' && value.includes('-')) {
+            return date.toLocaleDateString(); // Format date
+          }
+
+          return value ?? 'N/A';
+        }),
       ]);
 
       autoTable(doc, {
@@ -128,8 +156,8 @@ const TableFeatures = ({ columns, setColumns, content, setContent }) => {
       Object.entries(originalColumns).filter(([key]) => filterCol.includes(key))
     );
     setColumns(filteredObj);
-    setContent([...originalContent]); // Reset content to original
-  }, [filterCol, originalColumns, setColumns, originalContent]);
+    // setContent([...originalContent]); // Reset content to original
+  }, [filterCol, originalColumns, setColumns]);
 
   useEffect(() => {
     handleFilterColumns();
