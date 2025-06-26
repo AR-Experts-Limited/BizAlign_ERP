@@ -96,6 +96,8 @@ const ManageSummary = () => {
         const map = {};
 
         invoices.forEach(invoice => {
+            if (invoice.site !== selectedSite)
+                return
             const invoiceDate = new Date(invoice.date).toLocaleDateString();
             const invoiceName = invoice.driverName?.trim();
             const invoiceService = invoice.mainService?.trim();
@@ -110,6 +112,7 @@ const ManageSummary = () => {
             else
                 matchedCsv = csvData[key] || null;
 
+
             const dateKey = new Date(invoice.date).toLocaleDateString('en-UK');
             const mapKey = `${dateKey}_${invoice.driverId}`;
 
@@ -121,7 +124,6 @@ const ManageSummary = () => {
             {/*Comment this when testing with erp_rainaltd */ }
             if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
                 const similarity = cosineSimilarityFromText(invoice.mainService, matchedCsv?.['Service Type'])
-                console.log(similarity)
                 const match = (Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance'])) ? true : false
                 if (match) {
                     let invoiceMatch = { ...invoice, approvalStatus: 'Under Approval' }
@@ -130,7 +132,7 @@ const ManageSummary = () => {
             }
         });
         setInvoiceMap(map);
-    }, [invoices, csvData]);
+    }, [invoices, csvData, selectedSite]);
 
 
     useEffect(() => {
@@ -272,7 +274,7 @@ const ManageSummary = () => {
     };
 
 
-    const tableData = (driver) => {
+    const tableData = (driver, disableDriver, standbyDriver) => {
         return days.map((day) => {
             const dateObj = new Date(day.date);
             const dateKey = dateObj.toLocaleDateString('en-UK');
@@ -282,13 +284,13 @@ const ManageSummary = () => {
             const isToday = dateObj.toDateString() === new Date().toDateString();
             const cellClass = isToday ? 'bg-amber-100/30' : '';
             const disabledSelection = (invoice && selectedInvoices.length > 0 && key !== selectedInvoices[0] && invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
-
+            const invoiceBelongstoSite = invoice?.site === selectedSite
 
             return (
                 <td key={day.date} className={cellClass} >
                     {(() => {
                         // Render invoice cell
-                        if (invoice) {
+                        if (invoice && invoiceBelongstoSite) {
                             return (
                                 <div className={`relative flex justify-center h-full w-full`}>
                                     <div className='relative max-w-40'>
@@ -323,13 +325,14 @@ const ManageSummary = () => {
                                                         : 'border-gray-300 dark:border-dark-5  cursor-pointer'} 
                                              rounded-md text-sm p-2 `}
                                         >
-                                            <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService}</div>
+                                            <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService} {!invoiceBelongstoSite && <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{invoice?.site}</span>}</div>
 
-                                            {matchedCsv && (
+                                            {matchedCsv && invoiceBelongstoSite && (
                                                 <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px]">
                                                     {invoice?.approvalStatus && stageIcons[invoice.approvalStatus]}
                                                 </div>
                                             )}
+
                                         </div>
                                     </div>
                                 </div>

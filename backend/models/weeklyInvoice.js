@@ -11,7 +11,6 @@ const weeklyInvoiceSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
-    site: String,
     invoices: [
         {
             type: mongoose.Schema.Types.ObjectId,

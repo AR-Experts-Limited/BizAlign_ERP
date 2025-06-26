@@ -40,7 +40,6 @@ const DailyInvoice = () => {
 
     useEffect(() => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
-        // if (siteStatus === 'idle') dispatch(fetchSites())
     }, [driverStatus, dispatch]);
 
     useEffect(() => {
@@ -54,13 +53,6 @@ const DailyInvoice = () => {
                         enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
-                // const response2 = await axios.post(`${API_BASE_URL}/api/dayinvoice/weekly-invoices`,
-                //     {
-                //         driverIds: driversList.map((driver) => driver._id),
-                //         startdate: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
-                //         enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
-                //     }
-                // )
                 setInvoices(response.data);
             };
 
@@ -95,7 +87,7 @@ const DailyInvoice = () => {
     }, [rangeOptions]);
 
     const handlePrint = async () => {
-        setDriverDetails(driversBySite[currentInvoice.site].find((driver) => driver._id === currentInvoice?.driverId))
+        setDriverDetails(driversBySite[currentInvoice.site]?.find((driver) => driver._id === currentInvoice?.driverId))
         setIsPrintReady(true);
     };
 

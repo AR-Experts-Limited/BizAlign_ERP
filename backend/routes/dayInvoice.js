@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
     }
 
     // Calculate weekly total before installments
-    const allInvoices = await DayInvoice.find({ driverId, serviceWeek, site }).lean();
+    const allInvoices = await DayInvoice.find({ driverId, serviceWeek }).lean();
     let weeklyBaseTotal = 0;
     let weeklyVatTotal = 0;
 
@@ -239,6 +239,40 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Route for batch updating approval status
+router.put('/updateApprovalStatusBatch', async (req, res) => {
+  const { updates } = req.body;
+
+  try {
+    const { DayInvoice } = getModels(req);
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ message: 'Invalid input: updates must be a non-empty array' });
+    }
+
+    const bulkOps = updates.map(({ id, updateData }) => ({
+      updateOne: {
+        filter: { _id: new mongoose.Types.ObjectId(id) },
+        update: { $set: updateData },
+      },
+    }));
+
+    const result = await DayInvoice.bulkWrite(bulkOps);
+
+    // Fetch updated documents after bulkWrite
+    const updatedDocs = await DayInvoice.find({ _id: { $in: updates.map(({ id, updateData }) => id) } });
+
+    res.status(200).json({ message: 'Invoices updated successfully', result, updated: updatedDocs });
+    sendToClients(
+      req.db, {
+      type: 'approvalStatusUpdated', // Custom event to signal data update
+      data: updatedDocs
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating invoices', error: error.message });
+  }
+});
+
 router.put('/:invoiceId', async (req, res) => {
   const round2 = (num) => +parseFloat(num).toFixed(2);
 
@@ -275,7 +309,7 @@ router.put('/:invoiceId', async (req, res) => {
     }
 
     // Calculate weekly total before installments
-    const allInvoices = await DayInvoice.find({ driverId, serviceWeek, site }).lean();
+    const allInvoices = await DayInvoice.find({ driverId, serviceWeek }).lean();
     let weeklyBaseTotal = 0;
     let weeklyVatTotal = 0;
 
@@ -395,7 +429,7 @@ router.delete('/', async (req, res) => {
     await DayInvoice.findByIdAndDelete(_id);
 
     // Fetch remaining invoices and WeeklyInvoice
-    const remainingInvoices = await DayInvoice.find({ driverId, serviceWeek, site }).lean();
+    const remainingInvoices = await DayInvoice.find({ driverId, serviceWeek }).lean();
     const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
 
     if (!weeklyInvoice && remainingInvoices.length === 0) {
@@ -404,9 +438,20 @@ router.delete('/', async (req, res) => {
 
     // If no remaining invoices, delete WeeklyInvoice
     if (remainingInvoices.length === 0) {
+      // Restore installment deductions before deleting WeeklyInvoice
+      const allInstallments = await Installment.find({ driverId });
+      for (const detail of weeklyInvoice?.installmentDetail || []) {
+        const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        if (inst && detail.deductionAmount > 0) {
+          inst.installmentPending = +parseFloat(inst.installmentPending + detail.deductionAmount).toFixed(2);
+          await inst.save();
+        }
+      }
+
+      // Delete WeeklyInvoice
       await WeeklyInvoice.findByIdAndDelete(weeklyInvoice?._id);
       sendToClients(req.db, { type: 'rotaUpdated' });
-      return res.status(200).json({ message: 'Invoice and WeeklyInvoice deleted successfully' });
+      return res.status(200).json({ message: 'Invoice and WeeklyInvoice deleted successfully, installment deductions restored' });
     }
 
     // Calculate weekly total before installments
@@ -884,39 +929,7 @@ router.put('/updateApprovalStatus', async (req, res) => {
   }
 });
 
-// Route for batch updating approval status
-router.put('/updateApprovalStatusBatch', async (req, res) => {
-  const { updates } = req.body;
 
-  try {
-    const { DayInvoice } = getModels(req);
-
-    if (!Array.isArray(updates) || updates.length === 0) {
-      return res.status(400).json({ message: 'Invalid input: updates must be a non-empty array' });
-    }
-
-    const bulkOps = updates.map(({ id, updateData }) => ({
-      updateOne: {
-        filter: { _id: new mongoose.Types.ObjectId(id) },
-        update: { $set: updateData },
-      },
-    }));
-
-    const result = await DayInvoice.bulkWrite(bulkOps);
-
-    // Fetch updated documents after bulkWrite
-    const updatedDocs = await DayInvoice.find({ _id: { $in: updates.map(({ id, updateData }) => id) } });
-
-    res.status(200).json({ message: 'Invoices updated successfully', result, updated: updatedDocs });
-    sendToClients(
-      req.db, {
-      type: 'approvalStatusUpdated', // Custom event to signal data update
-      data: updatedDocs
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating invoices', error: error.message });
-  }
-});
 
 // Route for updating rate card details in invoices
 router.put('/ratecardupdate', async (req, res) => {

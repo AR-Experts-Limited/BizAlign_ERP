@@ -32,7 +32,7 @@ export const PrintableContent = React.forwardRef(({ invoice }, ref, driverDetail
                         <p><strong>Name:</strong> {invoice.driverName}</p>
                         {driverDetails?.transportId && <p><strong>Transport ID:</strong> {driverDetails.transportId}</p>}
                         {driverDetails?.utrNo && <p><strong>UTR Number:</strong> {driverDetails.utrNo}</p>}
-                        {driverDetails?.vatNo && <p><strong>VAT No.:</strong> {driverDetails.vatNo}</p>}
+                        {driverDetails?.vatDetails?.vatNo && <p><strong>VAT No.:</strong> {driverDetails.vatDetails?.vatNo}</p>}
                     </div>
                     <div className="flex justify-between">
                         <div className="w-1/2 pr-2">

@@ -87,8 +87,9 @@ const WeeklyInvoice = () => {
         invoices?.forEach(inv => {
             let installmentUnsigned = inv.installments.some((id) => !id.signed)
             let deductionUnsigned = inv.invoices.deductionDetail?.some((dd) => !dd.signed)
+            let allCompleted = !inv.invoices.some((inv) => inv.approvalStatus !== 'completed')
             const key = `${inv.driverId._id}_${inv.serviceWeek}`;
-            map[key] = { ...inv, unsigned: (installmentUnsigned || deductionUnsigned) }
+            map[key] = { ...inv, allCompleted, unsigned: (installmentUnsigned || deductionUnsigned) }
         });
         setGroupedInvoices(map);
     }, [invoices]);
@@ -238,7 +239,7 @@ const WeeklyInvoice = () => {
                             URL.revokeObjectURL(url);
                         }
 
-                        if (actionType !== 'downloadAllInvoices' && actionType !== 'sendAllInvoices' && currentInvoice) setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.updatedWeeklyInvoice }))
+                        if (actionType !== 'downloadAllInvoices' && actionType !== 'sendAllInvoices' && currentInvoice) setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: { ...res.data.updatedWeeklyInvoice, allCompleted: cinvoice.invoice.allCompleted } }))
 
                         // Update invoices state
                         setInvoices(allinvoices => allinvoices.map((inv) => {
@@ -273,7 +274,7 @@ const WeeklyInvoice = () => {
                 instalments: currentInvoice.instalments
             });
             setChanged(false);
-            setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: res.data.weeklyInvoice }));
+            setCurrentInvoice(cinvoice => ({ ...cinvoice, invoice: { ...res.data.weeklyInvoice, allCompleted: cinvoice.invoice.allCompleted } }));
             setInvoices(allinvoices => allinvoices.map((inv) => {
                 if (inv.driverId._id === currentInvoice?.invoice?.driverId?._id && inv.serviceWeek === currentInvoice?.invoice?.serviceWeek)
                     return res.data.weeklyInvoice;
@@ -322,7 +323,6 @@ const WeeklyInvoice = () => {
             const invoice = groupedInvoices[key];
             const isToday = moment(week, 'week').format('YYYY-[W]ww') === moment().format('YYYY-[W]ww');
             const cellClass = isToday ? 'bg-amber-100/30' : '';
-            const allCompleted = invoice?.count === invoice?.invoices.filter((inv) => inv.approvalStatus === 'completed').length;
             return (
                 <td key={week.week} className={cellClass}>
                     {invoice && (
@@ -364,7 +364,7 @@ const WeeklyInvoice = () => {
                                         <div className="flex items-center gap-1 text-[0.7rem] bg-yellow-200 text-yellow-800 rounded-full px-1.5 py-0.5">
                                             <i className="flex items-center fi fi-sr-seal-exclamation"></i>unsigned docs
                                         </div>
-                                    ) : allCompleted ? (
+                                    ) : invoice.allCompleted ? (
                                         <div className="flex gap-1 text-[0.7rem] bg-sky-200 rounded-full px-1 py-0.5">
                                             <i className="flex items-center fi fi-rr-document"></i>Ready to print
                                         </div>
@@ -388,7 +388,11 @@ const WeeklyInvoice = () => {
                 </div >
                 <div className='flex flex-col p-2 overflow-auto'>
                     <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
-                        <div className="grid grid-cols-2 md:grid-cols-[3fr_2fr_2fr_4fr] p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
+                        <div className="grid grid-cols-2 md:grid-cols-[1fr_3fr_2fr_2fr_4fr] p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold">Invoices sent:</label>
+                                <p>{Object.values(groupedInvoices).reduce((acc, ginv) => { if (ginv.sentInvoice.length > 0) return acc + 1 }, 0) || 0}/{Object.values(groupedInvoices).length}</p>
+                            </div>
                             <div className="flex flex-col gap-1">
                                 <label className="text-xs font-semibold">Search Personnel Name:</label>
                                 <input
@@ -447,7 +451,7 @@ const WeeklyInvoice = () => {
                             </div>
                             <div className="flex gap-1 justify-evenly border-[1.5px] border-neutral-300 rounded-md p-2 justify-self-start self-end w-full overflow-auto">
                                 <button
-                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice}
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice || Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
                                     className="flex gap-1 bg-sky-400/50 items-center text-xs text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                     onClick={async () => {
                                         try {
@@ -477,7 +481,7 @@ const WeeklyInvoice = () => {
                                     Download {selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}
                                 </button>
                                 <button
-                                    disabled={changed || Object.values(groupedInvoices).length === 0}
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
                                     className="flex gap-1 items-center text-xs bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                     onClick={async () => {
                                         try {
@@ -952,7 +956,7 @@ const WeeklyInvoice = () => {
                                                             {new Date(invoice.date).toLocaleDateString('en-UK')}
                                                         </td>
                                                         <td className="text-sm font-medium text-gray-900 dark:text-white px-2 py-2 border border-gray-200 dark:border-dark-5">
-                                                            {invoice.mainService}
+                                                            {invoice.mainService} {invoice.site !== currentInvoice?.invoice?.driverId?.siteSelection ? `(${invoice.site})` : ''}
                                                         </td>
                                                         <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             £{invoice.serviceRateforMain}
@@ -1141,7 +1145,7 @@ const WeeklyInvoice = () => {
                     <div className="flex gap-3 p-3 rounded-lg border-2 border-neutral-300 mt-2 w-full">
                         <div className="w-full">
                             <button
-                                disabled={changed}
+                                disabled={changed || !currentInvoice?.invoice.allCompleted}
                                 className="flex gap-2 bg-sky-400/50 items-center text-sm text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                 onClick={() => generatePDF(currentInvoice.invoice, 'downloadInvoice')}
                             >
@@ -1180,7 +1184,7 @@ const WeeklyInvoice = () => {
                         </div>
                         <div className="w-full">
                             <button
-                                disabled={changed}
+                                disabled={changed || !currentInvoice?.invoice.allCompleted}
                                 className="flex gap-2 items-center text-sm bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                 onClick={() => {
                                     setSendingInvoice(true);
@@ -1241,7 +1245,7 @@ const WeeklyInvoice = () => {
                         Update
                     </button>
                     <button
-                        disabled={changed}
+                        disabled={changed || !currentInvoice?.invoice.allCompleted}
                         onClick={() => generatePDF(currentInvoice.invoice, 'print')}
                         className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                     >

@@ -111,7 +111,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                     return (
                                         <tr key={item._id} className={index % 2 === 0 ? 'bg-[#FFFFFF]' : 'bg-[#F9FAFB]'}>
                                             <td className="text-[10px] font-medium text-[#111827] p-2 border border-[#E5E7EB]">{new Date(item.date).toLocaleDateString('en-UK')}</td>
-                                            <td className="text-[10px] font-medium text-[#111827] p-2 border border-[#E5E7EB]">{item.mainService}</td>
+                                            <td className="text-[10px] font-medium text-[#111827] p-2 border border-[#E5E7EB]">{item.mainService}{item.site !== invoice?.driverId?.siteSelection ? `(${item.site})` : ''}</td>
                                             <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{item.serviceRateforMain.toFixed(2)}</td>
                                             <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{item.byodRate.toFixed(2)}</td>
                                             <td className="text-[10px] font-medium text-[#111827] p-2 border border-[#E5E7EB]">{item.miles}</td>

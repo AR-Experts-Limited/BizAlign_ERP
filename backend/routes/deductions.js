@@ -62,11 +62,8 @@ router.post('/', upload.any(), async (req, res) => {
     await newDeduction.save();
 
     // Step 2: Attach deduction to DayInvoice
-    const dayInvoice = await DayInvoice.findOne({ driverId, date, site });
+    const dayInvoice = await DayInvoice.findOne({ driverId, date });
     if (dayInvoice) {
-
-
-
       dayInvoice.deductionDetail = dayInvoice.deductionDetail || [];
       dayInvoice.deductionDetail.push({
         _id: newDeduction._id,

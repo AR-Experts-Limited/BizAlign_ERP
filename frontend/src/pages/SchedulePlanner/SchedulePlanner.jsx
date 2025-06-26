@@ -263,12 +263,12 @@ const SchedulePlanner = () => {
                 <div className="relative flex justify-center h-full w-full group">
                     <div className="relative max-w-40">
                         <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[82%]' : ''}`}>
-                            <div className="overflow-auto max-h-[4rem]">
-                                {schedule.service} {showSite && !scheduleBelongtoSite ? `(${schedule.site})` : ''}
+                            <div className="overflow-auto max-h-[6rem]">
+                                {schedule.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
                             </div>
-                            <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
+                            {scheduleBelongtoSite && <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
                                 <RiCheckDoubleLine className={schedule.acknowledged ? 'text-green-400' : ''} size={18} />
-                            </div>
+                            </div>}
                         </div>
                         {renderDeleteButton((e) => {
                             e.stopPropagation();
@@ -358,7 +358,7 @@ const SchedulePlanner = () => {
                 } else if (standbySchedule && schedule) {
                     content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
                 }
-            } else if (standbySchedule && !schedule) {
+            } else if (Object.keys(scheduleMap).length > 0 && standbySchedule && !schedule) {
                 content = renderStandbyCell(driver, dateObj);
             } else if (standbySchedule && schedule) {
                 content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });

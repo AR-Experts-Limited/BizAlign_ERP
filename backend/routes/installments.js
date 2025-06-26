@@ -82,7 +82,6 @@ router.post('/', upload.any(), async (req, res) => {
     const currentWeekFormatted = moment().format('GGGG-[W]WW');
     const futureInvoices = await WeeklyInvoice.find({
       driverId,
-      site,
       serviceWeek: { $gte: currentWeekFormatted }
     }).sort({ serviceWeek: 1 });
 

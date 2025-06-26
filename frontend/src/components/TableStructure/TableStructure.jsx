@@ -26,25 +26,28 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
     useEffect(() => {
         if (Object.keys(driversBySite).length > 0 && selectedSite !== '') {
             let driversList = driversBySite[selectedSite]?.filter((driver) => !driver.disabled) || [];
-
+            let standbydriversList = []
             // Get start and end dates from days array
             const startDate = new Date(days[0]?.date.split(',')[1]);
             const endDate = new Date(days[days.length - 1]?.date.split(',')[1]);
 
-            // Filter standby drivers to only include those whose day is within the date range
-            let standbydriversList = Object.values(driversBySite)
-                .flat()
-                ?.filter((driver) =>
-                    standbydrivers
-                        .filter((sdriver) => {
-                            const driverDate = new Date(sdriver.day);
-                            return sdriver.site !== selectedSite &&
-                                driverDate >= startDate &&
-                                driverDate <= endDate;
-                        })
-                        .some((sId) => sId.driverId === driver._id)
-                );
+            if (!['Daily Invoice'].includes(title)) {
+                // Filter standby drivers to only include those whose day is within the date range
+                standbydriversList = Object.values(driversBySite)
+                    .flat()
+                    ?.filter((driver) =>
+                        standbydrivers
+                            .filter((sdriver) => {
+                                const driverDate = new Date(sdriver.day);
+                                return sdriver.site !== selectedSite &&
+                                    driverDate >= startDate &&
+                                    driverDate <= endDate;
+                            })
+                            .some((sId) => sId.driverId === driver._id)
+                    );
+            }
 
+            driversList = [...driversList, ...standbydriversList]
             if (searchDriver !== '') {
                 driversList = driversList.filter((driver) =>
                     String(driver.firstName + ' ' + driver.lastName)
@@ -52,7 +55,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         .includes(searchDriver.toLowerCase())
                 );
             }
-            setDriversList([...driversList, ...standbydriversList]);
+            setDriversList(driversList);
             setStandbydriversList(standbydriversList);
         }
     }, [driversBySite, selectedSite, searchDriver, standbydrivers, days]);
