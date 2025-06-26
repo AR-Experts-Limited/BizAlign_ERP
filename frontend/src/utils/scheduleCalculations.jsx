@@ -3,17 +3,17 @@ import { memoize } from 'lodash';
 export const calculateAllWorkStreaks = memoize(
     (drivers, schedules) => {
         const streaks = {};
-
         // Group schedules by driver first
         const schedulesByDriver = {};
         schedules.forEach(schedule => {
             if (!schedulesByDriver[schedule.driverId]) {
                 schedulesByDriver[schedule.driverId] = [];
             }
-            schedulesByDriver[schedule.driverId].push({
-                day: new Date(schedule.day),
-                service: schedule.service
-            });
+            if (schedule.service !== 'Voluntary-Day-off')
+                schedulesByDriver[schedule.driverId].push({
+                    day: new Date(schedule.day),
+                    service: schedule.service
+                });
         });
 
         // For each driver, calculate streaks for all their scheduled days
@@ -69,7 +69,8 @@ export const checkAllContinuousSchedules = memoize(
             if (!schedulesByDriver[driverId]) {
                 schedulesByDriver[driverId] = [];
             }
-            schedulesByDriver[driverId].push(new Date(schedule.day));
+            if (schedule.service !== 'Voluntary-Day-off')
+                schedulesByDriver[driverId].push(new Date(schedule.day));
         });
 
         // For each driver

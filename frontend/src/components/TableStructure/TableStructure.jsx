@@ -25,17 +25,37 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
 
     useEffect(() => {
         if (Object.keys(driversBySite).length > 0 && selectedSite !== '') {
-            let driversList = driversBySite[selectedSite]?.filter((driver) => !driver.disabled) || []
-            let standbydriversIds = standbydrivers.map((sdriver) => { if (sdriver.site !== selectedSite) return (sdriver.driverId) })
-            let standbydriversList = driversList.filter((driver) => standbydriversIds.some((sId) => sId == driver._id))
+            let driversList = driversBySite[selectedSite]?.filter((driver) => !driver.disabled) || [];
 
-            if (searchDriver !== '')
-                driversList = driversList.filter((driver) => String(driver.firstName + ' ' + driver.lastName).toLowerCase().includes(searchDriver.toLowerCase()))
+            // Get start and end dates from days array
+            const startDate = new Date(days[0]?.date.split(',')[1]);
+            const endDate = new Date(days[days.length - 1]?.date.split(',')[1]);
 
-            setDriversList([...driversList, ...standbydriversList])
-            setStandbydriversList(standbydriversList)
+            // Filter standby drivers to only include those whose day is within the date range
+            let standbydriversList = Object.values(driversBySite)
+                .flat()
+                ?.filter((driver) =>
+                    standbydrivers
+                        .filter((sdriver) => {
+                            const driverDate = new Date(sdriver.day);
+                            return sdriver.site !== selectedSite &&
+                                driverDate >= startDate &&
+                                driverDate <= endDate;
+                        })
+                        .some((sId) => sId.driverId === driver._id)
+                );
+
+            if (searchDriver !== '') {
+                driversList = driversList.filter((driver) =>
+                    String(driver.firstName + ' ' + driver.lastName)
+                        .toLowerCase()
+                        .includes(searchDriver.toLowerCase())
+                );
+            }
+            setDriversList([...driversList, ...standbydriversList]);
+            setStandbydriversList(standbydriversList);
         }
-    }, [driversBySite, selectedSite, searchDriver, standbydrivers])
+    }, [driversBySite, selectedSite, searchDriver, standbydrivers, days]);
 
     return (
         <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white'>
@@ -80,14 +100,16 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                             <tbody>
                                 {driversList.map((driver) => {
                                     const disableDriver = driver.activeStatus != 'Active' ? driver.activeStatus : null
-                                    const standbydriver = standbydriversList.some((sdriver) => sdriver._id === driver._id)
+                                    const standbydriver = standbydriversList.some((sdriver) => sdriver._id == driver._id)
                                     return (
                                         <tr>
                                             <td className='z-10 sticky left-0 bg-white dark:bg-dark-3'>
-                                                <div className='flex flex-col gap-3 '>
+                                                <div className='flex flex-col gap-1 '>
                                                     <p>{driver.firstName + ' ' + driver.lastName}</p>
-                                                    {disableDriver && title !== 'Daily Invoice' && <div className='text-xs md:text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm'>{disableDriver}</div>}
-                                                    {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md px-2 py-1 text-xs'>Stand by driver from {driver.siteSelection}</div>}
+                                                    <div className='flex flex-col gap-1'>
+                                                        {disableDriver && title !== 'Daily Invoice' && <div className='text-xs md:text-sm text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm w-fit'>{disableDriver}</div>}
+                                                        {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md p-1 text-xs w-fit'>Stand by driver from {driver.siteSelection}</div>}
+                                                    </div>
                                                 </div>
                                             </td>
                                             {tableData(driver, disableDriver, standbydriver)}

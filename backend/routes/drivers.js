@@ -88,7 +88,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 // Routes
 router.get('/', asyncHandler(async (req, res) => {
   const { Driver } = getModels(req);
-  const drivers = await Driver.find();
+  const drivers = await Driver.find().sort({ firstName: 1 });
   res.json(drivers);
 }));
 

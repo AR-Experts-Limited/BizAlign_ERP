@@ -15,6 +15,9 @@ import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
 import { addStandbyDriver, deleteStandbyDriver, fetchStandbyDrivers } from '../../features/standbydrivers/standbydriverSlice';
 import InputGroup from '../../components/InputGroup/InputGroup'
 import InputWrapper from '../../components/InputGroup/InputWrapper';
+import { IoMoonOutline, IoMoon } from "react-icons/io5";
+import { RiZzzFill } from "react-icons/ri";
+import { cn } from '../../lib/utils'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -193,16 +196,6 @@ const SchedulePlanner = () => {
         return { streaks, continuousStatus };
     }, [driversList, schedules, days]);
 
-    useEffect(() => {
-        if (addScheduleData?.service) {
-            const foundRatecard = ratecards.find((ratecard) => ratecard.serviceWeek === addScheduleData?.week && ratecard.serviceTitle === addScheduleData?.service)
-            if (!foundRatecard)
-                setAddScheduleData(prev => ({ ...prev, error: true }))
-            else
-                setAddScheduleData(prev => ({ ...prev, associatedRateCard: foundRatecard._id, error: false }))
-        }
-    }, [addScheduleData?.service])
-
 
     const handleAddSchedule = async () => {
         try {
@@ -229,106 +222,185 @@ const SchedulePlanner = () => {
         if (!connected) setSchedules(prev => prev.filter((item) => item._id !== id))
     }
 
+    const handleStandbyToggle = async (driver, date) => {
+        const existingData = standbydrivers.find((standbyschedule) => new Date(standbyschedule.day).getTime() == new Date(date).getTime() && standbyschedule.driverId === driver._id)
 
-
-
-
+        if (existingData) {
+            dispatch(deleteStandbyDriver({ driverId: driver._id, day: new Date(date), _id: existingData._id }))
+        }
+        else {
+            dispatch(addStandbyDriver(
+                {
+                    firstName: driver.firstName,
+                    lastName: driver.lastName,
+                    driverId: driver._id,
+                    day: date,
+                    site: selectedSite,
+                }))
+        }
+    }
 
     const tableData = (driver, disabledDriver, standbyDriver) => {
+
+        const getBorderColor = (streak) => {
+            if (streak < 3) return 'border-l-green-500/60';
+            if (streak < 5) return 'border-l-yellow-500/60';
+            return 'border-l-red-400';
+        };
+
+        const renderDeleteButton = (onClick) => (
+            <div
+                onClick={onClick}
+                className="absolute z-1 right-0 top-0 h-full flex items-center justify-center bg-red-500 text-white p-2 pl-2.5 rounded-r-md inset-shadow-md hover:bg-red-400 transition-all duration-300 opacity-0 group-hover:opacity-100 active:opacity-100 focus:opacity-100 cursor-pointer"
+            >
+                <FaTrashAlt size={14} />
+            </div>
+        );
+
+        const renderScheduleBox = ({ schedule, scheduleBelongtoSite, streak, showSite = true }) => {
+            const borderColor = getBorderColor(streak);
+            return (
+                <div className="relative flex justify-center h-full w-full group">
+                    <div className="relative max-w-40">
+                        <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[82%]' : ''}`}>
+                            <div className="overflow-auto max-h-[4rem]">
+                                {schedule.service} {showSite && !scheduleBelongtoSite ? `(${schedule.site})` : ''}
+                            </div>
+                            <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
+                                <RiCheckDoubleLine className={schedule.acknowledged ? 'text-green-400' : ''} size={18} />
+                            </div>
+                        </div>
+                        {renderDeleteButton((e) => {
+                            e.stopPropagation();
+                            handleDeleteSchedule(schedule._id);
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const renderStandbyCell = (driver, dateObj) => (
+            <div className="relative flex justify-center h-full w-full group">
+                <div className="relative max-w-40 w-full">
+                    <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
+                        <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">On Stand-By</div>
+                    </div>
+                    {renderDeleteButton((e) => {
+                        e.stopPropagation();
+                        handleStandbyToggle(driver, dateObj);
+                    })}
+                </div>
+            </div>
+        );
+
+        const renderPlaceholder = () => (
+            <div className="w-full h-full flex items-center justify-center text-stone-400">
+                <div className="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]" />
+            </div>
+        );
+
+        const renderClickableCell = (driver, day, standbyDriver) => (
+            <div
+                onClick={() =>
+                    setAddScheduleData({
+                        driver,
+                        date: day.date,
+                        week: day.week,
+                        error: false,
+                        ...(standbyDriver && { standbyDriver })
+                    })
+                }
+                className="cursor-pointer flex h-full w-full justify-center items-center"
+            >
+                <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100">
+                    <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
+                        {getDriverTypeForDate(driver, day.date)}
+                    </div>
+                </div>
+            </div>
+        );
         return days.map((day) => {
             const dateObj = new Date(day.date);
             const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${driver._id}`;
 
             const schedule = scheduleMap[key];
+            const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
+
             const streak = streaks[driver._id]?.[dateKey] || 0;
             const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
-
             const isToday = dateObj.toDateString() === new Date().toDateString();
             const cellClass = isToday ? 'bg-amber-100/30 relative' : 'relative';
 
+            const scheduleBelongtoSite = schedule?.site === selectedSite;
+
+            let content = null;
+
+
+            if (standbyDriver) {
+                if (disabledDriver) {
+                    content = renderPlaceholder();
+                }
+                else if (standbySchedule && !schedule) {
+                    if (continuousSchedule < 3) {
+                        const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
+                        content = (
+                            <div className="flex justify-center items-center w-full h-full rounded-lg border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+                                <div className="text-sm text-center text-white bg-stone-300 px-1 py-0.5 rounded-md">
+                                    {label}
+                                </div>
+                            </div>
+                        );
+                    }
+                    else {
+                        content = <div className='flex  border-[1.5px] border-neutral-200 h-full w-full rounded-md max-w-40'>{renderClickableCell(driver, day, standbyDriver)}</div>
+                    }
+                } else if (standbySchedule && schedule) {
+                    content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+                }
+            } else if (standbySchedule && !schedule) {
+                content = renderStandbyCell(driver, dateObj);
+            } else if (standbySchedule && schedule) {
+                content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+            } else if (schedule?.service === 'Voluntary-Day-off') {
+                content = (
+                    <div className="relative flex justify-center h-full w-full group">
+                        <div className="relative max-w-40">
+                            <div className="relative z-6 w-full h-full flex items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 px-4 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+                                <div className="overflow-auto max-h-[4rem]">{schedule.service}</div>
+                            </div>
+                            {renderDeleteButton((e) => {
+                                e.stopPropagation();
+                                handleDeleteSchedule(schedule._id);
+                            })}
+                        </div>
+                    </div>
+                );
+            } else if (schedule) {
+                content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+            } else if (disabledDriver) {
+                content = renderPlaceholder();
+            } else if (continuousSchedule < 3) {
+                const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
+                content = (
+                    <div className="flex justify-center items-center w-full h-full rounded-lg border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+                        <div className="text-sm text-center text-white bg-stone-300 px-1 py-0.5 rounded-md">
+                            {label}
+                        </div>
+                    </div>
+                );
+            } else {
+                content = renderClickableCell(driver, day);
+            }
+
             return (
                 <td key={day.date} className={cellClass}>
-                    {(() => {
-                        // Render scheduled cell
-                        if (schedule) {
-                            const borderColor =
-                                streak < 3 ? 'border-l-green-500/60' :
-                                    streak < 5 ? 'border-l-yellow-500/60' :
-                                        'border-l-red-400';
-
-                            return (
-                                <div className="relative flex justify-center h-full w-full group">
-                                    <div className="relative max-w-40">
-
-                                        <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%]`}>
-                                            <div className="overflow-auto max-h-[4rem]">{schedule.service}</div>
-                                            <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
-                                                <RiCheckDoubleLine className={schedule.acknowledged ? 'text-green-400' : ''} size={18} />
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteSchedule(schedule._id);
-                                            }}
-                                            className="absolute z-1 right-0 top-0 h-full flex items-center justify-center bg-red-500 text-white p-2 pl-2.5 rounded-r-md inset-shadow-md hover:bg-red-400 transition-all duration-300 opacity-0 group-hover:opacity-100 active:opacity-100 focus:opacity-100 cursor-pointer"
-                                        >
-                                            <FaTrashAlt size={14} />
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        }
-
-                        // Render disabled driver cell
-                        if (disabledDriver) {
-                            return (
-                                <div className="w-full h-full flex items-center justify-center text-stone-400">
-                                    <div className="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]" />
-                                </div>
-                            );
-                        }
-
-                        //  Render continuous schedule block (Unavailable or Day-off)
-                        if (continuousSchedule < 3) {
-                            const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
-                            return (
-                                <div className="flex justify-center items-center w-full h-full rounded-lg border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
-                                    <div className="text-sm text-center text-white bg-stone-300 px-1 py-0.5 rounded-md">
-                                        {label}
-                                    </div>
-                                </div>
-                            );
-                        }
-
-                        //  Render empty schedule cell (click to add)
-                        return (<>
-
-                            <div
-                                onClick={() =>
-                                    setAddScheduleData({
-                                        driver,
-                                        date: day.date,
-                                        week: day.week,
-                                        error: false
-                                    })
-                                }
-                                className="cursor-pointer flex h-full w-full justify-center items-center"
-                            >
-                                <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100" >
-                                    <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
-                                        {getDriverTypeForDate(driver, day.date)}
-                                    </div>
-                                </div>
-                            </div></>
-                        );
-                    })()}
+                    {content}
                 </td>
             );
         });
     };
+
 
 
     return (
@@ -345,7 +417,7 @@ const SchedulePlanner = () => {
                         <InputWrapper title={'Services with ratecard available'} >
                             <div className='flex gap-2 w-full'>
                                 <InputGroup className='w-full' value={addScheduleData ? addScheduleData.service : ''}
-
+                                    disabled={addScheduleData?.service === "Voluntary-Day-off"}
                                     type='dropdown' onChange={(e) => setAddScheduleData(prev => ({ ...prev, service: e.target.value }))}  >
                                     <option value=''>-Select Service-</option>
                                     {services.map((service) => {
@@ -378,12 +450,75 @@ const SchedulePlanner = () => {
                                 </div>
                             </div>
                         </InputWrapper>
+                        {!addScheduleData?.standbyDriver && <div className='flex rounded-lg border-2 border-neutral-300'>
+                            <div className='relative flex justify-center border-r border-neutral-300 p-4 w-full'>
+                                <div className='flex absolute top-0 left-0 justify-center bg-gray-300/70 w-full text-sm '>Stand-by</div>
+
+                                <div className='z-5 relative cursor-pointer mt-4'>
+                                    <label htmlFor="standby" className="cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            id="standby"
+                                            // checked={standbydrivers.some((standbyschedule) => new Date(standbyschedule.day).getTime() == new Date(addScheduleData?.date).getTime() && standbyschedule.driverId === addScheduleData?.driver._id)}
+                                            checked={addScheduleData?.service === 'standby'}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setAddScheduleData(prev => ({ ...prev, service: 'standby' }));
+                                                } else {
+                                                    setAddScheduleData(prev => ({ ...prev, service: '' }));
+                                                }
+                                            }} className="peer sr-only"
+                                        />
+                                        <div className="h-6 w-11 peer-checked:bg-amber-600/40  transition-[colors] origin-left rounded-full bg-gray-3  dark:bg-amber" />
+                                        <div className={cn("absolute top-1 left-1 flex size-4 items-center justify-center rounded-full bg-white shadow-switch-1 transition-all duration-200 peer-checked:translate-x-5 peer-checked:[&_.check-icon]:block peer-checked:[&_.uncheck-icon]:hidden  shadow-switch-2")}>
+                                            <IoMoonOutline className='uncheck-icon text-amber-600' size={11} />
+                                            <IoMoon className='check-icon hidden text-amber-600' size={11} />
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className='relative flex flex-col justify-center items-center p-4 w-full'>
+                                <div className='flex absolute top-0 left-0 justify-center bg-gray-300/70 w-full text-sm'>Day-off</div>
+                                <div className='z-5 relative cursor-pointer mt-4'>
+                                    <label htmlFor="voluntary-day-off" className="cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            id="voluntary-day-off" // Add an ID
+                                            checked={addScheduleData?.service === "Voluntary-Day-off"}
+                                            className="peer sr-only"
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    console.log('Checkbox checked:', e.target.checked);
+                                                    setAddScheduleData(prev => ({ ...prev, service: 'Voluntary-Day-off' }));
+                                                } else {
+                                                    setAddScheduleData(prev => ({ ...prev, service: '' }));
+                                                }
+                                            }}
+                                        />
+                                        <div className="h-6 w-11 peer-checked:bg-sky-600/40  transition-[colors] origin-left rounded-full bg-gray-3  dark:bg-sky" />
+                                        <div className={cn("absolute top-1 left-1 flex size-4 items-center justify-center rounded-full bg-white shadow-switch-1 transition-all duration-200 peer-checked:translate-x-5 peer-checked:[&_.check-icon]:block peer-checked:[&_.uncheck-icon]:hidden  shadow-switch-2")}>
+                                            <RiZzzFill className='uncheck-icon text-sky-600' size={11} />
+                                            <RiZzzFill className='check-icon hidden text-sky-600' size={11} />
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>}
 
                         {addScheduleData?.error && <div className='m-3 text-sm p-1 md:p-2 rounded-md bg-red-200 border border-red-400 text-red-400 flex justify-center items-center gap-3'><div className='text-xs font-bold p-2 flex justify-center items-center bg-red-500 h-3 w-3 text-white rounded-full'>!</div>Ratecard unavailable for selected service</div>}
                     </div>
                 </div>
                 <div className='border-t border-neutral-300 p-3 flex justify-evenly'>
-                    <button onClick={handleAddSchedule} disabled={addScheduleData?.error || !addScheduleData?.service} className='text-sm rounded-md border border-green-600 text-white bg-green-600 px-3 py-1 hover:bg-white hover:text-green-600 disabled:bg-stone-300 disabled:text-stone-200 disabled:border-stone-200 disabled:inset-shadow-sm disabled:hover:text-white' >Add</button>
+                    <button onClick={() => {
+                        if (addScheduleData?.service === 'standby') {
+                            handleStandbyToggle(addScheduleData?.driver, addScheduleData?.date)
+                            setAddScheduleData(null)
+                        }
+                        else {
+                            handleAddSchedule()
+                        }
+
+                    }} disabled={addScheduleData?.error || !addScheduleData?.service} className='text-sm rounded-md border border-green-600 text-white bg-green-600 px-3 py-1 hover:bg-white hover:text-green-600 disabled:bg-stone-300 disabled:text-stone-200 disabled:border-stone-200 disabled:inset-shadow-sm disabled:hover:text-white' >Add</button>
                     <button className='text-sm rounded-md border border-red-600 text-white bg-red-600 px-3 py-1 hover:bg-white hover:text-red-600' onClick={() => setAddScheduleData(null)}>Cancel</button>
                 </div>
             </Modal>
