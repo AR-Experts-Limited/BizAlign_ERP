@@ -24,25 +24,10 @@ const menuItems = [
     "Additional Charges",
     "Print Invoices",
     "Profit / Loss",
-    "Application Settings"
+    'Manage Users'
 ];
 
-const userHierarchy = {
-    'super-admin': { rank: 1, display: 'Super Admin', restrictAccess: [] },
-    'Admin': { rank: 2, display: 'Admin', restrictAccess: [] },
-    'Compliance': { rank: 3, display: 'Compliance', restrictAccess: ['Approvals', 'Manage Payments', , 'Additional Charges', 'Print Invoices', 'Profit / Loss', 'Application Settings'] },
-    'Head of Operations': { rank: 4, display: 'Head of Operations', restrictAccess: [] },
-    'Operational Manager': { rank: 4, display: 'Operational Manager', restrictAccess: [] },
-    'OSM': { rank: 5, display: 'On-site Manager', restrictAccess: ['Rate Cards', 'Approvals', 'Manage Personnels', 'Manage Payments', 'Additional Charges', 'Print Invoices', 'Profit / Loss', 'Application Settings'] },
-};
-
-const isPrivileged = (userA_Role, userB_Role) => {
-    if (userA_Role === 'super-admin')
-        return true
-    return userHierarchy[userA_Role]?.rank < userHierarchy[userB_Role]?.rank
-}
-
-export const UserForm = ({ clearUser, states, setters }) => {
+export const UserForm = ({ clearUser, states, setters, isPrivileged, userHierarchy }) => {
     const { user, userMode, allUsers, sites } = states
     const { userDetails: currentUser } = useSelector((state) => state.auth);
 
@@ -144,7 +129,7 @@ export const UserForm = ({ clearUser, states, setters }) => {
                         {errors.lastName && <div className='text-sm text-red-400'>*please enter last name</div>}
                     </div>
                     <div>
-                        <InputGroup required={true} value={user.email} error={errors.email} onChange={(e) => { setErrors(prev => ({ ...prev, email: false })); setUser(prev => ({ ...prev, email: e.target.value })) }} type='email' label='Email' />
+                        <InputGroup required={true} value={user.email} error={errors.email} onChange={(e) => { setErrors(prev => ({ ...prev, email: false })); setUser(prev => ({ ...prev, email: e.target.value.toLowerCase() })) }} type='email' label='Email' />
                         {errors.email && <div className='text-sm text-red-400'>*please enter a valid email</div>}
                     </div>
                     <div>
@@ -164,6 +149,25 @@ export const UserForm = ({ clearUser, states, setters }) => {
                             ))}
                         </InputGroup>
                     </div>}
+                    {(['Head of Operations', 'Operational Manager'].includes(user.role)) && (
+                        <select
+                            className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            multiple
+                            value={
+                                user?.siteArray
+                            }
+                            onChange={(e) => {
+                                const selectedValues = Array.from(e.target.selectedOptions, (option) => option.value);
+                                setUser(prev => ({ ...prev, siteArray: selectedValues }));
+                            }}
+                        >
+                            {sites.map((site) => (
+                                <option key={site.siteKeyword} value={site.siteKeyword}>
+                                    {site.siteName}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                 </div>
                 <div className='h-full md:px-10'>
                     <div className='border border-neutral-200 rounded-lg overflow-hidden md:overflow-auto md:max-h-[33rem]'>

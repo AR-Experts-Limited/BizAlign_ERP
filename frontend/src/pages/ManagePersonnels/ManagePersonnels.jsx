@@ -48,7 +48,7 @@ const ManagePersonnels = () => {
     const { driverStatus } = useSelector((state) => state.drivers);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
     const driversBySite = useSelector((state) => state.drivers.bySite);
-
+    const { userDetails } = useSelector((state) => state.auth);
     const [driversList, setDriversList] = useState(Object.values(driversBySite).flat())
     const colList = { 'First Name': 'firstName', 'Last Name': 'lastName', 'Vehicle Size': 'vehicleSize', 'Transport Id': 'transportId', 'Site': 'siteSelection' }
     const [columns, setColumns] = useState(colList)
@@ -132,15 +132,17 @@ const ManagePersonnels = () => {
             <div className='flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-auto'>
                 <div className='z-15 sticky top-0 flex items-center justify-between items-center bg-white/60 backdrop-blur-md p-2 rounded-t-lg border-b border-neutral-200'>
                     <div className='text-sm md:text-base'>{personnelMode === 'create' ? 'Add Personnel' : 'Personnels List'}</div>
-                    {personnelMode === 'view' &&
+                    {personnelMode === 'view' && ['Admin', 'super-admin', 'compliance'].includes(userDetails.role) &&
                         <div className='flex h-full flex-col md:flex-row gap-2'>
                             <div className='justify-self-start md:justify-self-end'><TableFeatures columns={colList} setColumns={setColumns} content={driversList} setContent={setDriversList} /></div>
                             <button onClick={() => setPersonnelMode('create')} className='w-fit h-full self-end text-white bg-green-500 hover:bg-green-600  rounded-md text-xs md:text-sm px-2 py-1'>Add Personnel</button>
                         </div>
                     }
                 </div>
-                {personnelMode === 'view' ? <PersonnelsTable handleEditDriver={handleEditDriver} handleDeleteDriver={handleDeleteDriver} columns={columns} driversList={driversList} onDisableDriver={handleDisableDriver} /> :
-                    <PersonnelForm clearDriver={clearDriver}
+                {personnelMode === 'view' ? <PersonnelsTable userDetails={userDetails} handleEditDriver={handleEditDriver} handleDeleteDriver={handleDeleteDriver} columns={columns} driversList={driversList} onDisableDriver={handleDisableDriver} /> :
+                    <PersonnelForm
+                        userDetails={userDetails}
+                        clearDriver={clearDriver}
                         newDriver={newDriver}
                         setNewDriver={setNewDriver}
                         personnelMode={personnelMode}

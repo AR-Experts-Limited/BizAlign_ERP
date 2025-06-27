@@ -8,6 +8,7 @@ import { fetchSites } from '../../features/sites/siteSlice';
 import SuccessTick from '../../components/UIElements/SuccessTick';
 import Modal from '../../components/Modal/Modal'
 import InputGroup from '../../components/InputGroup/InputGroup';
+import TrashBin from '../../components/UIElements/TrashBin';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -15,10 +16,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const userHierarchy = {
     'super-admin': { rank: 1, display: 'Super Admin', restrictAccess: [] },
     'Admin': { rank: 2, display: 'Admin', restrictAccess: [] },
-    'Compliance': { rank: 3, display: 'Compliance', restrictAccess: ['Manage Payments', 'Print Invoices'] },
-    'Head of Operations': { rank: 4, display: 'Head of Operations', restrictAccess: [] },
-    'Operational Manager': { rank: 4, display: 'Operational Manager', restrictAccess: [] },
-    'OSM': { rank: 5, display: 'On-site Manager', restrictAccess: ['Manage Personnels', 'Manage Payments', 'Print Invoices'] },
+    'Compliance': { rank: 3, display: 'Compliance', restrictAccess: ['Approvals', 'Manage Payments', 'Deductions', 'Additional Charges', 'Print Invoices', 'Profit / Loss', 'Application Settings', 'Manage Users'] },
+    'Head of Operations': { rank: 4, display: 'Head of Operations', restrictAccess: ['Manage Payments', 'Additional Charges', 'Print Invoices', 'Profit / Loss', 'Application Settings', 'Manage Users'] },
+    'Operational Manager': { rank: 4, display: 'Operational Manager', restrictAccess: ['Manage Payments', 'Additional Charges', 'Print Invoices', 'Profit / Loss', 'Application Settings', 'Manage Users'] },
+    'OSM': { rank: 5, display: 'On-site Manager', restrictAccess: ['Rate Cards', 'Approvals', 'Manage Personnels', 'Manage Payments', 'Additional Charges', 'Print Invoices', 'Profit / Loss', 'Application Settings', 'Manage Users'] },
 };
 
 const isPrivileged = (userA_Role, userB_Role) => {
@@ -54,7 +55,6 @@ const ManageUsers = () => {
             var users;
             try {
                 users = await axios.get(`${API_BASE_URL}/api/auth/`)
-                console.log(currentUser)
                 setAllUsers([users.data.find((user) => user._id === currentUser.id), ...users.data.filter((user) => user._id !== currentUser.id)])
             }
             catch (error) {
@@ -65,18 +65,29 @@ const ManageUsers = () => {
     }, [])
 
     const handleDeleteUser = async (user) => {
-        if (user.delReqStatus !== 'Approved') {
-            setDeleteUserDetails(user)
-            return
-        }
+
         try {
             await axios.delete(`${API_BASE_URL}/api/auth/${encodeURIComponent(user._id)}`)
             setAllUsers(prev => prev.filter((u) => (u._id !== user._id)))
             setDeleteUserDetails(null)
+            setDeleteInput('')
+            setToastOpen({
+                content: <>
+                    <TrashBin width={22} height={22} />
+                    <p className='text-sm font-bold text-red-600'> User deleted successfully</p>
+                </>
+            })
         }
         catch (error) {
-            console.error('error deleting user')
+            setDeleteUserDetails(null)
+            setToastOpen({
+                content: <>
+                    <p> error deleting user</p>
+                </>
+            })
         }
+        setTimeout(() => setToastOpen(null), 3000)
+
     }
 
     const handleDeleteReq = async (delReqOSM) => {
@@ -84,10 +95,10 @@ const ManageUsers = () => {
         try {
             const response = await axios.put(`${API_BASE_URL}/api/auth/${delReqOSM._id}`, updatedOSM);
             setAllUsers(prev => prev.map(user => user._id == updatedOSM._id ? { ...user, delReqStatus: 'Requested' } : user));
-            // const approvalResponse = await axios.post(`${API_BASE_URL}/api/approvals`, {
-            //     type: "osmDelete",
-            //     reqData: { userID: delReqOSM._id, details: "OSM deletion requested for: \n" + delReqOSM.firstName + ' ' + delReqOSM.lastName + ',Email Id:' + delReqOSM.email + ' by ' + currentUser.firstName + ' ' + currentUser.lastName },
-            // })
+            const approvalResponse = await axios.post(`${API_BASE_URL}/api/approvals`, {
+                type: "osmDelete",
+                reqData: { userID: delReqOSM._id, details: "OSM deletion requested for: \n" + delReqOSM.firstName + ' ' + delReqOSM.lastName + ',Email Id:' + delReqOSM.email + ' by ' + currentUser.userName },
+            })
             setDeleteUserDetails(null)
             setToastOpen({
                 content: <>
@@ -111,6 +122,10 @@ const ManageUsers = () => {
         return currentUser.id !== user._id && isPrivileged(currentUser.role, user.role)
     }
 
+    const initiateDeleteUser = (user) => {
+        setDeleteUserDetails(user)
+    }
+
 
     return (
         <div className='flex flex-col w-full h-full p-3.5'>
@@ -132,13 +147,15 @@ const ManageUsers = () => {
                 {userMode === 'create' || userMode === 'edit' ?
                     <UserForm
                         clearUser={clearUser}
+                        userHierarchy={userHierarchy}
+                        isPrivileged={isPrivileged}
                         states={{ user, userMode, allUsers, sites }}
                         setters={{ setUserMode, setUser, setAllUsers, setToastOpen }}
                     />
                     : <UsersTable
                         allUsers={allUsers}
                         handleEditUser={handleEditUser}
-                        handleDeleteUser={handleDeleteUser}
+                        initiateDeleteUser={initiateDeleteUser}
                         canEditUser={canEditUser} />}
             </div>
             <Modal isOpen={deleteUserDetails}>

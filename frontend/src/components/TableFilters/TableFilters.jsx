@@ -33,8 +33,11 @@ const TableFilters = ({ title, state, setters, invoiceMap, handleFileChange, sel
 
     useEffect(() => {
         if (sites.length > 0) {
-            if (userDetails?.site)
+            if (userDetails?.role === 'OSM')
                 setSelectedSite(userDetails?.site)
+            else if (['Operational Manager', 'Head of Operations'].includes(userDetails?.role)) {
+                setSelectedSite(userDetails?.siteArray[0])
+            }
             else
                 setSelectedSite(sites[0].siteKeyword)
         }
@@ -176,10 +179,18 @@ const TableFilters = ({ title, state, setters, invoiceMap, handleFileChange, sel
             </div>
             <div className='flex flex-col gap-1'>
                 <label className='text-xs font-semibold'>Select Site:</label>
-                <select disabled={userDetails?.site} className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5 disabled:border-gray-200 disabled:text-gray-500" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
-                    {sites.map((site) => (
-                        <option value={site.siteKeyword}>{site.siteName}</option>
-                    ))}
+                <select disabled={['OSM'].includes(userDetails?.role)} className="dark:bg-dark-3 bg-white rounded-md border-[1.5px] border-neutral-300  px-2 py-1 h-8 md:h-10 outline-none focus:border-primary-200 dark:border-dark-5 disabled:border-gray-200 disabled:text-gray-500" value={selectedSite} onChange={(e) => setSelectedSite((e.target.value))}>
+                    {sites
+                        .filter(site =>
+                            ['Operational Manager', 'Head of Operations'].includes(userDetails?.role)
+                                ? userDetails?.siteArray?.includes(site.siteKeyword)
+                                : true
+                        )
+                        .map(site => (
+                            <option key={site.siteKeyword} value={site.siteKeyword}>
+                                {site.siteName}
+                            </option>
+                        ))}
                 </select>
             </div>
             <div className=' flex flex-col items-center justify-center gap-1'>

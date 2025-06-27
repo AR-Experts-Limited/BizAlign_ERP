@@ -3,7 +3,8 @@ import { FaTrashAlt } from "react-icons/fa";
 import { FixedSizeList } from 'react-window';
 import InputGroup from '../../components/InputGroup/InputGroup';
 
-const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteDriver, onDisableDriver }) => {
+const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, handleDeleteDriver, onDisableDriver }) => {
+
     const sortedDriversList = useMemo(() => {
         return [...driversList].sort((a, b) => Number(a.disabled) - Number(b.disabled));
     }, [driversList]);
@@ -64,7 +65,7 @@ const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteD
                         </div>
                     ))}
 
-                    <div className="flex items-center justify-center p-3 text-center w-20 border-b border-gray-300">
+                    {['Admin', 'super-admin'].includes(userDetails.role) && <div className="flex items-center justify-center p-3 text-center w-20 border-b border-gray-300">
                         <div className="flex justify-center">
                             <div
                                 onClick={(e) => {
@@ -76,7 +77,7 @@ const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteD
                                 <FaTrashAlt size={16} />
                             </div>
                         </div>
-                    </div>
+                    </div>}
                 </div>
             </div>
         </div>);
@@ -92,7 +93,7 @@ const PersonnelsTable = ({ driversList, columns, handleEditDriver, handleDeleteD
                 {Object.keys(columns).map((col) => (
                     <div key={col} className="flex-1 font-light py-2 px-0 text-center min-w-32">{col}</div>
                 ))}
-                <div className="font-light py-2 px-0 text-center w-20">Options</div>
+                {['Admin', 'super-admin'].includes(userDetails.role) && <div className="font-light py-2 px-0 text-center w-20">Options</div>}
             </div>
 
             {/* Body */}

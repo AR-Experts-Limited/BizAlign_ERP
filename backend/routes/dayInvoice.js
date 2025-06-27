@@ -25,6 +25,8 @@ const upload = multer({
   }),
 });
 
+const round2 = (num) => +parseFloat(num).toFixed(2);
+
 // Helper function to get models from req.db
 const getModels = (req) => ({
   DayInvoice: req.db.model('DayInvoice', require('../models/DayInvoice').schema),
@@ -239,17 +241,19 @@ router.post('/', async (req, res) => {
   }
 });
 
+
 // Route for batch updating approval status
 router.put('/updateApprovalStatusBatch', async (req, res) => {
   const { updates } = req.body;
 
   try {
-    const { DayInvoice } = getModels(req);
+    const { DayInvoice, WeeklyInvoice, Installment, Driver, AdditionalCharges } = getModels(req);
 
     if (!Array.isArray(updates) || updates.length === 0) {
       return res.status(400).json({ message: 'Invalid input: updates must be a non-empty array' });
     }
 
+    // Perform bulk update for DayInvoices
     const bulkOps = updates.map(({ id, updateData }) => ({
       updateOne: {
         filter: { _id: new mongoose.Types.ObjectId(id) },
@@ -259,22 +263,148 @@ router.put('/updateApprovalStatusBatch', async (req, res) => {
 
     const result = await DayInvoice.bulkWrite(bulkOps);
 
-    // Fetch updated documents after bulkWrite
-    const updatedDocs = await DayInvoice.find({ _id: { $in: updates.map(({ id, updateData }) => id) } });
+    // Fetch updated DayInvoices
+    const updatedDocs = await DayInvoice.find({ _id: { $in: updates.map(({ id }) => id) } });
+
+    // Check if any update includes a change to the 'total' field
+    const hasTotalChange = updates.some(({ updateData }) => 'total' in updateData);
+
+    if (hasTotalChange) {
+      // Group updated invoices by driverId and serviceWeek for WeeklyInvoice updates
+      const invoicesByWeek = updatedDocs.reduce((acc, invoice) => {
+        const key = `${invoice.driverId}-${invoice.serviceWeek}`;
+        if (!acc[key]) {
+          acc[key] = {
+            driverId: invoice.driverId,
+            serviceWeek: invoice.serviceWeek,
+            site: invoice.site,
+            invoices: [],
+          };
+        }
+        acc[key].invoices.push(invoice);
+        return acc;
+      }, {});
+
+      // Update each WeeklyInvoice
+      for (const { driverId, serviceWeek, site } of Object.values(invoicesByWeek)) {
+        const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
+        if (!weeklyInvoice) continue;
+
+        const driverData = await Driver.findById(driverId);
+        const allInvoices = await DayInvoice.find({ driverId, serviceWeek }).lean();
+        let weeklyBaseTotal = 0;
+        let weeklyVatTotal = 0;
+
+        const isVatApplicable = (date) => {
+          return (
+            (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
+            (driverData?.companyVatDetails?.vatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+          );
+        };
+
+        // Sum DayInvoice totals
+        for (const inv of allInvoices) {
+          const invBaseTotal = round2(inv.total || 0);
+          weeklyBaseTotal += invBaseTotal;
+          if (isVatApplicable(new Date(inv.date))) {
+            weeklyVatTotal += round2(invBaseTotal * 0.2);
+          }
+        }
+
+        // Add AdditionalCharges contributions
+        let additionalChargesTotal = 0;
+        for (const charge of weeklyInvoice.additionalChargesDetail || []) {
+          let rateAdjustment = charge.rate;
+          if (charge.type === 'deduction') {
+            rateAdjustment = -rateAdjustment;
+          }
+          additionalChargesTotal += round2(rateAdjustment);
+          if (isVatApplicable(new Date(charge.week))) {
+            weeklyVatTotal += round2(rateAdjustment * 0.2);
+          }
+        }
+
+        weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
+        weeklyVatTotal = round2(weeklyVatTotal);
+        const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
+
+        // Restore previous installment deductions
+        const allInstallments = await Installment.find({ driverId });
+        for (const detail of weeklyInvoice.installmentDetail || []) {
+          const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+          if (inst && detail.deductionAmount > 0) {
+            inst.installmentPending = round2(inst.installmentPending + detail.deductionAmount);
+            await inst.save();
+          }
+        }
+
+        // Calculate new installment deductions
+        const installmentMap = new Map();
+        let remainingTotal = weeklyTotalBeforeInstallments;
+
+        for (const inst of allInstallments) {
+          const instId = inst._id.toString();
+          if (inst.installmentPending <= 0) continue;
+
+          const deduction = Math.min(
+            round2(inst.spreadRate),
+            round2(inst.installmentPending),
+            remainingTotal
+          );
+          if (deduction <= 0) continue;
+
+          inst.installmentPending = round2(inst.installmentPending - deduction);
+          await inst.save();
+
+          installmentMap.set(instId, {
+            _id: inst._id,
+            installmentRate: inst.installmentRate,
+            installmentType: inst.installmentType,
+            installmentDocument: inst.installmentDocument,
+            installmentPending: inst.installmentPending,
+            deductionAmount: round2(deduction),
+            signed: inst.signed,
+          });
+
+          remainingTotal = round2(remainingTotal - deduction);
+        }
+
+        const mergedInstallments = Array.from(installmentMap.values());
+        const totalInstallmentDeduction = round2(
+          mergedInstallments.reduce((sum, inst) => sum + (inst.deductionAmount || 0), 0)
+        );
+        const finalWeeklyTotal = round2(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction));
+
+        // Update WeeklyInvoice
+        await WeeklyInvoice.findOneAndUpdate(
+          { driverId, serviceWeek },
+          {
+            $set: {
+              vatTotal: weeklyVatTotal,
+              total: finalWeeklyTotal,
+              installmentDetail: mergedInstallments,
+              installments: mergedInstallments.map((inst) => inst._id),
+              additionalChargesDetail: weeklyInvoice.additionalChargesDetail,
+            },
+          },
+          { new: true }
+        );
+      }
+    }
+
+    sendToClients(req.db, {
+      type: 'approvalStatusUpdated',
+      data: updatedDocs,
+    });
 
     res.status(200).json({ message: 'Invoices updated successfully', result, updated: updatedDocs });
-    sendToClients(
-      req.db, {
-      type: 'approvalStatusUpdated', // Custom event to signal data update
-      data: updatedDocs
-    });
   } catch (error) {
+    console.error('Error updating invoices:', error);
     res.status(500).json({ message: 'Error updating invoices', error: error.message });
   }
 });
 
 router.put('/:invoiceId', async (req, res) => {
-  const round2 = (num) => +parseFloat(num).toFixed(2);
 
   try {
     const { DayInvoice, WeeklyInvoice, Installment, Driver, AdditionalCharges } = getModels(req);

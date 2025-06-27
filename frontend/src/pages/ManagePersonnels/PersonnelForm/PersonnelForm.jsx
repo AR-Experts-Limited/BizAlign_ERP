@@ -15,7 +15,7 @@ import { addDriver, updateDriver } from '../../../features/drivers/driverSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelMode, setPersonnelMode, setToastOpen }) => {
+const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, sites, personnelMode, setPersonnelMode, setToastOpen }) => {
     const dispatch = useDispatch();
 
     const [errors, setErrors] = useState({});
@@ -402,13 +402,12 @@ const PersonnelForm = ({ clearDriver, newDriver, setNewDriver, sites, personnelM
         <>
 
             <div className='flex-1 p-2'>
-                {console.log(requiredFields)}
                 {/* Tabs Navigation */}
                 <div className='flex justify-between overflow-x-auto snap-x snap-mandatory scrollbar-hide h-12 bg-primary-200/30 py-1 rounded-t-lg backdrop-blur-xl border border-primary-500'>
-                    {tabs.map((tab, index) => (
+                    {tabs.filter((tab) => !['Admin', 'super-admin'].includes(userDetails.role) ? tab.id !== 'bankDetails' : true).map((tab, index) => (
                         <div
                             key={tab.id}
-                            className={`flex justify-center m-1 w-full min-w-max dark:text-white snap-start ${index !== tabs.length - 1 ? 'border-r-2 border-primary-400' : ''}`}
+                            className={`flex justify-center m-1 w-full min-w-max dark:text-white snap-start ${index !== tabs.filter((tab) => !['Admin', 'super-admin'].includes(userDetails.role) ? tab.id !== 'bankDetails' : true).length - 1 ? 'border-r-2 border-primary-400' : ''}`}
                         >
                             <button
                                 className={`${selectedTab === tab.id

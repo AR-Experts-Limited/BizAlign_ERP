@@ -391,7 +391,9 @@ const WeeklyInvoice = () => {
                         <div className="grid grid-cols-2 md:grid-cols-[1fr_3fr_2fr_2fr_4fr] p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
                             <div className="flex flex-col gap-1">
                                 <label className="text-xs font-semibold">Invoices sent:</label>
-                                <p>{Object.values(groupedInvoices).reduce((acc, ginv) => { if (ginv.sentInvoice.length > 0) return acc + 1 }, 0) || 0}/{Object.values(groupedInvoices).length}</p>
+                                <p>{Object.values(groupedInvoices).reduce((acc, ginv) => {
+                                    return acc + (ginv.sentInvoice.length > 0 ? 1 : 0);
+                                }, 0)}/{Object.values(groupedInvoices).length}</p>
                             </div>
                             <div className="flex flex-col gap-1">
                                 <label className="text-xs font-semibold">Search Personnel Name:</label>
@@ -451,7 +453,7 @@ const WeeklyInvoice = () => {
                             </div>
                             <div className="flex gap-1 justify-evenly border-[1.5px] border-neutral-300 rounded-md p-2 justify-self-start self-end w-full overflow-auto">
                                 <button
-                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice || Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice || selectedInvoices.length > 0 ? selectedInvoices.some((invKey) => !groupedInvoices[invKey].allCompleted) : Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
                                     className="flex gap-1 bg-sky-400/50 items-center text-xs text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                     onClick={async () => {
                                         try {
@@ -481,7 +483,7 @@ const WeeklyInvoice = () => {
                                     Download {selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}
                                 </button>
                                 <button
-                                    disabled={changed || Object.values(groupedInvoices).length === 0 || Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || selectedInvoices.length > 0 ? selectedInvoices.some((invKey) => !groupedInvoices[invKey].allCompleted) : Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
                                     className="flex gap-1 items-center text-xs bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                     onClick={async () => {
                                         try {
@@ -622,12 +624,12 @@ const WeeklyInvoice = () => {
                                         {currentInvoice?.invoice.driverId.user_ID}
                                     </p>
                                 </div>
-                                <div>
+                                {/* <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">Vehicle Type</p>
                                     <p className="text-base font-medium text-gray-900 dark:text-white">
                                         {currentInvoice?.invoice.driverId.typeOfDriver}
                                     </p>
-                                </div>
+                                </div> */}
                                 {currentInvoice?.invoice.driverId.vatDetails?.vatNo && (
                                     <>
                                         <div>
@@ -644,12 +646,12 @@ const WeeklyInvoice = () => {
                                         </div>
                                     </>
                                 )}
-                                {currentInvoice?.invoice.driverId.companyVatDetails?.vatNo && (
+                                {currentInvoice?.invoice.driverId.companyVatDetails?.companyVatNo && (
                                     <>
                                         <div>
                                             <p className="text-sm text-gray-600 dark:text-gray-400">Company VAT Number</p>
                                             <p className="text-base font-medium text-gray-900 dark:text-white">
-                                                {currentInvoice.invoice.driverId.companyVatDetails.vatNo}
+                                                {currentInvoice.invoice.driverId.companyVatDetails.companyVatNo}
                                             </p>
                                         </div>
                                         <div>
@@ -920,7 +922,11 @@ const WeeklyInvoice = () => {
                                                         </th>
                                                     </>
                                                 )}
-                                            <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>
+
+                                            {currentInvoice?.invoice.invoices.some(
+                                                (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (
+                                                    <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>)}
+
                                             {currentInvoice?.invoice.invoices.some(
                                                 (invoice) => invoice.deductionDetail.length > 0) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Deductions</th>
@@ -997,9 +1003,10 @@ const WeeklyInvoice = () => {
                                                                     </td>
                                                                 </>
                                                             )}
-                                                        <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                            £{(invoice.incentiveDetailforMain?.rate || 0) + (invoice.incentiveDetailforAdditional?.rate || 0)}
-                                                        </td>
+                                                        {currentInvoice?.invoice.invoices.some(
+                                                            (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (<td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                £{(invoice.incentiveDetailforMain?.rate || 0) + (invoice.incentiveDetailforAdditional?.rate || 0)}
+                                                            </td>)}
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (invoice) => invoice.deductionDetail.length > 0) && (
                                                                 <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
@@ -1026,7 +1033,9 @@ const WeeklyInvoice = () => {
                                         <tr>
                                             <td
                                                 colSpan={
-                                                    7 +
+                                                    6 +
+                                                    (currentInvoice?.invoice.invoices.some(
+                                                        (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(
                                                         (invoice) => invoice.deductionDetail.length > 0) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(

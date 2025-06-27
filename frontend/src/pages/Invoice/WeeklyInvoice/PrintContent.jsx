@@ -28,16 +28,25 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                             {moment(invoice.serviceWeek, 'GGGG-[W]WW').startOf('week').add(17, 'days').format('YYYY-MM-DD')}
                         </p>
                     </div>
-                    <div>
-                        <h4 className="text-[10px] font-bold mt-1 mb-2.5 border-b border-[#4B0082] pb-2">Bill From</h4>
-                        <p className="text-[10px]"><span className="font-semibold">Name:</span> {driverDetails?.firstName + ' ' + driverDetails?.lastName}</p>
-                        {driverDetails?.address && <p className="text-[10px]"><span className="font-semibold">Address:</span> {driverDetails.address}</p>}
-                        {driverDetails?.postcode && <p className="text-[10px]"><span className="font-semibold">Postcode:</span> {driverDetails.postcode}</p>}
-                        {driverDetails?.transportId && <p className="text-[10px]"><span className="font-semibold">Transport ID:</span> {driverDetails.transportId}</p>}
-                        {driverDetails?.utrNo && <p className="text-[10px]"><span className="font-semibold">UTR Number:</span> {driverDetails.utrNo}</p>}
-                        {driverDetails?.companyUtrNo && <p className="text-[10px]"><span className="font-semibold">Company UTR Number:</span> {driverDetails.companyUtrNo}</p>}
-                        {driverDetails?.vatDetails?.vatNo && <p className="text-[10px]"><span className="font-semibold">VAT No.:</span> {driverDetails.vatDetails?.vatNo}</p>}
-                        {driverDetails?.companyVatDetails?.companyVatNo && <p className="text-[10px]"><span className="font-semibold">Company VAT No.:</span> {driverDetails.companyVatDetails?.companyVatNo}</p>}
+                    <div className='flex gap-3'>
+                        <div>
+                            <h4 className="text-[10px] font-bold mt-1 mb-2.5 border-b border-[#4B0082] pb-2">Bill From</h4>
+                            <p className="text-[10px]"><span className="font-semibold">Name:</span> {driverDetails?.firstName + ' ' + driverDetails?.lastName}</p>
+                            {driverDetails?.address && <p className="text-[10px]"><span className="font-semibold">Address:</span> {driverDetails.address}</p>}
+                            {driverDetails?.postcode && <p className="text-[10px]"><span className="font-semibold">Postcode:</span> {driverDetails.postcode}</p>}
+                            {driverDetails?.transportId && <p className="text-[10px]"><span className="font-semibold">Transport ID:</span> {driverDetails.transportId}</p>}
+                            {driverDetails?.utrNo && <p className="text-[10px]"><span className="font-semibold">UTR Number:</span> {driverDetails.utrNo}</p>}
+                            {driverDetails?.vatDetails?.vatNo && <p className="text-[10px]"><span className="font-semibold">VAT No.:</span> {driverDetails.vatDetails?.vatNo}</p>}
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] font-bold mt-1 mb-2.5 border-b border-[#4B0082] pb-2">Company details</h4>
+                            {driverDetails?.companyName && <p className="text-[10px]"><span className="font-semibold">Company Name:</span> {driverDetails.companyName}</p>}
+                            {driverDetails?.companyRegNo && <p className="text-[10px]"><span className="font-semibold">Company Reg No:</span> {driverDetails.companyRegNo}</p>}
+                            {driverDetails?.companyRegAddress && <p className="text-[10px]"><span className="font-semibold">Company Reg Address:</span> {driverDetails.companyRegAddress}</p>}
+                            {driverDetails?.companyUtrNo && <p className="text-[10px]"><span className="font-semibold">Company UTR Number:</span> {driverDetails.companyUtrNo}</p>}
+                            {driverDetails?.companyVatDetails?.companyVatNo && <p className="text-[10px]"><span className="font-semibold">Company VAT No.:</span> {driverDetails.companyVatDetails?.companyVatNo}</p>}
+
+                        </div>
                     </div>
                 </div>
 
@@ -82,7 +91,8 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                         <th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Additional Service Total</th>
                                     </>
                                 )}
-                                <th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Incentive Rate</th>
+                                {invoice.invoices.some(
+                                    (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (<th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Incentive Rate</th>)}
                                 {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
                                     <th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Total Deductions</th>
                                 )}
@@ -135,7 +145,10 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                                     </td>
                                                 </>
                                             )}
-                                            <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{((item.incentiveDetailforMain?.rate || 0) + (item.incentiveDetailforAdditional?.rate || 0)).toFixed(2) || '0.00'}</td>
+                                            {invoice.invoices.some(
+                                                (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (<td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{((item.incentiveDetailforMain?.rate || 0) + (item.incentiveDetailforAdditional?.rate || 0)).toFixed(2) || '0.00'}</td>
+                                                )}
+
                                             {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
                                                 <td className="text-[10px] font-medium text-[#7F1D1D] p-2 border border-[#E5E7EB]">{totalDeductions > 0 ? `-£${totalDeductions.toFixed(2)}` : '-'}</td>
                                             )}
@@ -153,7 +166,9 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                             <tr>
                                 <td
                                     colSpan={
-                                        7 +
+                                        6 +
+                                        (invoice.invoices.some(
+                                            (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) ? 1 : 0) +
                                         (invoice.invoices.some((inv) => inv.deductionDetail.length > 0) ? 1 : 0) +
                                         (invoice.invoices.some((inv) => inv.additionalServiceDetails?.service || inv.additionalServiceApproval === 'Requested') ? 2 : 0)
                                     }
