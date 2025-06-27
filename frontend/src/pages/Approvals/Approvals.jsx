@@ -31,7 +31,7 @@ const Approvals = () => {
                 await axios.put(`${API_BASE_URL}/api/drivers/${approval.reqData.driverId}`, updatedDriver);
                 await axios.put(`${API_BASE_URL}/api/approvals`, {
                     id: approval._id,
-                    userDetails: `${userDetails.firstName} ${userDetails.lastName}`,
+                    decisionTakenBy: `${userDetails.userName}`,
                     approvalStatus: decision
                 });
                 break;
@@ -40,7 +40,7 @@ const Approvals = () => {
                 await axios.put(`${API_BASE_URL}/api/auth/${approval.reqData.userID}`, updatedOSM);
                 await axios.put(`${API_BASE_URL}/api/approvals`, {
                     id: approval._id,
-                    userDetails: `${userDetails.firstName} ${userDetails.lastName}`,
+                    decisionTakenBy: `${userDetails.userName}`,
                     approvalStatus: decision
                 });
                 break;
@@ -69,7 +69,7 @@ const Approvals = () => {
 
                 await axios.put(`${API_BASE_URL}/api/approvals`, {
                     id: approval._id,
-                    userDetails: `${userDetails.firstName} ${userDetails.lastName}`,
+                    decisionTakenBy: `${userDetails.userName}`,
                     approvalStatus: decision
                 });
                 break;
@@ -77,7 +77,7 @@ const Approvals = () => {
 
         setApprovals(prev =>
             prev.map(ap => ap._id === approval._id
-                ? { ...ap, approvalStatus: decision, decisionTakenBy: `${userDetails.firstName} ${userDetails.lastName}` }
+                ? { ...ap, approvalStatus: decision, decisionTakenBy: `${userDetails.userName}` }
                 : ap
             )
         );

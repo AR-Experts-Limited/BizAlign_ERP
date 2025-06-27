@@ -44,7 +44,7 @@ router.put('/', async (req, res) => {
     const Approval = req.db.model('Approval', require('../models/Approvals').schema);
     try {
         const updateApproval = await Approval.findByIdAndUpdate(req.body.id,
-            { $set: { approvalStatus: req.body.approvalStatus, decisionTakenBy: req.body.currentUser } },
+            { $set: { approvalStatus: req.body.approvalStatus, decisionTakenBy: req.body.decisionTakenBy } },
             { new: true }
         )
         res.status(201).json({ message: "approval updated", updateApproval });

@@ -186,7 +186,7 @@ const DailyInvoice = () => {
                             {/* Driver Information */}
                             <div className="mb-6">
                                 <InputWrapper title={'Driver Information'}>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-[2fr_2fr_1fr_1fr] gap-4">
                                         <div>
                                             <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
                                             <p className="text-base font-medium text-gray-900 dark:text-white">{currentInvoice.driverName}</p>
