@@ -272,13 +272,13 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
     };
 
     return (
-        <div className='md:col-span-3 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg flex-1'>
-            <div className='relative overflow-auto max-h-[42rem]'>
+        <div className='flex-[3] w-full h-full bg-white dark:bg-dark border border-neutral-300 dark:border-dark-3 rounded-lg flex-1 overflow-auto'>
+            <div className='flex flex-col relative flex-1 h-full overflow-auto pb-3'>
                 <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
                     <h3>Add new rate card</h3>
                 </div>
 
-                <div className='p-4 pb-8 flex flex-col gap-3'>
+                <div className='p-4 flex-1 flex flex-col gap-3 '>
                     <div>
                         <InputGroup
                             disabled={mode === 'edit'}
@@ -596,7 +596,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

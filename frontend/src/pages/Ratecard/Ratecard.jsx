@@ -101,29 +101,31 @@ const Ratecard = () => {
                     {toastOpen?.content}
                 </div>
             </div>
-            <h2 className='text-xl mb-3 font-bold dark:text-white'>Rate Card</h2>
+            <div className='flex flex-col w-full h-full dark:bg-dark-3'>
+                <div className='text-xl font-bold dark:text-white'>Rate Card</div>
+                <div className='flex-1 flex overflow-auto gap-3'>
 
-            <div className='flex-1 grid grid-cols-1 md:grid-cols-10 gap-3'>
-                <RateCardForm
-                    ratecards={ratecards}
-                    services={services}
-                    rateCard={rateCard}
-                    mode={mode}
-                    setMode={setMode}
-                    setRateCard={setRateCard}
-                    clearRateCard={clearRateCard}
-                    onAddRatecard={handleAddRateCard}
-                    onUpdateRatecard={handleUpdateRateCard}
-                />
+                    <RateCardForm
+                        ratecards={ratecards}
+                        services={services}
+                        rateCard={rateCard}
+                        mode={mode}
+                        setMode={setMode}
+                        setRateCard={setRateCard}
+                        clearRateCard={clearRateCard}
+                        onAddRatecard={handleAddRateCard}
+                        onUpdateRatecard={handleUpdateRateCard}
+                    />
 
-                <RateCardTable
-                    toastOpen={toastOpen}
-                    ratecards={ratecards}
-                    mode={mode}
-                    onDelete={handleDeleteRatecard}
-                    onUpdate={onUpdateSelect}
-                    onUpdateActive={handleUpdateActiveStatus}
-                />
+                    <RateCardTable
+                        toastOpen={toastOpen}
+                        ratecards={ratecards}
+                        mode={mode}
+                        onDelete={handleDeleteRatecard}
+                        onUpdate={onUpdateSelect}
+                        onUpdateActive={handleUpdateActiveStatus}
+                    />
+                </div>
             </div>
             <Modal isOpen={deleteRatecards.length > 0}>
                 <div className='max-w-120 max-h-75 p-6'>
