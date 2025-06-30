@@ -8,20 +8,20 @@ import moment from 'moment';
 
 const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus }) => {
     const dispatch = useDispatch();
-    const [isFilterOpen, setIsFilterOpen] = useState(true)
     const { driverStatus } = useSelector((state) => state.drivers);
     const driversBySite = useSelector((state) => state.drivers.bySite);
 
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
 
-    const { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList } = state
-    const { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList } = setters
+    const { isFilterOpen, rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList } = state
+    const { setIsFilterOpen, setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList } = setters
 
     useEffect(() => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
         if (standbyDriverStatus === 'idle') dispatch(fetchStandbyDrivers());
 
     }, [driverStatus, standbyDriverStatus, dispatch]);
+
 
     useEffect(() => {
         if (Object.keys(driversBySite).length > 0 && selectedSite !== '') {
@@ -68,7 +68,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                     <h3>{title}</h3>
                     <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded-lg p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
                 </div >
-                <div className='flex-1 flex flex-col p-2 overflow-auto'>
+                <div className='flex-1 flex flex-col h-full p-2'>
                     <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
                         <TableFilters
                             title={title}
@@ -81,8 +81,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                             updateInvoiceApprovalStatus={updateInvoiceApprovalStatus}
                         />
                     </div>
-                    <div className="relative rounded-t-xl flex-1  overflow-auto">
-                        <table className='calendar-table text-xs md:text-base w-full  border border-neutral-200 dark:border-dark-4'>
+                    {/* <table className='calendar-table text-xs md:text-base w-full  border border-neutral-200 dark:border-dark-4'>
                             <thead>
                                 <tr className='text-white'>
                                     <th className='sticky top-0 left-0 z-20 bg-primary-800 border-r-[1.5px] border-primary-500 font-medium max-sm:!max-w-20 max-sm:!whitespace-normal'>
@@ -119,8 +118,9 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                         </tr>)
                                 })}
                             </tbody>
-                        </table>
-                    </div>
+                        </table> */}
+                    {tableData()}
+
                 </div >
             </div>
         </div >

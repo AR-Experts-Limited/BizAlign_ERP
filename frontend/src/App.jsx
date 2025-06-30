@@ -32,6 +32,7 @@ import WeeklyInvoice from './pages/Invoice/WeeklyInvoice/WeeklyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
 import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
+import GridComponent from './pages/WorkingHours/WorkingHours';
 
 
 function App() {
@@ -39,6 +40,12 @@ function App() {
   const location = useLocation();
   const hideLayout = location.pathname === '/login' || location.pathname === '/';
   const dispatch = useDispatch();
+  const driversLoading = useSelector((state) => state.drivers.driverStatus);
+  const sitesLoading = useSelector((state) => state.sites.siteStatus);
+  const ratecardsLoading = useSelector((state) => state.ratecards.ratecardStatus);
+
+  const isLoading = driversLoading === 'loading' || sitesLoading === 'loading' || ratecardsLoading === 'loading';
+
 
 
   useEffect(() => {
@@ -62,6 +69,7 @@ function App() {
     { path: "/deductions", name: "Deductions", component: Deductions },
     { path: "/installments", name: "Installments", component: Instalments },
     { path: "/incentives", name: "Incentives", component: Incentives },
+    { path: "/working-hours", name: "Working Hours", component: GridComponent },
     { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
     { path: "/add-ons", name: "Additional Charges", component: AdditionalCharges },
@@ -70,6 +78,8 @@ function App() {
     { path: "/settings", name: "Application Settings", component: ApplicationSettings },
 
   ];
+
+
 
   return (
     <div className="app fixed bg-stone-100 dark:bg-dark-4 w-screen h-screen flex flex-col">
@@ -83,22 +93,25 @@ function App() {
         )}
 
         <div className={`flex-1 overflow-auto ${sidebarIsOpen && 'max-sm:blur-xs max-sm:pointer-events-none '}`} >
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            {routes.map(({ path, name, component: Component }) => (
-              <Route
-                key={path}
-                path={path}
-                element={
-                  <ProtectedRoute routeName={name}>
-                    <Component />
-                  </ProtectedRoute>
-                }
-              />
-            ))}
-            {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
-          </Routes>
+          {(isLoading)
+            ? <div className='h-screen w-screen flex justify-center items-center '><img className='w-50 h-30' src="/bizalign_loading_loop.gif" /></div> // You can show a spinner here
+
+            : (<Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              {routes.map(({ path, name, component: Component }) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <ProtectedRoute routeName={name}>
+                      <Component />
+                    </ProtectedRoute>
+                  }
+                />
+              ))}
+              {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
+            </Routes>)}
         </div>
       </div>
     </div >

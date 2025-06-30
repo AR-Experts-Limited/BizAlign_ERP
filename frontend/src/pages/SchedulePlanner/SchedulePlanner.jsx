@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { NavLink } from "react-router-dom";
 import TableStructure from '../../components/TableStructure/TableStructure';
@@ -18,6 +18,7 @@ import InputWrapper from '../../components/InputGroup/InputWrapper';
 import { IoMoonOutline, IoMoon } from "react-icons/io5";
 import { RiZzzFill } from "react-icons/ri";
 import { cn } from '../../lib/utils'
+import { FixedSizeGrid } from 'react-window';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -94,9 +95,11 @@ const SchedulePlanner = () => {
     const [standbydriversList, setStandbydriversList] = useState([])
     const [searchDriver, setSearchDriver] = useState('')
     const [days, setDays] = useState([])
+    const [isFilterOpen, setIsFilterOpen] = useState(true)
+    const [loading, setLoading] = useState(false)
 
-    const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList }
-    const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList }
+    const state = { isFilterOpen, rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList }
+    const setters = { setIsFilterOpen, setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList }
 
     const [schedules, setSchedules] = useState([])
     const [scheduleMap, setScheduleMap] = useState({});
@@ -140,15 +143,26 @@ const SchedulePlanner = () => {
             if (driversList.length > 0 && rangeOptions) {
                 const rangeOptionsVal = Object.values(rangeOptions)
                 const fetchSchedules = async () => {
-                    const response = await axios.get(`${API_BASE_URL}/api/schedule/filter1`, {
-                        params: {
-                            driverId: driversList.map((driver) => driver._id),
-                            startDay: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
-                            endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
-                        },
-                    });
-                    setSchedules(response.data)
-                }
+                    let loadingTimeout = setTimeout(() => setLoading(true), 250);
+
+                    try {
+                        const response = await axios.get(`${API_BASE_URL}/api/schedule/filter1`, {
+                            params: {
+                                driverId: driversList.map((driver) => driver._id),
+                                startDay: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
+                                endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
+                            },
+                        });
+
+                        clearTimeout(loadingTimeout); // cancel the delayed loader
+                        setSchedules(response.data);
+                    } catch (error) {
+                        clearTimeout(loadingTimeout);
+                        console.error(error);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
 
                 if (!cacheRangeOption) {
                     fetchSchedules()
@@ -240,91 +254,295 @@ const SchedulePlanner = () => {
         }
     }
 
-    const tableData = (driver, disabledDriver, standbyDriver) => {
+    const getBorderColor = (streak) => {
+        if (streak < 3) return 'border-l-green-500/60';
+        if (streak < 5) return 'border-l-yellow-500/60';
+        return 'border-l-red-400';
+    };
 
-        const getBorderColor = (streak) => {
-            if (streak < 3) return 'border-l-green-500/60';
-            if (streak < 5) return 'border-l-yellow-500/60';
-            return 'border-l-red-400';
-        };
+    const renderDeleteButton = (onClick) => (
+        <div
+            onClick={onClick}
+            className="absolute z-1 right-0 top-0 h-full flex items-center justify-center bg-red-500 text-white p-2 pl-2.5 rounded-r-md inset-shadow-md hover:bg-red-400 transition-all duration-300 opacity-0 group-hover:opacity-100 active:opacity-100 focus:opacity-100 cursor-pointer"
+        >
+            <FaTrashAlt size={14} />
+        </div>
+    );
 
-        const renderDeleteButton = (onClick) => (
-            <div
-                onClick={onClick}
-                className="absolute z-1 right-0 top-0 h-full flex items-center justify-center bg-red-500 text-white p-2 pl-2.5 rounded-r-md inset-shadow-md hover:bg-red-400 transition-all duration-300 opacity-0 group-hover:opacity-100 active:opacity-100 focus:opacity-100 cursor-pointer"
-            >
-                <FaTrashAlt size={14} />
-            </div>
-        );
-
-        const renderScheduleBox = ({ schedule, scheduleBelongtoSite, streak, showSite = true }) => {
-            const borderColor = getBorderColor(streak);
-            return (
-                <div className="relative flex justify-center h-full w-full group">
-                    <div className="relative max-w-40">
-                        <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[82%]' : ''}`}>
-                            <div className="overflow-auto max-h-[6rem]">
-                                {schedule.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
-                            </div>
-                            {scheduleBelongtoSite && <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
-                                <RiCheckDoubleLine className={schedule.acknowledged ? 'text-green-400' : ''} size={18} />
-                            </div>}
-                        </div>
-                        {renderDeleteButton((e) => {
-                            e.stopPropagation();
-                            handleDeleteSchedule(schedule._id);
-                        })}
-                    </div>
-                </div>
-            );
-        };
-
-        const renderStandbyCell = (driver, dateObj) => (
+    const renderScheduleBox = ({ schedule, scheduleBelongtoSite, streak, showSite = true }) => {
+        const borderColor = getBorderColor(streak);
+        return (
             <div className="relative flex justify-center h-full w-full group">
-                <div className="relative max-w-40 w-full">
-                    <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
-                        <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">On Stand-By</div>
+                <div className="relative">
+                    <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[84%]' : ''}`}>
+                        <div className="overflow-auto max-h-[6rem]">
+                            {schedule.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
+                        </div>
+                        {scheduleBelongtoSite && <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
+                            <RiCheckDoubleLine className={schedule.acknowledged ? 'text-green-400' : ''} size={18} />
+                        </div>}
                     </div>
                     {renderDeleteButton((e) => {
                         e.stopPropagation();
-                        handleStandbyToggle(driver, dateObj);
+                        handleDeleteSchedule(schedule._id);
                     })}
                 </div>
             </div>
         );
+    };
 
-        const renderPlaceholder = () => (
-            <div className="w-full h-full flex items-center justify-center text-stone-400">
-                <div className="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]" />
+    const renderStandbyCell = (driver, dateObj) => (
+        <div className="relative flex justify-center h-full w-full group">
+            <div className="relative max-w-40 w-full">
+                <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
+                    <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">On Stand-By</div>
+                </div>
+                {renderDeleteButton((e) => {
+                    e.stopPropagation();
+                    handleStandbyToggle(driver, dateObj);
+                })}
             </div>
-        );
+        </div>
+    );
 
-        const renderClickableCell = (driver, day, standbyDriver) => (
-            <div
-                onClick={() =>
-                    setAddScheduleData({
-                        driver,
-                        date: day.date,
-                        week: day.week,
-                        error: false,
-                        ...(standbyDriver && { standbyDriver })
-                    })
-                }
-                className="cursor-pointer flex h-full w-full justify-center items-center"
-            >
-                <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100">
-                    <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
-                        {getDriverTypeForDate(driver, day.date)}
-                    </div>
+    const renderPlaceholder = () => (
+        <div className="w-full h-full flex items-center justify-center text-stone-400">
+            <div className="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]" />
+        </div>
+    );
+
+    const renderClickableCell = (driver, day, standbyDriver) => (
+        <div
+            onClick={() =>
+                setAddScheduleData({
+                    driver,
+                    date: day.date,
+                    week: day.week,
+                    error: false,
+                    ...(standbyDriver && { standbyDriver })
+                })
+            }
+            className="cursor-pointer flex h-full w-full justify-center items-center"
+        >
+            <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100">
+                <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
+                    {getDriverTypeForDate(driver, day.date)}
                 </div>
             </div>
-        );
-        return days.map((day) => {
+        </div>
+    );
+
+    // const tableData = (driver, disabledDriver, standbyDriver) => {
+
+    //     const getBorderColor = (streak) => {
+    //         if (streak < 3) return 'border-l-green-500/60';
+    //         if (streak < 5) return 'border-l-yellow-500/60';
+    //         return 'border-l-red-400';
+    //     };
+
+    //     const renderDeleteButton = (onClick) => (
+    //         <div
+    //             onClick={onClick}
+    //             className="absolute z-1 right-0 top-0 h-full flex items-center justify-center bg-red-500 text-white p-2 pl-2.5 rounded-r-md inset-shadow-md hover:bg-red-400 transition-all duration-300 opacity-0 group-hover:opacity-100 active:opacity-100 focus:opacity-100 cursor-pointer"
+    //         >
+    //             <FaTrashAlt size={14} />
+    //         </div>
+    //     );
+
+    //     const renderScheduleBox = ({ schedule, scheduleBelongtoSite, streak, showSite = true }) => {
+    //         const borderColor = getBorderColor(streak);
+    //         return (
+    //             <div className="relative flex justify-center h-full w-full group">
+    //                 <div className="relative">
+    //                     <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[82%]' : ''}`}>
+    //                         <div className="overflow-auto max-h-[6rem]">
+    //                             {schedule.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
+    //                         </div>
+    //                         {scheduleBelongtoSite && <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-1">
+    //                             <RiCheckDoubleLine className={schedule.acknowledged ? 'text-green-400' : ''} size={18} />
+    //                         </div>}
+    //                     </div>
+    //                     {renderDeleteButton((e) => {
+    //                         e.stopPropagation();
+    //                         handleDeleteSchedule(schedule._id);
+    //                     })}
+    //                 </div>
+    //             </div>
+    //         );
+    //     };
+
+    //     const renderStandbyCell = (driver, dateObj) => (
+    //         <div className="relative flex justify-center h-full w-full group">
+    //             <div className="relative max-w-40 w-full">
+    //                 <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
+    //                     <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">On Stand-By</div>
+    //                 </div>
+    //                 {renderDeleteButton((e) => {
+    //                     e.stopPropagation();
+    //                     handleStandbyToggle(driver, dateObj);
+    //                 })}
+    //             </div>
+    //         </div>
+    //     );
+
+    //     const renderPlaceholder = () => (
+    //         <div className="w-full h-full flex items-center justify-center text-stone-400">
+    //             <div className="w-full h-full rounded-md border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]" />
+    //         </div>
+    //     );
+
+    //     const renderClickableCell = (driver, day, standbyDriver) => (
+    //         <div
+    //             onClick={() =>
+    //                 setAddScheduleData({
+    //                     driver,
+    //                     date: day.date,
+    //                     week: day.week,
+    //                     error: false,
+    //                     ...(standbyDriver && { standbyDriver })
+    //                 })
+    //             }
+    //             className="cursor-pointer flex h-full w-full justify-center items-center"
+    //         >
+    //             <div className="group flex justify-center items-center h-full w-40 rounded-md max-w-40 hover:bg-stone-100">
+    //                 <div className='group-hover:block hidden text-xs bg-gray-50 px-2 py-[0.1rem] border border-neutral-200 rounded'>
+    //                     {getDriverTypeForDate(driver, day.date)}
+    //                 </div>
+    //             </div>
+    //         </div>
+    //     );
+    //     return days.map((day) => {
+    //         const dateObj = new Date(day.date);
+    //         const dateKey = dateObj.toLocaleDateString('en-UK');
+    //         const key = `${dateKey}_${driver._id}`;
+
+    //         const schedule = scheduleMap[key];
+    //         const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
+
+    //         const streak = streaks[driver._id]?.[dateKey] || 0;
+    //         const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
+    //         const isToday = dateObj.toDateString() === new Date().toDateString();
+    //         const cellClass = isToday ? 'bg-amber-100/30 relative' : 'relative';
+
+    //         const scheduleBelongtoSite = schedule?.site === selectedSite;
+
+    //         let content = null;
+
+
+    //         if (standbyDriver) {
+    //             if (disabledDriver) {
+    //                 content = renderPlaceholder();
+    //             }
+    //             else if (standbySchedule && !schedule) {
+    //                 if (continuousSchedule < 3) {
+    //                     const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
+    //                     content = (
+    //                         <div className="flex justify-center items-center w-full h-full rounded-lg border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+    //                             <div className="text-sm text-center text-white bg-stone-300 px-1 py-0.5 rounded-md">
+    //                                 {label}
+    //                             </div>
+    //                         </div>
+    //                     );
+    //                 }
+    //                 else {
+    //                     content = <div className='flex  border-[1.5px] border-neutral-200 h-full w-full rounded-md max-w-40'>{renderClickableCell(driver, day, standbyDriver)}</div>
+    //                 }
+    //             } else if (standbySchedule && schedule) {
+    //                 content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+    //             }
+    //         } else if (Object.keys(scheduleMap).length > 0 && standbySchedule && !schedule) {
+    //             content = renderStandbyCell(driver, dateObj);
+    //         } else if (standbySchedule && schedule) {
+    //             content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+    //         } else if (schedule?.service === 'Voluntary-Day-off') {
+    //             content = (
+    //                 <div className="relative flex justify-center h-full w-full group">
+    //                     <div className="relative max-w-40">
+    //                         <div className="relative z-6 w-full h-full flex items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 px-4 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+    //                             <div className="overflow-auto max-h-[4rem]">{schedule.service}</div>
+    //                         </div>
+    //                         {renderDeleteButton((e) => {
+    //                             e.stopPropagation();
+    //                             handleDeleteSchedule(schedule._id);
+    //                         })}
+    //                     </div>
+    //                 </div>
+    //             );
+    //         } else if (schedule) {
+    //             content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+    //         } else if (disabledDriver) {
+    //             content = renderPlaceholder();
+    //         } else if (continuousSchedule < 3) {
+    //             const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
+    //             content = (
+    //                 <div className="flex justify-center items-center w-full h-full rounded-lg border-dashed border-gray-200 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+    //                     <div className="text-sm text-center text-white bg-stone-300 px-1 py-0.5 rounded-md">
+    //                         {label}
+    //                     </div>
+    //                 </div>
+    //             );
+    //         } else {
+    //             content = renderClickableCell(driver, day);
+    //         }
+
+    //         return (
+    //             <div>
+    //                 {content}
+    //             </div>
+    //         );
+    //     });
+    // };
+
+    const GridComponent = () => {
+        const columnCount = days.length + 1;
+        const rowCount = driversList.length;
+        const columnWidth = rangeType === 'daily' ? 679 : 200;
+        const rowHeight = 119;
+
+        const [scrollLeft, setScrollLeft] = useState(0);
+        const [scrollTop, setScrollTop] = useState(0);
+
+        const onScroll = ({ scrollLeft, scrollTop }) => {
+            setScrollLeft(scrollLeft);
+            setScrollTop(scrollTop);
+        };
+
+        const containerRef = useRef(null);
+        const [gridWidth, setGridWidth] = useState(0);
+        const [gridHeight, setGridHeight] = useState(0);
+
+        useEffect(() => {
+            const updateDimensions = () => {
+                if (containerRef.current) {
+                    setGridWidth(containerRef.current.offsetWidth);
+                    setGridHeight(containerRef.current.offsetHeight); // Track height too
+                }
+            };
+
+            updateDimensions(); // Set initially
+
+            window.addEventListener('resize', updateDimensions);
+            return () => window.removeEventListener('resize', updateDimensions);
+        }, []);
+
+        const Cell = ({ columnIndex, rowIndex, style }) => {
+            if (columnIndex === 0) {
+                return (
+                    <div>
+                    </div>
+                )
+            }
+            const day = days[columnIndex - 1]
+            const driver = driversList[rowIndex]
             const dateObj = new Date(day.date);
             const dateKey = dateObj.toLocaleDateString('en-UK');
             const key = `${dateKey}_${driver._id}`;
+            const disableDriver = driver.activeStatus != 'Active' ? driver.activeStatus : null
+            const standbydriver = standbydriversList.some((sdriver) => sdriver._id == driver._id)
 
             const schedule = scheduleMap[key];
+
+
             const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
 
             const streak = streaks[driver._id]?.[dateKey] || 0;
@@ -335,10 +553,13 @@ const SchedulePlanner = () => {
             const scheduleBelongtoSite = schedule?.site === selectedSite;
 
             let content = null;
+            if (loading) {
+                content = <div className="w-full h-full bg-gray-200 rounded-md animate-pulse"></div>
 
+            }
 
-            if (standbyDriver) {
-                if (disabledDriver) {
+            else if (standbydriver) {
+                if (disableDriver) {
                     content = renderPlaceholder();
                 }
                 else if (standbySchedule && !schedule) {
@@ -353,7 +574,7 @@ const SchedulePlanner = () => {
                         );
                     }
                     else {
-                        content = <div className='flex  border-[1.5px] border-neutral-200 h-full w-full rounded-md max-w-40'>{renderClickableCell(driver, day, standbyDriver)}</div>
+                        content = <div className='flex  border-[1.5px] border-neutral-200 h-full w-full rounded-md max-w-40'>{renderClickableCell(driver, day, standbydriver)}</div>
                     }
                 } else if (standbySchedule && schedule) {
                     content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
@@ -378,7 +599,7 @@ const SchedulePlanner = () => {
                 );
             } else if (schedule) {
                 content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
-            } else if (disabledDriver) {
+            } else if (disableDriver) {
                 content = renderPlaceholder();
             } else if (continuousSchedule < 3) {
                 const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
@@ -392,20 +613,113 @@ const SchedulePlanner = () => {
             } else {
                 content = renderClickableCell(driver, day);
             }
+            return (<div
+                className="flex items-center justify-center border-r border-b border-gray-200 bg-white p-4"
+                style={{ ...style, cellClass }}
+            >
+                {content}
+            </div>)
+        };
 
-            return (
-                <td key={day.date} className={cellClass}>
-                    {content}
-                </td>
-            );
-        });
+        const HeaderRow = () => (
+            <div
+                className="sticky top-0 z-20 bg-gray-100 flex"
+                style={{ marginLeft: columnWidth - scrollLeft }}
+            >
+                {days.map((day, index) => {
+                    const columnIndex = index;
+                    return (
+                        <div
+                            key={columnIndex}
+                            className="flex flex-col items-center justify-center border-r border-primary-500 bg-primary-800 text-white font-normal text-sm p-8"
+                            style={{ width: columnWidth, height: '3rem', flexShrink: 0 }}
+                        >
+                            {day.date}
+                            {
+                                rangeType === 'biweekly' && <div className='font-medium text-gray-600 w-fit px-1 py-0.5 text-[0.55rem] bg-stone-100 rounded-sm'>
+                                    {day.week}
+                                </div>
+                            }
+                        </div>
+                    );
+                })}
+            </div>
+        );
+
+        const FirstColumn = () => (
+            <div
+                className="sticky left-0 z-10 "
+                style={{ marginTop: rowHeight - 55 - scrollTop }}
+            >
+                {driversList.map((driver, index) => {
+                    const rowIndex = index + 1;
+                    const disableDriver = driver.activeStatus != 'Active' ? driver.activeStatus : null
+                    const standbydriver = standbydriversList.some((sdriver) => sdriver._id == driver._id)
+                    return (
+                        <div
+                            key={rowIndex}
+                            className="flex flex-col items-left bg-white justify-center gap-1 border-b border-r border-neutral-200 text-sm w-full p-4 "
+                            style={{ width: columnWidth, height: rowHeight }}
+                        >
+                            <div className='w-full'><p >{driver.firstName + ' ' + driver.lastName}</p></div>
+                            {disableDriver && <div className='text-xs text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm w-fit'>{disableDriver}</div>}
+                            {standbydriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md p-1 text-xs w-fit'>Stand by driver from {driver.siteSelection}</div>}
+                        </div>
+                    );
+                })
+                }
+            </div >
+        );
+
+        const TopLeftCell = () => (
+            <div
+                className="sticky top-0 left-0 z-30  flex items-center justify-center bg-primary-800 border-r border-primary-500  text-white font-bold text-sm "
+                style={{ width: columnWidth, height: '4rem' }}
+            >
+                Personnels List
+            </div>
+        );
+
+        return (
+            <div ref={containerRef}
+                className="relative flex-1 w-full h-full border border-neutral-200 rounded-md overflow-hidden">
+                {/* Top-Left Cell */}
+                <TopLeftCell />
+
+                {/* Header Row */}
+                <div className="absolute top-0 left-0">
+                    <HeaderRow />
+                </div>
+
+                {/* First Column */}
+                <div className="absolute top-0 " style={{ maxHeight: gridHeight + (isFilterOpen ? 0 : 85), overflow: 'hidden' }}>
+                    <FirstColumn />
+
+                </div>
+
+                {/* Grid */}
+                <FixedSizeGrid
+                    columnCount={columnCount}
+                    columnWidth={columnWidth}
+                    height={gridHeight - (isFilterOpen ? 65 : -25)}
+                    rowCount={rowCount}
+                    rowHeight={rowHeight}
+                    width={gridWidth}
+                    onScroll={onScroll}
+                    className="z-0"
+                >
+                    {Cell}
+                </FixedSizeGrid>
+
+
+            </div >
+        );
     };
-
 
 
     return (
         <>
-            < TableStructure title={'Schedule Planner'} state={state} setters={setters} tableData={tableData} />
+            < TableStructure title={'Schedule Planner'} state={state} setters={setters} tableData={GridComponent} />
             <Modal isOpen={addScheduleData} >
                 <div className='px-6 py-3 border-b border-neutral-300'><h1>Add Schedule</h1></div>
                 <div className='p-6 md:w-[30rem] '>
