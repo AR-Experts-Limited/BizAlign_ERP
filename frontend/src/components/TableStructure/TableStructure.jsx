@@ -4,17 +4,19 @@ import TableFilters from '../TableFilters/TableFilters';
 import { fetchDrivers, } from '../../features/drivers/driverSlice';
 import { fetchStandbyDrivers } from '../../features/standbydrivers/standbydriverSlice';
 import moment from 'moment';
-
+import { MultiGrid, AutoSizer } from "react-virtualized";
+import "react-virtualized/styles.css";
 
 const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus }) => {
     const dispatch = useDispatch();
     const { driverStatus } = useSelector((state) => state.drivers);
     const driversBySite = useSelector((state) => state.drivers.bySite);
+    const [isFilterOpen, setIsFilterOpen] = useState(true)
 
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
 
-    const { isFilterOpen, rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList } = state
-    const { setIsFilterOpen, setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList } = setters
+    const { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList } = state
+    const { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList } = setters
 
     useEffect(() => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
@@ -59,6 +61,104 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
             setStandbydriversList(standbydriversList);
         }
     }, [driversBySite, selectedSite, searchDriver, standbydrivers, days]);
+
+    const GridComponent = () => {
+
+        const rowCount = driversList.length + 1;
+        const columnCount = days?.length + 1;
+        const topLeftRowHeight = 50
+        const defaultRowHeight = 120;
+        // const columnWidth = rangeType === 'daily' ? 675 : 200;
+
+
+        // Provide variable rowHeight as function
+        const getRowHeight = ({ index }) => {
+            if (index === 0) {
+                return topLeftRowHeight;
+            }
+            return defaultRowHeight;
+        };
+
+        const cellRenderer = ({ columnIndex, rowIndex, key, style }) => {
+            const isHeader = rowIndex === 0;
+            const isFirstCol = columnIndex === 0;
+            const isTopLeft = isHeader && isFirstCol;
+            const driver = driversList[rowIndex - 1];
+            const day = days[columnIndex - 1];
+            const disabledDriver = driver?.activeStatus != 'Active' ? driver?.activeStatus : null
+            const standbyDriver = standbydriversList.some((sdriver) => sdriver._id == driver?._id)
+            const isToday = new Date(day?.date).toDateString() === new Date().toDateString();
+
+
+
+            let classNames = `flex items-center justify-center border-[0.5px] border-gray-300 text-sm p-4 h-full `;
+
+            if (isTopLeft) {
+                classNames += " bg-primary-800 text-white  font-bold";
+            } else if (isHeader) {
+                classNames += " bg-primary-800 text-white font-light ";
+            } else if (isFirstCol) {
+                classNames += ` font-medium p-4 `;
+            } else {
+                classNames += ` bg-white ${isToday ? '!bg-amber-100/20 relative' : 'relative'}`;
+            }
+
+
+
+            return (
+                <div key={key} className={classNames} style={style}>
+                    {isTopLeft
+                        ? "Personnels List"
+                        : isHeader
+                            ? `${day?.date}`
+                            : isFirstCol
+                                ? <div className='flex flex-col gap-1 h-full w-full'>
+                                    <p>{driver.firstName + ' ' + driver.lastName}</p>
+                                    <div className='flex flex-col justify-left gap-1'>
+                                        {disabledDriver && <div className='text-xs  text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm w-fit'>{disabledDriver}</div>}
+                                        {standbyDriver && <div className='text-left bg-amber-200 text-amber-700 rounded-md p-1 text-xs w-fit'>Stand by driver from {driver.siteSelection}</div>}
+                                    </div>
+                                </div>
+                                : tableData(driver, day, disabledDriver, standbyDriver)}
+                </div>
+            );
+        };
+
+        return (
+            <div className="rounded-md flex-1 h-full overflow-hidden w-full">
+                <AutoSizer>
+                    {({ width, height }) => {
+                        const columnWidth = ({ index }) => {
+                            if (rangeType === 'daily') {
+                                return Math.floor(width / 2);
+                            } else {
+                                return 200;
+                            }
+                        };
+                        return (
+                            <MultiGrid
+                                key={`${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}`}
+                                fixedRowCount={1}
+                                fixedColumnCount={1}
+                                rowCount={rowCount}
+                                columnCount={columnCount}
+                                rowHeight={getRowHeight}
+                                columnWidth={columnWidth}
+                                height={height}
+                                width={width}
+                                cellRenderer={cellRenderer}
+                                classNameTopLeftGrid="z-30"
+                                classNameTopRightGrid="z-25"
+                                classNameBottomLeftGrid="z-20"
+                                classNameBottomRightGrid="z-15"
+                            />
+                        )
+                    }
+                    }
+                </AutoSizer>
+            </div>
+        );
+    };
 
     return (
         <div className='w-full h-full flex flex-col items-center justify-center p-1.5 md:p-3 overflow-hidden dark:text-white'>
@@ -119,7 +219,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                 })}
                             </tbody>
                         </table> */}
-                    {tableData()}
+                    {GridComponent()}
 
                 </div >
             </div>

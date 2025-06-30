@@ -94,7 +94,7 @@ function App() {
 
         <div className={`flex-1 overflow-auto ${sidebarIsOpen && 'max-sm:blur-xs max-sm:pointer-events-none '}`} >
           {(isLoading)
-            ? <div className='h-screen w-screen flex justify-center items-center '><img className='w-50 h-30' src="/bizalign_loading_loop.gif" /></div> // You can show a spinner here
+            ? <div className='h-full w-full flex justify-center items-center '><img className='w-50 h-30' src="/bizalign_loading_loop.gif" /></div> // You can show a spinner here
 
             : (<Routes>
               <Route path="/" element={<LandingPage />} />

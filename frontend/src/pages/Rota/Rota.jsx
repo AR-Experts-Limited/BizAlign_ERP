@@ -20,6 +20,8 @@ import { fetchServices } from '../../features/services/serviceSlice';
 import { fetchStandbyDrivers } from '../../features/standbydrivers/standbydriverSlice';
 import { getIncentiveDetails, getDeductionDetails, getInstallmentDetails } from './supportFunctions';
 import TotalBreakdown from './TotalBreakdown';
+import { MultiGrid, AutoSizer } from "react-virtualized";
+import "react-virtualized/styles.css";
 
 // Configure moment locale
 moment.updateLocale('en', {
@@ -141,6 +143,8 @@ const Rota = () => {
     const [rotaDetail, setRotaDetail] = useState(null);
     const [errors, setErrors] = useState({});
     const [openTotalBreakdown, setOpenTotalBreakdown] = useState(false);
+    const [loading, setLoading] = useState(false)
+
 
     // Consolidated state objects
     const state = {
@@ -211,14 +215,26 @@ const Rota = () => {
     useEffect(() => {
         const fetchSchedules = async () => {
             const rangeOptionsVal = Object.values(rangeOptions);
-            const response = await axios.get(`${API_BASE_URL}/api/schedule/combined-invoice`, {
-                params: {
-                    driverId: driversList.map((driver) => driver._id),
-                    startDay: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
-                    endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
-                },
-            });
-            setSchedules(response.data);
+            let loadingTimeout = setTimeout(() => setLoading(true), 350);
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/schedule/combined-invoice`, {
+                    params: {
+                        driverId: driversList.map((driver) => driver._id),
+                        startDay: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
+                        endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
+                    },
+                });
+
+
+                clearTimeout(loadingTimeout); // cancel the delayed loader
+                setSchedules(response.data);
+            } catch (error) {
+                clearTimeout(loadingTimeout);
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
         };
 
         if (driversList.length > 0 && rangeOptions) {
@@ -560,130 +576,132 @@ const Rota = () => {
     /**
      * Generate table data for each driver
      */
-    const tableData = (driver, disabledDriver, standbyDriver) => {
-        return days.map((day) => {
-            const dateObj = new Date(day.date);
-            const dateKey = dateObj.toLocaleDateString('en-UK');
-            const key = `${dateKey}_${driver._id}`;
+    const tableData = (driver, day, disabledDriver, standbyDriver) => {
+        const dateObj = new Date(day.date);
+        const dateKey = dateObj.toLocaleDateString('en-UK');
+        const key = `${dateKey}_${driver._id}`;
 
-            const schedule = scheduleMap[key]?.schedule;
-            const invoice = scheduleMap[key]?.invoice;
-            const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
-            const streak = streaks[driver._id]?.[dateKey] || 0;
-            const isToday = dateObj.toDateString() === new Date().toDateString();
-            const cellClass = isToday ? 'bg-amber-100/30' : '';
-            const notComplete = schedule?.status !== 'completed';
-            const noRateCard = !rateCardFinder(schedule?.day, ratecards, schedule?.week, schedule?.service, driver);
-            const isLocked = notComplete || noRateCard;
-            const scheduleBelongtoSite = schedule?.site === selectedSite;
+        const schedule = scheduleMap[key]?.schedule;
+        const invoice = scheduleMap[key]?.invoice;
+        const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
+        const streak = streaks[driver._id]?.[dateKey] || 0;
+        const isToday = dateObj.toDateString() === new Date().toDateString();
+        const cellClass = isToday ? 'bg-amber-100/30' : '';
+        const notComplete = schedule?.status !== 'completed';
+        const noRateCard = !rateCardFinder(schedule?.day, ratecards, schedule?.week, schedule?.service, driver);
+        const isLocked = notComplete || noRateCard;
+        const scheduleBelongtoSite = schedule?.site === selectedSite;
 
-            const getBorderColor = (streak) => {
-                if (streak < 3) return 'border-l-green-500/60';
-                if (streak < 5) return 'border-l-yellow-500/60';
-                return 'border-l-red-400';
-            };
+        const getBorderColor = (streak) => {
+            if (streak < 3) return 'border-l-green-500/60';
+            if (streak < 5) return 'border-l-yellow-500/60';
+            return 'border-l-red-400';
+        };
 
-            const renderStandbyCell = ({ showSite = true }) => (
-                <div className="relative flex justify-center h-full w-full">
-                    <div className="relative max-w-40 w-full">
-                        <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
-                            <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">
-                                On Stand-By
-                            </div>
+        const renderStandbyCell = ({ showSite = true }) => (
+            <div className="relative flex justify-center h-full w-full">
+                <div className="relative max-w-40 w-full h-full">
+                    <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
+                        <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">
+                            On Stand-By
                         </div>
                     </div>
                 </div>
-            );
+            </div>
+        );
 
-            const renderScheduleBox = ({ schedule, streak, showSite = true }) => {
-                const borderColor = getBorderColor(streak);
-                return (
-                    <div className="relative flex justify-center h-full w-full">
-                        <div className="relative max-w-40 group">
-                            <div
-                                onClick={() => { if (!isLocked && scheduleBelongtoSite) handleShowDetails(schedule, driver, invoice) }}
-                                className={`relative z-6 w-full h-full  flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
+        const renderScheduleBox = ({ schedule, streak, showSite = true }) => {
+            const borderColor = getBorderColor(streak);
+            return (
+                <div className="relative flex justify-center h-full w-full">
+                    <div className="relative max-w-40 group">
+                        <div
+                            onClick={() => { if (!isLocked && scheduleBelongtoSite) handleShowDetails(schedule, driver, invoice) }}
+                            className={`relative z-6 w-full h-full  flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
                                 ${!isLocked && scheduleBelongtoSite ? 'cursor-pointer' : ''}
                                 border-l-4 ${borderColor} 
                                 ${isLocked && 'border-[1.5px] border-dashed border-gray-400/70 [border-left-style:solid] text-gray-400/70'} 
                                 rounded-md text-sm p-2 transition-all duration-300`}
-                            >
-                                <div className="overflow-auto max-h-[4rem]">
-                                    {schedule?.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
-                                </div>
-                                {scheduleBelongtoSite && <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px]">
-                                    {invoice ? (
-                                        <i className="flex items-center text-sky-500 fi fi-rr-paper-plane"></i>
-                                    ) : isLocked ? (
-                                        <FaLock size={17} />
-                                    ) : (
-                                        <FaUnlock className="text-orange-400" size={17} />
-                                    )}
-                                </div>}
+                        >
+                            <div className="overflow-auto max-h-[4rem]">
+                                {schedule?.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
                             </div>
-                            {scheduleBelongtoSite && <div className={`w-fit text-xs absolute z-15 bottom-1/2 left-1/2 -translate-x-1/2  translate-y-1/2 text-white bg-gray-400 rounded-md px-2 py-1 hidden ${isLocked && 'group-hover:block'}`}>
-                                {notComplete ? 'Schedule not complete' : noRateCard ? 'Ratecard unavailable' : ''}
+                            {scheduleBelongtoSite && <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[7px]">
+                                {invoice ? (
+                                    <i className="flex items-center text-sky-500 fi fi-rr-paper-plane"></i>
+                                ) : isLocked ? (
+                                    <FaLock size={17} />
+                                ) : (
+                                    <FaUnlock className="text-orange-400" size={17} />
+                                )}
                             </div>}
                         </div>
+                        {scheduleBelongtoSite && <div className={`w-fit text-xs absolute z-15 bottom-1/2 left-1/2 -translate-x-1/2  translate-y-1/2 text-white bg-gray-400 rounded-md px-2 py-1 hidden ${isLocked && 'group-hover:block'}`}>
+                            {notComplete ? 'Schedule not complete' : noRateCard ? 'Ratecard unavailable' : ''}
+                        </div>}
                     </div>
-                );
-            };
+                </div>
+            );
+        };
 
-            if (standbyDriver) {
-                if (standbySchedule && !schedule) {
-                    return null
-                }
-                if (standbySchedule && schedule) {
-                    return (
-                        <td key={day.date} className={cellClass}>
-                            {renderScheduleBox({ schedule, streak, showSite: true })}
-                        </td>
-                    );
-                }
-                return <td key={day.date} className={cellClass} />;
+        if (loading) {
+            return <div className='h-full w-full rounded-md bg-gray-200 animate-pulse'></div>
+        }
+        else if (standbyDriver) {
+            if (standbySchedule && !schedule) {
+                return null
             }
-
-            if (Object.keys(scheduleMap).length > 0 && standbySchedule && !schedule) {
-                return (
-                    <td key={day.date} className={cellClass}>
-                        {renderStandbyCell({ showSite: true })}
-                    </td>
-                );
-            }
-
             if (standbySchedule && schedule) {
                 return (
-                    <td key={day.date} className={cellClass}>
+                    <div key={day.date} className='h-full'>
                         {renderScheduleBox({ schedule, streak, showSite: true })}
-                    </td>
+                    </div>
                 );
             }
+            return <td key={day.date} className={cellClass} />;
+        }
 
-            if (!schedule) {
-                return <td key={day.date} className={cellClass} />;
-            }
+        if (Object.keys(scheduleMap).length > 0 && standbySchedule && !schedule) {
+            return (
+                <div key={day.date} className='h-full'>
+                    {renderStandbyCell({ showSite: true })}
+                </div>
+            );
+        }
 
-            if (schedule && schedule.service === 'Voluntary-Day-off') {
-                return (
-                    <td key={day.date} className={cellClass}>
-                        <div className="relative flex justify-center h-full w-full">
-                            <div className="relative max-w-40">
-                                <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 px-4 transition-all duration-300 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
-                                    <div className="overflow-auto max-h-[4rem]">{schedule.service}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                );
-            }
+        if (standbySchedule && schedule) {
+            return (
+                <div key={day.date} className='h-full'>
+                    {renderScheduleBox({ schedule, streak, showSite: true })}
+                </div>
+            );
+        }
 
+        if (!schedule) {
+            return <td key={day.date} className={cellClass} />;
+        }
+
+        if (schedule && schedule.service === 'Voluntary-Day-off') {
             return (
                 <td key={day.date} className={cellClass}>
-                    {renderScheduleBox({ schedule, streak, showSite: true })}
+                    <div className="relative flex justify-center h-full w-full">
+                        <div className="relative max-w-40">
+                            <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 px-4 transition-all duration-300 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
+                                <div className="overflow-auto max-h-[4rem]">{schedule.service}</div>
+                            </div>
+                        </div>
+                    </div>
                 </td>
             );
-        });
+        }
+
+        return (
+            <div key={day.date} className='h-full w-full'>
+                {renderScheduleBox({ schedule, streak, showSite: true })}
+            </div>
+        );
     };
+
 
 
     const getApprovalStatusMessage = (status) => {

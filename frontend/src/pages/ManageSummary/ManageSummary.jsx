@@ -274,74 +274,72 @@ const ManageSummary = () => {
     };
 
 
-    const tableData = (driver, disableDriver, standbyDriver) => {
-        return days.map((day) => {
-            const dateObj = new Date(day.date);
-            const dateKey = dateObj.toLocaleDateString('en-UK');
-            const key = `${dateKey}_${driver._id}`;
-            const invoice = invoiceMap[key]?.invoice;
-            const matchedCsv = invoiceMap[key]?.matchedCsv;
-            const isToday = dateObj.toDateString() === new Date().toDateString();
-            const cellClass = isToday ? 'bg-amber-100/30' : '';
-            const disabledSelection = (invoice && selectedInvoices.length > 0 && key !== selectedInvoices[0] && invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
-            const invoiceBelongstoSite = invoice?.site === selectedSite
+    const tableData = (driver, day, disableDriver, standbyDriver) => {
+        const dateObj = new Date(day.date);
+        const dateKey = dateObj.toLocaleDateString('en-UK');
+        const key = `${dateKey}_${driver._id}`;
+        const invoice = invoiceMap[key]?.invoice;
+        const matchedCsv = invoiceMap[key]?.matchedCsv;
+        const isToday = dateObj.toDateString() === new Date().toDateString();
+        const cellClass = isToday ? 'bg-amber-100/30' : '';
+        const disabledSelection = (invoice && selectedInvoices.length > 0 && key !== selectedInvoices[0] && invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
+        const invoiceBelongstoSite = invoice?.site === selectedSite
 
-            return (
-                <td key={day.date} className={cellClass} >
-                    {(() => {
-                        // Render invoice cell
-                        if (invoice && invoiceBelongstoSite) {
-                            return (
-                                <div className={`relative flex justify-center h-full w-full`}>
-                                    <div className='relative max-w-40'>
-                                        <div
+        return (
+            <div key={day.date} className='w-full h-full'>
+                {(() => {
+                    // Render invoice cell
+                    if (invoice && invoiceBelongstoSite) {
+                        return (
+                            <div className={`relative flex justify-center h-full w-full`}>
+                                <div className='relative max-w-40'>
+                                    <div
 
-                                            onClick={(e) => {
-                                                if (!matchedCsv || disabledSelection) return;
+                                        onClick={(e) => {
+                                            if (!matchedCsv || disabledSelection) return;
 
-                                                if (e.metaKey || e.ctrlKey) {
-                                                    setSelectedInvoices(prev =>
-                                                        prev.includes(key)
-                                                            ? prev.filter(k => k !== key)
-                                                            : [...prev, key]
-                                                    );
-                                                }
-                                                else if (selectedInvoices.some((k) => k === key)) {
-                                                    setSelectedInvoices(prev =>
-                                                        prev.filter(k => k !== key)
-                                                    );
-                                                }
-                                                else {
-                                                    setCurrentInvoice({ ...invoiceMap[key] });
-                                                    originalMilesRef.current = invoiceMap[key]?.invoice?.miles
-                                                }
-                                            }}
-                                            className={`relative z-6 w-full h-full flex flex gap-1  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
+                                            if (e.metaKey || e.ctrlKey) {
+                                                setSelectedInvoices(prev =>
+                                                    prev.includes(key)
+                                                        ? prev.filter(k => k !== key)
+                                                        : [...prev, key]
+                                                );
+                                            }
+                                            else if (selectedInvoices.some((k) => k === key)) {
+                                                setSelectedInvoices(prev =>
+                                                    prev.filter(k => k !== key)
+                                                );
+                                            }
+                                            else {
+                                                setCurrentInvoice({ ...invoiceMap[key] });
+                                                originalMilesRef.current = invoiceMap[key]?.invoice?.miles
+                                            }
+                                        }}
+                                        className={`relative z-6 w-full h-full flex flex gap-1  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
                                             ${disabledSelection && '!text-gray-300 !pointers-event-none'}
                                             ${!matchedCsv
-                                                    ? 'border-dashed border-gray-300'
-                                                    : selectedInvoices.includes(key)
-                                                        ? 'border-2 border-primary-700'
-                                                        : 'border-gray-300 dark:border-dark-5  cursor-pointer'} 
+                                                ? 'border-dashed border-gray-300'
+                                                : selectedInvoices.includes(key)
+                                                    ? 'border-2 border-primary-700'
+                                                    : 'border-gray-300 dark:border-dark-5  cursor-pointer'} 
                                              rounded-md text-sm p-2 `}
-                                        >
-                                            <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService} {!invoiceBelongstoSite && <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{invoice?.site}</span>}</div>
+                                    >
+                                        <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService} {!invoiceBelongstoSite && <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{invoice?.site}</span>}</div>
 
-                                            {matchedCsv && invoiceBelongstoSite && (
-                                                <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px]">
-                                                    {invoice?.approvalStatus && stageIcons[invoice.approvalStatus]}
-                                                </div>
-                                            )}
+                                        {matchedCsv && invoiceBelongstoSite && (
+                                            <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px]">
+                                                {invoice?.approvalStatus && stageIcons[invoice.approvalStatus]}
+                                            </div>
+                                        )}
 
-                                        </div>
                                     </div>
                                 </div>
-                            )
-                        }
-                    })()}
-                </td>
-            )
-        })
+                            </div>
+                        )
+                    }
+                })()}
+            </div>
+        )
     }
 
     return (
