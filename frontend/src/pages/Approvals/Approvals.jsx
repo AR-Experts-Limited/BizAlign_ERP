@@ -10,7 +10,7 @@ const Approvals = () => {
     const [filterByType, setFilterByType] = useState('');
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
-
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
     const { userDetails } = useSelector((state) => state.auth);
 
     useEffect(() => {
@@ -85,32 +85,36 @@ const Approvals = () => {
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5'>
-            <h2 className='text-sm md:text-xl mb-2 font-bold dark:text-white'>Approvals</h2>
-            <div className='flex flex-col gap-3 p-2 w-full h-full bg-white dark:bg-dark dark:text-white rounded-lg border border-neutral-200 overflow-auto'>
-                <div className='grid grid-cols-2 md:grid-cols-4 md:flex-row justify-around items-center p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-4/90 border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white' >
-                    <label className="text-sm font-medium">Filter by:</label>
-                    <select onChange={(e) => setFilterStatus(e.target.value)} className="bg-white border border-neutral-200 p-2 rounded">
-                        <option value="">Select Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Denied">Denied</option>
-                    </select>
-                    {userDetails.role === 'super-admin' && (
-                        <select onChange={(e) => setFilterByType(e.target.value)} className="bg-white border border-neutral-200 p-2 rounded">
-                            <option value="">Select Type</option>
-                            <option value="osmDelete">OSM Delete</option>
-                            <option value="driverDelete">Personnel Delete</option>
-                            <option value="additionalService">Additional Service Approval</option>
+            <div className='flex flex-col gap-3  w-full h-full bg-white dark:bg-dark dark:text-white rounded-lg border border-neutral-200 overflow-auto'>
+                <div className='flex font-bold text-lg justify-between items-center z-5 rounded-t-lg w-full px-3 py-1.5 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                    <h3>Approvals</h3>
+                    <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded-lg p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
+                </div >
+                <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
+                    <div className='grid grid-cols-2 md:grid-cols-4 md:flex-row justify-around items-center mx-2 p-3 gap-2 md:gap-14  bg-neutral-100/90 dark:bg-dark-4/90 border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white' >
+                        <label className="text-sm font-medium">Filter by:</label>
+                        <select onChange={(e) => setFilterStatus(e.target.value)} className="bg-white border border-neutral-200 p-2 rounded">
+                            <option value="">Select Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Denied">Denied</option>
                         </select>
-                    )}
-                    <input
-                        type="text"
-                        placeholder="Search by Details"
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="bg-white border border-neutral-200 p-2 rounded"
-                    />
+                        {userDetails.role === 'super-admin' && (
+                            <select onChange={(e) => setFilterByType(e.target.value)} className="bg-white border border-neutral-200 p-2 rounded">
+                                <option value="">Select Type</option>
+                                <option value="osmDelete">OSM Delete</option>
+                                <option value="driverDelete">Personnel Delete</option>
+                                <option value="additionalService">Additional Service Approval</option>
+                            </select>
+                        )}
+                        <input
+                            type="text"
+                            placeholder="Search by Details"
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="bg-white border border-neutral-200 p-2 rounded"
+                        />
+                    </div>
                 </div>
-
                 <div className="overflow-auto flex-1">
                     <table className="min-w-full text-sm table-general">
                         <thead>

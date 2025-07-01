@@ -135,7 +135,7 @@ const ManagePersonnels = () => {
                     {personnelMode === 'view' && ['Admin', 'super-admin', 'compliance'].includes(userDetails.role) &&
                         <div className='flex h-full flex-col md:flex-row gap-2'>
                             <div className='justify-self-start md:justify-self-end'><TableFeatures columns={colList} setColumns={setColumns} content={driversList} setContent={setDriversList} /></div>
-                            <button onClick={() => setPersonnelMode('create')} className='w-fit h-full self-end text-white bg-green-500 hover:bg-green-600  rounded-md text-xs md:text-sm px-2 py-1'>Add Personnel</button>
+                            <button onClick={() => setPersonnelMode('create')} className='w-fit h-full self-end text-white bg-green-500 hover:bg-green-600  rounded-lg text-xs md:text-sm px-2 py-1'>Add Personnel</button>
                         </div>
                     }
                 </div>

@@ -12,7 +12,7 @@ export const UsersTable = ({ allUsers, handleEditUser, initiateDeleteUser, canEd
                     <th>Options</th>
                 </thead>
                 <tbody>
-                    {allUsers.map((user, index) => (
+                    {allUsers.filter((user) => user.role !== 'Driver').map((user, index) => (
                         <tr onClick={() => { if ((index === 0 && user.role === 'super-admin') || canEditUser(user)) { handleEditUser(user) } }} className={`${index === 0 && 'bg-amber-50 text-amber-500'} cursor-pointer hover:bg-neutral-50`} >
                             <td>{index + 1}</td>
                             <td>{user?.firstName + ' ' + user?.lastName}</td>

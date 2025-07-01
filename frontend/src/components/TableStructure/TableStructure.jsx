@@ -117,7 +117,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                 </div>}
                             </div>
                             : isFirstCol
-                                ? <div className='flex flex-col gap-1 h-full w-full'>
+                                ? <div className='flex justify-center flex-col gap-1 h-full w-full'>
                                     <p>{driver.firstName + ' ' + driver.lastName}</p>
                                     <div className='flex flex-col justify-left gap-1'>
                                         {disabledDriver && <div className='text-xs  text-center text-stone-600 bg-stone-400/40 shadow-sm border-[1.5px] border-stone-400/10 p-0.5 rounded-sm w-fit'>{disabledDriver}</div>}

@@ -61,7 +61,7 @@ const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, 
 
                     {Object.values(columns).map((col, i) => (
                         <div key={`${driver._id}-${i}`} className="flex-1 flex items-center justify-center p-3 text-center min-w-32 text-sm border-b border-gray-300">
-                            {driver[col]}
+                            {driver[col] ? driver[col] : '-'}
                         </div>
                     ))}
 

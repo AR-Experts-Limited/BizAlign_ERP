@@ -331,12 +331,12 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
         formData.append('vatDetails', JSON.stringify(newDriver.vatDetails));
         formData.append(
             'customTypeOfDriver',
-            JSON.stringify(newDriver.customTypeOfDriver || {})
+            newDriver.customTypeOfDriver ? JSON.stringify(newDriver.customTypeOfDriver) : {}
         );
 
         formData.append(
             'typeOfDriverTrace',
-            JSON.stringify(newDriver.typeOfDriverTrace || [])
+            newDriver.typeOfDriverTrace ? JSON.stringify(newDriver.typeOfDriverTrace) : []
         );
 
 
@@ -350,6 +350,9 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
             }
             const formattedUserID = userID.toString().padStart(6, '0');
             formData.append('user_ID', formattedUserID);
+            formData.append('addedBy', JSON.stringify({ name: userDetails.firstName + userDetails.lastName, email: userDetails.email, role: userDetails.role, addedOn: new Date() }));
+            formData.append('companyId', userDetails.companyId)
+            const counterUpdate = await axios.put(`${API_BASE_URL}/api/idcounter/Driver`, {});
             try {
                 const response = await dispatch(addDriver(formData));
                 setPersonnelMode('view');
@@ -365,6 +368,7 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
                 setNewDriver(clearDriver)
             } catch (error) {
                 alert('Error adding driver');
+                console.log(error)
             }
         }
         else if (personnelMode === 'edit') {

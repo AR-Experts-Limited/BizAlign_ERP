@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcrypt');
 const router = express.Router();
 const s3 = require('./aws');
 const { sendToClients } = require('../utils/sseService');
@@ -150,7 +151,7 @@ router.get('/:siteSelection', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', upload.any(), asyncHandler(async (req, res) => {
-  const { Driver, Notification } = getModels(req);
+  const { Driver, Notification, User } = getModels(req);
   const driverData = req.body;
 
   // Parse JSON fields
@@ -160,6 +161,8 @@ router.post('/', upload.any(), asyncHandler(async (req, res) => {
   if (driverData.typeOfDriver === 'Own Vehicle') {
     driverData.ownVehicleInsuranceNA = parseJsonField(driverData, 'ownVehicleInsuranceNA');
   }
+  driverData.customTypeOfDriver = parseJsonField(driverData, 'customTypeOfDriver');
+  driverData.typeOfDriverTrace = parseJsonField(driverData, 'typeOfDriverTrace');
 
   // Create empty arrays for standard documents
   const documentFields = [
@@ -207,17 +210,133 @@ router.post('/', upload.any(), asyncHandler(async (req, res) => {
     newDriver.additionalDocs = Object.fromEntries(additionalDocsMap);
   }
 
-  // Save driver and notification
-  const savedDriver = await newDriver.save();
-  const notification = {
-    driver: savedDriver._id,
-    site: driverData.siteSelection,
-    changed: 'drivers',
-    message: `Driver ${driverData.firstName} ${driverData.lastName} has been newly added to ${driverData.siteSelection}`,
-  };
-  await new Notification({ notification, targetDevice: 'website' }).save();
+  // Generate user credentials
+  const password = newDriver.Email.split('@')[0];
+  const OTP = (Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000).toString();
+  const otpExpiryDate = new Date();
+  otpExpiryDate.setDate(otpExpiryDate.getDate() + 365);
+  const driverAccess = [];
+  const formattedUserID = newDriver.user_ID; // Assuming user_ID is provided in driverData
 
-  res.status(201).json(savedDriver);
+  // Hash the password
+  const saltRounds = 10;
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, saltRounds);
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    return res.status(500).json({ message: 'Error hashing password', error: error.message });
+  }
+
+  // Create driver user using User model
+  try {
+    const newUser = new User({
+      firstName: newDriver.firstName,
+      lastName: newDriver.lastName,
+      email: newDriver.Email,
+      password: hashedPassword,
+      role: "Driver",
+      companyId: driverData.companyId,
+      access: driverAccess,
+      otp: OTP,
+      otpVerified: false,
+      otpExpiry: otpExpiryDate,
+      user_ID: formattedUserID
+    });
+
+    await newUser.save();
+
+    // Save driver
+    const savedDriver = await newDriver.save();
+
+    // Create and save notification
+    const notification = {
+      driver: savedDriver._id,
+      site: driverData.siteSelection,
+      changed: 'drivers',
+      message: `Driver ${driverData.firstName} ${driverData.lastName} has been newly added to ${driverData.siteSelection}`,
+    };
+    await new Notification({ notification, targetDevice: 'website' }).save();
+
+    // Send welcome email
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.MAILER_EMAIL,
+          pass: process.env.MAILER_APP_PASSWORD,
+        },
+      });
+
+      const mailOptions = {
+        from: process.env.MAILER_EMAIL,
+        to: newDriver.Email,
+        subject: `Welcome to Raina Ltd, ${newDriver.firstName} ${newDriver.lastName}!`,
+        html: `
+          <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+          <div style="font-family: Outfit,Arial, sans-serif; background-color: #f4f8ff; padding: 20px; border-radius: 10px; border: 2px solid #2a73cc;">
+            <h2 style="color: #2a73cc; text-align: center;"> Welcome to Raina Ltd, ${newDriver.firstName} ${newDriver.lastName}! </h2>
+            <p style="font-size: 16px; color: #333;">We are delighted to welcome you as a self-employed multi-drop delivery driver. Your commitment to providing excellent delivery services is greatly appreciated, and we want to ensure you have a smooth start with us.</p>
+            <h3 style="color: #ff9900;">🔍 Understanding Our Working Relationship</h3>
+            <p>You have read and signed our <strong>Service Level Agreement (SLA)</strong>, which clarifies that our partnership is based on service provision, not employment. Raina Ltd serves as your <strong>Supplier</strong>, not your Employer.</p>
+            <h3 style="color: #ff9900;">Invoice & Payment Information</h3>
+            <ul style="color: #333;">
+              <li>Your invoices will be sent to this email and can be accessed via our application.</li>
+              <li>Please provide your <strong>Unique Taxpayer Reference (UTR) number</strong> within 4 weeks if not already submitted.</li>
+              <li>If operating as a <strong>limited company</strong>, kindly send us your company details and bank information for smooth payments.</li>
+            </ul>
+            <h3 style="color: #2a73cc;"> Introducing BizAlign – Your Driver App</h3>
+            <p>To enhance your experience, we’ve introduced <strong>BizAlign</strong>, an ERP system designed to streamline administrative processes and improve efficiency.</p>
+            <h3 style="color: #ff9900;">What You Need to Do</h3>
+            <ul style="color: #333;">
+              <li>Your login details are provided below. <strong>Save this email</strong> for future reference.</li>
+              <li>Download the BizAlign app from the links below:</li>
+            </ul>
+            <p><strong>BizAlign Mobile Application:</strong></p>
+            <p>
+              <a href="https://apps.apple.com/us/app/bizalign-erp-system/id6742386791" target="_blank">
+                <img src="https://erp-rainaltd.bizalign.co.uk/api/app-store-badge" 
+                     alt="Download on the App Store" style="height: 40px">
+              </a>
+            </p>
+            <p>
+              <a href="https://play.google.com/store/apps/details?id=com.arexperts.bizalign&pcampaignid=web_share" target="_blank">
+                <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" 
+                     alt="Get it on Google Play" style="height: 60px;">
+              </a>
+            </p>
+            <h3 style="color: #2a73cc;">Key Features of BizAlign</h3>
+            <ul style="color: #333;">
+              <li>✔ Track shifts & start/end procedures</li>
+              <li>✔ Access self-billing invoices</li>
+              <li>✔ View & manage deduction forms</li>
+              <li>✔ Receive important notifications (keep them ON)</li>
+              <li>✔ Upload & verify documents, sign forms digitally</li>
+            </ul>
+            <h3 style="color: #ff9900;">📌 Getting Started</h3>
+            <p>Set up the app as soon as possible to ensure a seamless experience. Follow this video guide: <a href="https://youtu.be/PurUvKjuID0" style="color: #2a73cc; font-weight: bold;"><img src="https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png" style="height:12px" /> Getting Started with BizAlign</a></p>
+            <h3 style="color: #2a73cc;">🔑 Your Login Credentials</h3>
+            <p><strong>Company ID:</strong> ${driverData.companyId}<br>
+               <strong>Username:</strong> ${newDriver.Email}<br>
+               <strong>Password:</strong> ${password}</p>
+            <p><strong>One-Time Password (OTP):</strong> <span style="background-color: #ff9900; color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold;">${OTP}</span></p>
+            <p style="color: #555;">Thanks for your dedication, we’re excited to have you onboard!</p>
+            <p style="font-weight: bold; color: #2a73cc;">Best regards,<br>Business Administrator<br>Raina Ltd</p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`Welcome email sent to ${newDriver.Email}`);
+    } catch (err) {
+      console.error(`Failed to send welcome email to ${newDriver.Email}:`, err);
+    }
+
+    res.status(201).json(savedDriver);
+  } catch (error) {
+    console.error('Error creating driver user:', error);
+    res.status(500).json({ message: 'Error creating driver user', error: error.message });
+  }
 }));
 
 router.post('/upload-version', upload.any(), asyncHandler(async (req, res) => {
@@ -540,10 +659,10 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
   if (vatChanged || customTypeChanged || traceChanged) {
     // Determine the date range for affected invoices
     const vatDates = [
-      originalVatDetails.vatEffectiveDate ? new Date(originalVatDetails.vatEffectiveDate) : null,
-      updatedDriver.vatDetails.vatEffectiveDate ? new Date(updatedDriver.vatDetails.vatEffectiveDate) : null,
-      originalCompanyVatDetails.companyVatEffectiveDate ? new Date(originalCompanyVatDetails.companyVatEffectiveDate) : null,
-      updatedDriver.companyVatDetails?.companyVatEffectiveDate ? new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate) : null,
+      originalVatDetails?.vatEffectiveDate ? new Date(originalVatDetails?.vatEffectiveDate) : null,
+      updatedDriver?.vatDetails?.vatEffectiveDate ? new Date(updatedDriver?.vatDetails?.vatEffectiveDate) : null,
+      originalCompanyVatDetails?.companyVatEffectiveDate ? new Date(originalCompanyVatDetails?.companyVatEffectiveDate) : null,
+      updatedDriver?.companyVatDetails?.companyVatEffectiveDate ? new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate) : null,
     ].filter(Boolean);
 
     const customTypeDates = [
