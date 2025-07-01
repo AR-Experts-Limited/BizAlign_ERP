@@ -1,6 +1,6 @@
 import React from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
-import DatePicker from '../../../components/Datepicker/Datepicker';
+import DatePicker from '../../../components/Datepicker/DatePicker';
 import { FaEye } from "react-icons/fa";
 import { handleFileView } from '../supportFunctions'
 

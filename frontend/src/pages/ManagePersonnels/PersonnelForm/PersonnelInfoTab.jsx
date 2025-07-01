@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
-import DatePicker from '../../../components/Datepicker/Datepicker';
+import DatePicker from '../../../components/Datepicker/DatePicker';
 import { FaHouseUser, FaUser, FaEnvelope, FaIdCard, FaGlobe, FaCar, FaPhone, FaTruck } from 'react-icons/fa';
 import { FaBuildingUser } from "react-icons/fa6";
 import { GoNumber } from 'react-icons/go';

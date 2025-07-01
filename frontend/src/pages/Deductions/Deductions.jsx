@@ -14,7 +14,7 @@ import { FaEye, FaUser } from "react-icons/fa";
 import { FaBuildingUser } from "react-icons/fa6";
 import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
 
-import DatePicker from '../../components/Datepicker/Datepicker';
+import DatePicker from '../../components/Datepicker/DatePicker';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 

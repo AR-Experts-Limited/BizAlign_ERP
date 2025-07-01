@@ -1,6 +1,6 @@
 import React from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
-import DatePicker from '../../../components/Datepicker/Datepicker';
+import DatePicker from '../../../components/Datepicker/DatePicker';
 import { FaGlobe } from 'react-icons/fa';
 import { GoNumber } from 'react-icons/go';
 import countries from '../../../lib/countries';

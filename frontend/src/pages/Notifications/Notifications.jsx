@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchDrivers, updateDriverDoc } from '../../features/drivers/driverSlice';
 import moment from 'moment';
 import Modal from '../../components/Modal/Modal';
-import DatePicker from '../../components/Datepicker/Datepicker';
+import DatePicker from '../../components/Datepicker/DatePicker';
 
 
 const Notifications = () => {

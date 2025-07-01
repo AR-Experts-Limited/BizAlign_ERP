@@ -1,6 +1,6 @@
 import React from 'react';
 import InputGroup from '../../../components/InputGroup/InputGroup';
-import DatePicker from '../../../components/Datepicker/Datepicker';
+import DatePicker from '../../../components/Datepicker/DatePicker';
 import InputWrapper from '../../../components/InputGroup/InputWrapper';
 import { FaIdCard } from 'react-icons/fa';
 import { FaEye } from "react-icons/fa";
