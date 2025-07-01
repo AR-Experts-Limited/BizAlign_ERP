@@ -11,8 +11,8 @@ import { startSSE, stopSSE } from './features/sse/sseSlice';
 
 import './App.scss'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
-import Navbar from './Components/NavBar/NavBar'
-import Sidebar from './Components/Sidebar/Sidebar';
+import Navbar from './components/NavBar/NavBar'
+import Sidebar from './components/Sidebar/Sidebar';
 import LandingPage from './pages/LandingPage/LandingPage'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard';

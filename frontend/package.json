@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "dev_build": "VITE_API_URL=https://app.bizalign.co.uk vite build",
+    "prod_build": "VITE_API_URL=https://bizalign.co.uk vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
