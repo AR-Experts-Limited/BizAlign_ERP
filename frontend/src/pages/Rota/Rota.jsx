@@ -653,7 +653,7 @@ const Rota = () => {
             }
             if (standbySchedule && schedule) {
                 return (
-                    <div key={day.date} className='h-full'>
+                    <div key={day.date} className='w-full h-full'>
                         {renderScheduleBox({ schedule, streak, showSite: true })}
                     </div>
                 );
@@ -663,7 +663,7 @@ const Rota = () => {
 
         if (Object.keys(scheduleMap).length > 0 && standbySchedule && !schedule) {
             return (
-                <div key={day.date} className='h-full'>
+                <div key={day.date} className='w-full h-full'>
                     {renderStandbyCell({ showSite: true })}
                 </div>
             );
@@ -671,7 +671,7 @@ const Rota = () => {
 
         if (standbySchedule && schedule) {
             return (
-                <div key={day.date} className='h-full'>
+                <div key={day.date} className='w-full h-full'>
                     {renderScheduleBox({ schedule, streak, showSite: true })}
                 </div>
             );
@@ -683,7 +683,7 @@ const Rota = () => {
 
         if (schedule && schedule.service === 'Voluntary-Day-off') {
             return (
-                <td key={day.date} className={cellClass}>
+                <div key={day.date} className='h-full w-full' >
                     <div className="relative flex justify-center h-full w-full">
                         <div className="relative max-w-40">
                             <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-gray-200 dark:border-dark-5 rounded-md text-sm p-2 px-4 transition-all duration-300 bg-[repeating-linear-gradient(-45deg,#e4e4e4_0px,#e4e4e4_2px,transparent_2px,transparent_6px)]">
@@ -691,7 +691,7 @@ const Rota = () => {
                             </div>
                         </div>
                     </div>
-                </td>
+                </div >
             );
         }
 

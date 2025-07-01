@@ -275,7 +275,7 @@ const SchedulePlanner = () => {
             const borderColor = getBorderColor(streak);
             return (
                 <div className="relative flex justify-center h-full w-full group">
-                    <div className="relative">
+                    <div className="relative max-w-40">
                         <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[82%]' : ''}`}>
                             <div className="overflow-auto max-h-[6rem]">
                                 {schedule.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}

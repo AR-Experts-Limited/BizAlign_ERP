@@ -11,7 +11,7 @@ module.exports = async (req, res, next) => {
             const hostParts = originUrl.hostname.split(".");
 
             if (originUrl.hostname === "localhost") {
-                dbName = "test_erp"; // Explicitly set for localhost
+                dbName = "BizAlignDevDB"; // Explicitly set for localhost
             } else if (hostParts.length > 2) {
                 subdomain = hostParts[0];
                 if (!isNaN(subdomain)) {

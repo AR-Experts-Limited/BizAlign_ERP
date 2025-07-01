@@ -184,6 +184,9 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                     )}
                                 <td className="text-[10px] font-medium text-[#111827] px-4 py-2 border border-[#E5E7EB]"> £{invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0).toFixed(2)}</td>
                             </tr>
+                            <tr>
+                                <td className="text-[10px] text-right font-medium text-[#111827] px-2 py-0.5 pb-2 border border-[#E5E7EB]" colSpan={12}>(The VAT shown is your output tax due to HR Revenue & Customs)</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

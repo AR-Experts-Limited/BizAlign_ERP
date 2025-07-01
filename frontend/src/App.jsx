@@ -32,7 +32,6 @@ import WeeklyInvoice from './pages/Invoice/WeeklyInvoice/WeeklyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
 import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
-import GridComponent from './pages/WorkingHours/WorkingHours';
 
 
 function App() {
@@ -69,7 +68,6 @@ function App() {
     { path: "/deductions", name: "Deductions", component: Deductions },
     { path: "/installments", name: "Installments", component: Instalments },
     { path: "/incentives", name: "Incentives", component: Incentives },
-    { path: "/working-hours", name: "Working Hours", component: GridComponent },
     { path: "/manage-summary", name: "Manage Summary", component: ManageSummary },
     { path: "/manage-payments", name: "Manage Payments", component: DailyInvoice },
     { path: "/add-ons", name: "Additional Charges", component: AdditionalCharges },
