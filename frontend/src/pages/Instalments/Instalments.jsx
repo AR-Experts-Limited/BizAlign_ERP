@@ -472,7 +472,7 @@ const Instalments = () => {
                                                             ) : (
                                                                 <div className='flex flex-col items-center gap-2 rounded bg-white border border border-neutral-200 py-2 px-1'>
                                                                     <span id={`fileName-${instalment._id}`} className="text-sm text-gray-700 truncate max-w-[100px]">
-                                                                        {decodeURIComponent(instalment.installmentDocument.split(`${instalment.driverId}/`)[1])}
+                                                                        {decodeURIComponent(instalment.installmentDocument.split(`${instalment.user_ID}/`)[1])}
                                                                     </span>
                                                                     <div className='flex gap-1'>
                                                                         <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">

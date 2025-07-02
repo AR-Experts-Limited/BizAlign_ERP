@@ -1023,14 +1023,17 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 router.post('/toggleDriver/:id', asyncHandler(async (req, res) => {
   const { email, disabled } = req.body;
   const { Driver, Notification } = getModels(req);
-  const driver = await Driver.findById(req.params.id);
+
+  // Update only the disabled field
+  const driver = await Driver.findByIdAndUpdate(
+    req.params.id,
+    { $set: { disabled } },
+    { new: true, runValidators: false } // runValidators: false skips schema validation
+  );
 
   if (!driver) {
     return res.status(404).json({ message: 'Driver not found' });
   }
-
-  driver.disabled = disabled;
-  await driver.save();
 
   const statusText = disabled ? 'disabled' : 'enabled';
 
@@ -1066,24 +1069,7 @@ router.post('/toggleDriver/:id', asyncHandler(async (req, res) => {
           to: email,
           cc: 'fleet@rainaltd.com',
           subject: 'Vehicle Return - Off Hire',
-          html: `
-            <div>
-              <p>Dear Independent Contractor,</p>
-              <p>Please accept this communication to inform you that the vehicle hired by you has been returned to us. To complete the Off-Hire process, our Fleet Team will now carry out a thorough inspection of the vehicle.</p>
-              <p>If any new damages or issues are identified during the inspection, you will receive a detailed email containing:</p>
-              <ul>
-                <li>On-Hire photographs</li>
-                <li>Off-Hire photographs</li>
-                <li>Supporting photographs of any damages (if applicable)</li>
-                <li>An estimate or invoice for any necessary repairs</li>
-                <li>If no further issues are found, no additional communication will be required.</li>
-              </ul>
-              <p>Regarding Final Payment:<br>
-              If applicable, your final payment will be processed once the off-hire inspection is complete within 30 days and all matters (including potential damage costs) are settled. If you do not receive payment, and no response has been provided within 30 days, please contact us at admin@rainaltd.com.</p>
-              <p>Thank you for your cooperation. Should you have any questions or require further assistance, please email admin@rainaltd.com.</p>
-              <p>Best regards,<br>Raina Ltd</p>
-            </div>
-          `,
+          html: `...`, // Your email template
         };
 
         await transporter.sendMail(mailOptions);

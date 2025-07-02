@@ -171,7 +171,7 @@ const LiveOperations = () => {
                                     if (!appData) {
                                         return (<i className="flex items-center p-3 fi fi-rr-hourglass-start text-[0.9rem] text-red-500" />);
                                     }
-                                    if (appData?.endShiftChecklist) {
+                                    if (appData?.endShiftChecklist?.endShiftTimestamp) {
                                         return (<FcApproval size={20} />);
                                     }
                                 })()}

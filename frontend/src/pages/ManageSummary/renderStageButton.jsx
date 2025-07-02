@@ -28,8 +28,9 @@ export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus 
             else
                 return (
                     <button
+                        disabled={currentInvoice.restrictEdit}
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                        className="bg-primary-300 text-white px-2 py-1 rounded  "
+                        className="bg-primary-300 text-white px-2 py-1 rounded  disabled:!cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-700"
                     >
                         Submit Edit
                     </button>

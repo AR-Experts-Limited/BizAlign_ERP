@@ -13,10 +13,10 @@ const uploadDoc = multer({
         bucket: process.env.AWS_S3_BUCKET_NAME,
         key: (req, file, cb) => {
             const { driverId, user_ID, actionType } = req.body;
-            const tenant = req.db.dbName;
+            const tenant = req.db.db.databaseName;
             const folder = actionType === 'sentInvoice' ? 'sent' : 'download';
             const filename = `${file.originalname}`;
-            const key = `${tenant}/${user_ID}/${folder}/${filename}`;
+            const key = `${tenant}/${user_ID}/payslips/${folder}/${filename}`;
             cb(null, key);
         },
         contentType: multerS3.AUTO_CONTENT_TYPE,

@@ -384,6 +384,7 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
                 setTimeout(() => {
                     setToastOpen(null)
                 }, 2000);
+                setNewDriver(clearDriver)
             } catch (error) {
                 console.log(error)
                 alert('Error updating driver', error);

@@ -16,10 +16,10 @@ const upload = multer({
     },
     contentDisposition: 'inline',
     key: (req, file, cb) => {
-      const deductionDriverId = req.body.driverId;
+      const user_ID = req.body.user_ID;
       const databaseName = req.db.db.databaseName;
-      const deductionDate = String(new Date(req.body.date).toISOString());
-      cb(null, `${databaseName}/Deductions/${Date.now()}/${deductionDriverId}/${deductionDate}/${file.originalname}`);
+      const deductionDate = String(new Date(req.body.date).toLocaleDateString());
+      cb(null, `${databaseName}/AdditionalCharges/${user_ID}/${deductionDate}/${file.originalname}`);
     },
   }),
 });

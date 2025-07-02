@@ -19,8 +19,9 @@ const upload = multer({
     contentType: multerS3.AUTO_CONTENT_TYPE,
     key: (req, file, cb) => {
       const databaseName = req.db.db.databaseName
-      const installmentDriverId = req.body.driverId;
-      cb(null, `${databaseName}/Installments/${Date.now()}/${installmentDriverId}/${file.originalname}`);
+      const user_ID = req.body.user_ID;
+      const date = new Date().toLocaleDateString()
+      cb(null, `${databaseName}/Installments/${user_ID}/${date}/${file.originalname}`);
     },
   }),
 });
