@@ -129,7 +129,7 @@ const ManagePersonnels = () => {
             </div>
 
             <h2 className='text-sm md:text-xl mb-2 font-bold dark:text-white'>Manage Personnels</h2>
-            <div className='flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-auto'>
+            <div className='flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-hidden'>
                 <div className='z-15 sticky top-0 flex items-center justify-between items-center bg-white/60 backdrop-blur-md p-2 rounded-t-lg border-b border-neutral-200'>
                     <div className='text-sm md:text-base'>{personnelMode === 'create' ? 'Add Personnel' : 'Personnels List'}</div>
                     {personnelMode === 'view' && ['Admin', 'super-admin', 'compliance'].includes(userDetails.role) &&

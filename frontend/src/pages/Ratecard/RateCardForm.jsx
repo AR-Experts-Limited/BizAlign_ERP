@@ -105,7 +105,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
             ? newServiceInfo
             : services.find(service => service.title === serviceTitle);
 
-        if (!service && service.hours !== 0 || (!service.totalHours && !service.hours)) {
+        if (!service && service?.hours !== 0 || (!service.totalHours && !service.hours)) {
             console.warn("Service not found or hours not defined");
             return;
         }

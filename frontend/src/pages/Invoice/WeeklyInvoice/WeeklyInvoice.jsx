@@ -388,7 +388,7 @@ const WeeklyInvoice = () => {
                 </div >
                 <div className='flex flex-col p-2 overflow-auto'>
                     <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
-                        <div className="grid grid-cols-2 md:grid-cols-[1fr_3fr_2fr_2fr_4fr] p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
+                        <div className="grid grid-cols-3 md:grid-cols-[1fr_3fr_2fr_2fr_4fr] p-3 gap-2 md:gap-5 bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white">
                             <div className="flex flex-col gap-1">
                                 <label className="text-xs font-semibold">Invoices sent:</label>
                                 <p>{Object.values(groupedInvoices).reduce((acc, ginv) => {
@@ -453,7 +453,7 @@ const WeeklyInvoice = () => {
                             </div>
                             <div className="flex gap-1 justify-evenly border-[1.5px] border-neutral-300 rounded-md p-2 justify-self-start self-end w-full overflow-auto">
                                 <button
-                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice || selectedInvoices.length > 0 ? selectedInvoices.some((invKey) => !groupedInvoices[invKey].allCompleted) : Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || sendingInvoice || (selectedInvoices.length > 0 ? selectedInvoices.some((invKey) => !groupedInvoices[invKey].allCompleted) : Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted))}
                                     className="flex gap-1 bg-sky-400/50 items-center text-xs text-sky-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                     onClick={async () => {
                                         try {
@@ -483,7 +483,7 @@ const WeeklyInvoice = () => {
                                     Download {selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}
                                 </button>
                                 <button
-                                    disabled={changed || Object.values(groupedInvoices).length === 0 || selectedInvoices.length > 0 ? selectedInvoices.some((invKey) => !groupedInvoices[invKey].allCompleted) : Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted)}
+                                    disabled={changed || Object.values(groupedInvoices).length === 0 || (selectedInvoices.length > 0 ? selectedInvoices.some((invKey) => !groupedInvoices[invKey].allCompleted) : Object.values(groupedInvoices).some((ginv) => !ginv.allCompleted))}
                                     className="flex gap-1 items-center text-xs bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                     onClick={async () => {
                                         try {

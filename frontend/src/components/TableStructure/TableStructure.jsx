@@ -136,8 +136,11 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         const columnWidth = ({ index }) => {
                             if (rangeType === 'daily') {
                                 return Math.floor(width / 2);
-                            } else {
-                                return 200;
+                            } else if (rangeType === 'weekly') {
+                                return Math.floor(width / 7);
+                            }
+                            else {
+                                return 200
                             }
                         };
                         return (

@@ -224,321 +224,323 @@ const Deductions = () => {
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
-            <h2 className='text-xl mb-3 font-bold dark:text-white'>Deductions</h2>
-            <div className='h-full grid grid-cols-1 md:grid-cols-7 gap-3'>
-                {/* Add new deduction section */}
-                <div className='h-full md:col-span-2 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg'>
-                    <div className='relative overflow-auto max-h-[42rem]'>
-                        <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
-                            <h3>Add new deduction</h3>
-                        </div>
-                        <div className='p-4 pb-8 flex flex-col gap-3'>
-                            {/* Site selection */}
-                            <div>
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Select Site"
-                                    icon={<FaBuildingUser className='text-neutral-200' size={20} />}
-                                    iconPosition="left"
-                                    required={true}
-                                    className={`${newDeduction.site === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        setNewDeduction({ ...newDeduction, site: e.target.value });
-                                        setErrors({ ...errors, site: false });
-                                    }}
-                                    error={errors.site}
-                                    value={newDeduction.site}
-                                >
-                                    <option value="">-Select Site-</option>
-                                    {sites.map((site) => (
-                                        <option key={site.siteKeyword} value={site.siteKeyword}>
-                                            {site.siteName}
-                                        </option>
-                                    ))}
-                                </InputGroup>
-                                {errors.site && <p className="text-red-400 text-sm mt-1">* Site is required</p>}
+            <div className='flex flex-col w-full h-full'>
+                <h2 className='text-xl mb-3 font-bold dark:text-white'>Deductions</h2>
+                <div className='flex-1 flex overflow-auto gap-3'>
+                    {/* Add new deduction section */}
+                    <div className='h-full flex-1 flex-[2] flex flex-col w-full bg-white dark:bg-dark border border-neutral-300 dark:border-dark-3 rounded-lg'>
+                        <div className='relative overflow-auto flex-1 flex flex-col'>
+                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
+                                <h3>Add new deduction</h3>
                             </div>
+                            <div className='p-4 pb-8 flex flex-col gap-3'>
+                                {/* Site selection */}
+                                <div>
+                                    <InputGroup
+                                        type="dropdown"
+                                        label="Select Site"
+                                        icon={<FaBuildingUser className='text-neutral-200' size={20} />}
+                                        iconPosition="left"
+                                        required={true}
+                                        className={`${newDeduction.site === '' && 'text-gray-400'}`}
+                                        onChange={(e) => {
+                                            setNewDeduction({ ...newDeduction, site: e.target.value });
+                                            setErrors({ ...errors, site: false });
+                                        }}
+                                        error={errors.site}
+                                        value={newDeduction.site}
+                                    >
+                                        <option value="">-Select Site-</option>
+                                        {sites.map((site) => (
+                                            <option key={site.siteKeyword} value={site.siteKeyword}>
+                                                {site.siteName}
+                                            </option>
+                                        ))}
+                                    </InputGroup>
+                                    {errors.site && <p className="text-red-400 text-sm mt-1">* Site is required</p>}
+                                </div>
 
-                            {/* Date selection */}
-                            <div>
-                                <DatePicker iconPosition={'left'} value={newDeduction.date}
-                                    label={'Date'}
-                                    required={true}
-                                    error={errors.date}
-                                    onChange={(date) => {
-                                        setNewDeduction(prev => ({ ...prev, date }));
-                                        setErrors({ ...errors, date: false });
-                                    }} />
-                                {errors.date && <p className="text-red-400 text-sm mt-1">* Date is required</p>}
-                            </div>
+                                {/* Date selection */}
+                                <div>
+                                    <DatePicker iconPosition={'left'} value={newDeduction.date}
+                                        label={'Date'}
+                                        required={true}
+                                        error={errors.date}
+                                        onChange={(date) => {
+                                            setNewDeduction(prev => ({ ...prev, date }));
+                                            setErrors({ ...errors, date: false });
+                                        }} />
+                                    {errors.date && <p className="text-red-400 text-sm mt-1">* Date is required</p>}
+                                </div>
 
-                            {/* Driver selection */}
-                            <div>
-                                <div className="relative">
-                                    <label className="text-body-sm font-medium text-black dark:text-white">
-                                        Select Personnel<span className="ml-1 text-red select-none">*</span>
-                                    </label>
+                                {/* Driver selection */}
+                                <div>
+                                    <div className="relative">
+                                        <label className="text-body-sm font-medium text-black dark:text-white">
+                                            Select Personnel<span className="ml-1 text-red select-none">*</span>
+                                        </label>
 
-                                    <div className="relative mt-3">
-                                        <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
+                                        <div className="relative mt-3">
+                                            <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
 
-                                        <input
-                                            type="text"
-                                            value={searchTerm}
-                                            disabled={newDeduction.site === ''}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            onFocus={() => setDropdownOpen(true)}
-                                            onBlur={() => setTimeout(() => setDropdownOpen(false), 100)} // delay to allow click
-                                            placeholder="-Select Personnel-"
-                                            className={`w-full rounded-lg border-[1.5px] ${errors.driverId ? "border-red animate-pulse" : "border-neutral-300"
-                                                } bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
-                                        />
+                                            <input
+                                                type="text"
+                                                value={searchTerm}
+                                                disabled={newDeduction.site === ''}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                onFocus={() => setDropdownOpen(true)}
+                                                onBlur={() => setTimeout(() => setDropdownOpen(false), 100)} // delay to allow click
+                                                placeholder="-Select Personnel-"
+                                                className={`w-full rounded-lg border-[1.5px] ${errors.driverId ? "border-red animate-pulse" : "border-neutral-300"
+                                                    } bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
+                                            />
 
-                                        {dropdownOpen && (
-                                            <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
-                                                {(driversBySite[newDeduction.site] || [])
-                                                    .filter((driver) =>
-                                                        `${driver.firstName} ${driver.lastName}`
-                                                            .toLowerCase()
-                                                            .includes(searchTerm.toLowerCase())
-                                                    )
-                                                    .map((driver) => (
-                                                        <li
-                                                            key={driver._id}
-                                                            className="cursor-pointer px-4 py-2 hover:bg-primary-100/50 dark:hover:bg-dark-2 text-sm"
-                                                            onMouseDown={() => {
-                                                                const fullName = `${driver.firstName} ${driver.lastName}`;
-                                                                setNewDeduction({
-                                                                    ...newDeduction,
-                                                                    driverId: driver._id,
-                                                                    driverName: fullName,
-                                                                });
-                                                                setSearchTerm(fullName);
-                                                                setErrors({ ...errors, driverId: false });
-                                                                handleVatCheck(newDeduction.serviceType, driver._id);
-                                                            }}
-                                                        >
-                                                            {driver.firstName} {driver.lastName}
-                                                        </li>
-                                                    ))}
-                                            </ul>
+                                            {dropdownOpen && (
+                                                <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
+                                                    {(driversBySite[newDeduction.site] || [])
+                                                        .filter((driver) =>
+                                                            `${driver.firstName} ${driver.lastName}`
+                                                                .toLowerCase()
+                                                                .includes(searchTerm.toLowerCase())
+                                                        )
+                                                        .map((driver) => (
+                                                            <li
+                                                                key={driver._id}
+                                                                className="cursor-pointer px-4 py-2 hover:bg-primary-100/50 dark:hover:bg-dark-2 text-sm"
+                                                                onMouseDown={() => {
+                                                                    const fullName = `${driver.firstName} ${driver.lastName}`;
+                                                                    setNewDeduction({
+                                                                        ...newDeduction,
+                                                                        driverId: driver._id,
+                                                                        driverName: fullName,
+                                                                    });
+                                                                    setSearchTerm(fullName);
+                                                                    setErrors({ ...errors, driverId: false });
+                                                                    handleVatCheck(newDeduction.serviceType, driver._id);
+                                                                }}
+                                                            >
+                                                                {driver.firstName} {driver.lastName}
+                                                            </li>
+                                                        ))}
+                                                </ul>
+                                            )}
+                                        </div>
+
+                                        {errors.driverId && (
+                                            <p className="text-red-400 text-sm mt-1">* Personnel is required</p>
                                         )}
                                     </div>
 
-                                    {errors.driverId && (
-                                        <p className="text-red-400 text-sm mt-1">* Personnel is required</p>
-                                    )}
                                 </div>
 
-                            </div>
+                                {/* Service type */}
+                                <div>
+                                    <InputGroup
+                                        type="dropdown"
+                                        label="Deduction Service Type"
+                                        required={true}
+                                        icon={<i class="absolute left-4.5 top-8 -translate-y-1/2 fi fi-rs-cheap-dollar text-neutral-200 text-[1.5rem]"></i>}
+                                        iconPosition="left"
+                                        className={`${newDeduction.serviceType === '' && 'text-gray-400'}`}
+                                        onChange={(e) => {
+                                            setNewDeduction({ ...newDeduction, serviceType: e.target.value });
+                                            setErrors({ ...errors, serviceType: false });
+                                            handleVatCheck(e.target.value, newDeduction.driverId);
+                                        }}
+                                        error={errors.serviceType}
+                                        value={newDeduction.serviceType}
+                                    >
+                                        <option value="">-Select Service-</option>
+                                        {deductionServices.map((service) => (
+                                            <option key={service} value={service}>
+                                                {service}
+                                            </option>
+                                        ))}
+                                    </InputGroup>
+                                    {errors.serviceType && <p className="text-red-400 text-sm mt-1">* Service type is required</p>}
+                                </div>
 
-                            {/* Service type */}
-                            <div>
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Deduction Service Type"
-                                    required={true}
-                                    icon={<i class="absolute left-4.5 top-8 -translate-y-1/2 fi fi-rs-cheap-dollar text-neutral-200 text-[1.5rem]"></i>}
-                                    iconPosition="left"
-                                    className={`${newDeduction.serviceType === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        setNewDeduction({ ...newDeduction, serviceType: e.target.value });
-                                        setErrors({ ...errors, serviceType: false });
-                                        handleVatCheck(e.target.value, newDeduction.driverId);
-                                    }}
-                                    error={errors.serviceType}
-                                    value={newDeduction.serviceType}
-                                >
-                                    <option value="">-Select Service-</option>
-                                    {deductionServices.map((service) => (
-                                        <option key={service} value={service}>
-                                            {service}
-                                        </option>
-                                    ))}
-                                </InputGroup>
-                                {errors.serviceType && <p className="text-red-400 text-sm mt-1">* Service type is required</p>}
-                            </div>
-
-                            {/* Rate */}
-                            <div>
-                                <InputGroup
-                                    type="number"
-                                    label="Price Rate (£)"
-                                    placeholder='Enter Deduction Amount'
-                                    required={true}
-                                    min={0}
-                                    step="any"
-                                    iconPosition="left"
-                                    icon={<FaPoundSign className="text-neutral-300" />}
-                                    onChange={(e) => {
-                                        setNewDeduction({ ...newDeduction, rate: parseFloat(e.target.value) });
-                                        setErrors({ ...errors, rate: false });
-                                    }}
-                                    error={errors.rate}
-                                    value={newDeduction.rate}
-                                />
-                                {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid amount is required</p>}
-                            </div>
-
-                            {/* VAT display (conditional) */}
-                            {vatValue && (
+                                {/* Rate */}
                                 <div>
                                     <InputGroup
                                         type="number"
-                                        label="Price Rate + VAT (20%)"
-                                        disabled={true}
+                                        label="Price Rate (£)"
+                                        placeholder='Enter Deduction Amount'
+                                        required={true}
+                                        min={0}
+                                        step="any"
                                         iconPosition="left"
                                         icon={<FaPoundSign className="text-neutral-300" />}
-                                        value={(newDeduction.rate * 1.2).toFixed(2)}
+                                        onChange={(e) => {
+                                            setNewDeduction({ ...newDeduction, rate: parseFloat(e.target.value) });
+                                            setErrors({ ...errors, rate: false });
+                                        }}
+                                        error={errors.rate}
+                                        value={newDeduction.rate}
                                     />
+                                    {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid amount is required</p>}
                                 </div>
-                            )}
 
-                            {/* Document upload */}
-                            <div>
-                                <label className="text-sm font-medium">Bill Upload</label>
-                                <p className="text-xs text-amber-500 mb-1">Allowed file formats: JPG, JPEG, PNG</p>
-                                <div className="relative mt-1">
-                                    <InputGroup
-                                        type="file"
-                                        fileStyleVariant="style1"
-                                        accept=".jpg,.jpeg,.png"
-                                        onChange={handleFileChange}
-                                    />
+                                {/* VAT display (conditional) */}
+                                {vatValue && (
+                                    <div>
+                                        <InputGroup
+                                            type="number"
+                                            label="Price Rate + VAT (20%)"
+                                            disabled={true}
+                                            iconPosition="left"
+                                            icon={<FaPoundSign className="text-neutral-300" />}
+                                            value={(newDeduction.rate * 1.2).toFixed(2)}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Document upload */}
+                                <div>
+                                    <label className="text-sm font-medium">Bill Upload</label>
+                                    <p className="text-xs text-amber-500 mb-1">Allowed file formats: JPG, JPEG, PNG</p>
+                                    <div className="relative mt-1">
+                                        <InputGroup
+                                            type="file"
+                                            fileStyleVariant="style1"
+                                            accept=".jpg,.jpeg,.png"
+                                            onChange={handleFileChange}
+                                        />
+                                    </div>
                                 </div>
+
+                                <button
+                                    onClick={handleAddDeduction}
+                                    disabled={Object.values(errors).some((error) => error)}
+                                    className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
+                                >
+                                    Add
+                                </button>
                             </div>
-
-                            <button
-                                onClick={handleAddDeduction}
-                                disabled={Object.values(errors).some((error) => error)}
-                                className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
-                            >
-                                Add
-                            </button>
                         </div>
                     </div>
-                </div>
 
-                {/* Deductions list section */}
-                <div className='h-full relative md:col-span-5 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg'>
-                    <div className='z-5 rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
-                        <h3>Deductions list</h3>
-                    </div>
-                    <div className='px-2 overflow-auto max-h-[39.5rem]'>
-                        <table className="table-general">
-                            <thead>
-                                <tr className="sticky top-0 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
-                                    <th>#</th>
-                                    <th>Personnel Name</th>
-                                    <th>Date</th>
-                                    <th>Site</th>
-                                    <th>Service</th>
-                                    <th>Rate</th>
-                                    <th>Document</th>
-                                    <th>Options</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {deductions.map((deduction) => (
-                                    <tr key={deduction._id} className={deduction.serviceType === 'Route Support' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
-                                        <td>{String(deduction._id).slice(-4)}</td>
-                                        <td>{deduction.driverName}</td>
-                                        <td>{new Date(deduction.date).toLocaleDateString('en-GB')}</td>
-                                        <td>{deduction.site}</td>
-                                        <td>{deduction.serviceType}</td>
-                                        <td>£ {deduction.rate}</td>
-                                        <td>
-                                            <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
-                                                {deduction.signed ? (
-                                                    <div className='flex gap-1'>
-                                                        <a
-                                                            href={deduction.deductionDocument}
-                                                            target='_blank'
-                                                            className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
-                                                        >
-                                                            <i className='flex items-center fi fi-rr-document'></i> Download
-                                                        </a>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        {!deduction.deductionDocument ? (
-                                                            <div className="w-full flex flex-col items-center">
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        id={`chooseFile-${deduction._id}`}
-                                                                        onClick={() => handleFileInputClick(deduction._id)}
-                                                                        className="block text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
-                                                                    >
-                                                                        Choose File
-                                                                    </button>
-                                                                    <input
-                                                                        type="file"
-                                                                        ref={(el) => (fileInputRefs.current[deduction._id] = el)}
-                                                                        className="hidden"
-                                                                        accept=".jpg,.jpeg,.png"
-                                                                        onChange={(e) => handleFileChangeTable(e, deduction._id)}
-                                                                    />
-                                                                </div>
-                                                                <span id={`fileName-${deduction._id}`} className="hidden text-sm text-gray-500 truncate max-w-[120px]">
-                                                                    No file chosen
-                                                                </span>
-                                                                <div
-                                                                    ref={(el) => (uploadButtonsRefs.current[deduction._id] = el)}
-                                                                    className="hidden mt-2 gap-2"
-                                                                >
-                                                                    <button
-                                                                        className="text-sm px-3 py-1 bg-primary-400 text-white rounded hover:bg-primary-500 disabled:bg-primary-200 transition-colors"
-                                                                        onClick={() => handleUploadFile(deduction)}
-                                                                        disabled={isUploadingFile[deduction._id]}
-                                                                    >
-                                                                        {isUploadingFile[deduction._id] ? 'Uploading...' : 'Upload'}
-                                                                    </button>
-                                                                    <button
-                                                                        className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 transition-colors"
-                                                                        onClick={() => handleRemoveFileAdded(deduction._id)}
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className='flex flex-col items-center gap-2 rounded bg-white border border border-neutral-200 p-2'>
-                                                                <span id={`fileName-${deduction._id}`} className="text-sm text-gray-700 truncate max-w-[150px]">
-                                                                    {decodeURIComponent(deduction.deductionDocument.split(`${deduction.driverId}/`)[1])}
-                                                                </span>
-                                                                <div className='flex gap-1'>
-                                                                    <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">
-                                                                        <i class="flex items-center fi fi-rr-file-signature"></i> Pending
-                                                                    </span>
-
-                                                                    <button onClick={() => setDocumentView(deduction)} className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full" >
-                                                                        <FaEye className={`${documentView?._id === deduction?._id && 'text-orange-400 '}`} size={14} />
-                                                                    </button>
-                                                                    <span
-                                                                        onClick={() => handleRemoveFileUploaded(deduction._id)}
-                                                                        className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-red-100 text-red-600 rounded-full">
-                                                                        <MdOutlineDelete size={14} />
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <button
-                                                onClick={() => handleDeleteDeduction(deduction._id)}
-                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400 transition-colors"
-                                                title="Delete deduction"
-                                            >
-                                                <MdOutlineDelete size={17} />
-                                            </button>
-                                        </td>
+                    {/* Deductions list section */}
+                    <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
+                        <div className='flex rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                            <h3>Deductions list</h3>
+                        </div>
+                        <div className='flex-1 flex flex-col p-2 overflow-auto h-full'>
+                            <table className="table-general overflow-auto">
+                                <thead>
+                                    <tr className="sticky -top-2 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
+                                        <th>#</th>
+                                        <th>Personnel Name</th>
+                                        <th>Date</th>
+                                        <th>Site</th>
+                                        <th>Service</th>
+                                        <th>Rate</th>
+                                        <th>Document</th>
+                                        <th>Options</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {deductions.map((deduction) => (
+                                        <tr key={deduction._id} className={deduction.serviceType === 'Route Support' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
+                                            <td>{String(deduction._id).slice(-4)}</td>
+                                            <td>{deduction.driverName}</td>
+                                            <td>{new Date(deduction.date).toLocaleDateString('en-GB')}</td>
+                                            <td>{deduction.site}</td>
+                                            <td>{deduction.serviceType}</td>
+                                            <td>£ {deduction.rate}</td>
+                                            <td>
+                                                <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
+                                                    {deduction.signed ? (
+                                                        <div className='flex gap-1'>
+                                                            <a
+                                                                href={deduction.deductionDocument}
+                                                                target='_blank'
+                                                                className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
+                                                            >
+                                                                <i className='flex items-center fi fi-rr-document'></i> Download
+                                                            </a>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {!deduction.deductionDocument ? (
+                                                                <div className="w-full flex flex-col items-center">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            id={`chooseFile-${deduction._id}`}
+                                                                            onClick={() => handleFileInputClick(deduction._id)}
+                                                                            className="block text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+                                                                        >
+                                                                            Choose File
+                                                                        </button>
+                                                                        <input
+                                                                            type="file"
+                                                                            ref={(el) => (fileInputRefs.current[deduction._id] = el)}
+                                                                            className="hidden"
+                                                                            accept=".jpg,.jpeg,.png"
+                                                                            onChange={(e) => handleFileChangeTable(e, deduction._id)}
+                                                                        />
+                                                                    </div>
+                                                                    <span id={`fileName-${deduction._id}`} className="hidden text-sm text-gray-500 truncate max-w-[120px]">
+                                                                        No file chosen
+                                                                    </span>
+                                                                    <div
+                                                                        ref={(el) => (uploadButtonsRefs.current[deduction._id] = el)}
+                                                                        className="hidden mt-2 gap-2"
+                                                                    >
+                                                                        <button
+                                                                            className="text-sm px-3 py-1 bg-primary-400 text-white rounded hover:bg-primary-500 disabled:bg-primary-200 transition-colors"
+                                                                            onClick={() => handleUploadFile(deduction)}
+                                                                            disabled={isUploadingFile[deduction._id]}
+                                                                        >
+                                                                            {isUploadingFile[deduction._id] ? 'Uploading...' : 'Upload'}
+                                                                        </button>
+                                                                        <button
+                                                                            className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 transition-colors"
+                                                                            onClick={() => handleRemoveFileAdded(deduction._id)}
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className='flex flex-col items-center gap-2 rounded bg-white border border border-neutral-200 p-2'>
+                                                                    <span id={`fileName-${deduction._id}`} className="text-sm text-gray-700 truncate max-w-[150px]">
+                                                                        {decodeURIComponent(deduction.deductionDocument.split(`${deduction.driverId}/`)[1])}
+                                                                    </span>
+                                                                    <div className='flex gap-1'>
+                                                                        <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">
+                                                                            <i class="flex items-center fi fi-rr-file-signature"></i> Pending
+                                                                        </span>
+
+                                                                        <button onClick={() => setDocumentView(deduction)} className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-sky-100 text-sky-600 rounded-full" >
+                                                                            <FaEye className={`${documentView?._id === deduction?._id && 'text-orange-400 '}`} size={14} />
+                                                                        </button>
+                                                                        <span
+                                                                            onClick={() => handleRemoveFileUploaded(deduction._id)}
+                                                                            className="cursor-pointer flex w-fit items-center gap-1 text-xs p-2 bg-red-100 text-red-600 rounded-full">
+                                                                            <MdOutlineDelete size={14} />
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <button
+                                                    onClick={() => handleDeleteDeduction(deduction._id)}
+                                                    className="p-2 rounded-md hover:bg-neutral-200 text-red-400 transition-colors"
+                                                    title="Delete deduction"
+                                                >
+                                                    <MdOutlineDelete size={17} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
