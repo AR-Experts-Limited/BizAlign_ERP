@@ -420,10 +420,6 @@ const Instalments = () => {
                                                 <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
                                                     {instalment.signed ? (
                                                         <div className='flex gap-1'>
-
-                                                            <button onClick={() => setDocumentView(instalment)} className="cursor-pointer flex w-fit items-center gap-1 text-xs px-2 py-1 bg-sky-100 text-sky-600 border border-sky-800/60 rounded-md" >
-                                                                <FaEye className={`${documentView?._id === instalment?._id && 'text-orange-400 '}`} size={14} /> View
-                                                            </button>
                                                             <a
                                                                 href={instalment.installmentDocument}
                                                                 className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"

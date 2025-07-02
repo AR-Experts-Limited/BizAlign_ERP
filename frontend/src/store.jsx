@@ -2,6 +2,7 @@ import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import storage from 'redux-persist/lib/storage';
 import { persistReducer, persistStore } from 'redux-persist';
 
+import autoLogoutMiddleware from './features/auth/autoLogout'; // Import the new middleware
 import driverReducer from './features/drivers/driverSlice';
 import siteReducer from './features/sites/siteSlice';
 import ratecardReducer from './features/ratecards/ratecardSlice';
@@ -36,7 +37,7 @@ export const store = configureStore({
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: false,
-        }),
+        }).concat(autoLogoutMiddleware), // Add autoLogoutMiddleware
 });
 
 export const persistor = persistStore(store);
