@@ -592,7 +592,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
     ecsValidity: driverData.ecsValidity,
     ecsExpiry: driverData.ecsExpiry,
     delReqStatus: driverData.delReqStatus,
-    companyRegExpiryDate: driverData.companyRegExpiryDate,
+    companyRegExpiry: driverData.companyRegExpiry,
     ownVehicleInsuranceNA: driverData.ownVehicleInsuranceNA,
     vehicleRegPlate: driverData.vehicleRegPlate,
     disabled: driverData.disabled,

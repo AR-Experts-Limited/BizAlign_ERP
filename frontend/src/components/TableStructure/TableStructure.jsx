@@ -17,7 +17,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
     const { driverStatus } = useSelector((state) => state.drivers);
     const driversBySite = useSelector((state) => state.drivers.bySite);
     const [isFilterOpen, setIsFilterOpen] = useState(true)
-    const [scroll, setScroll] = useState(0)
+    const [scroll, setScroll] = useState({ row: 0, col: 0 })
 
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
 
@@ -159,7 +159,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         return (
                             <MultiGrid
                                 ref={gridRef}
-                                key={`${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}`}
+                                key={`${JSON.stringify(visionTracker)}-${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}`}
                                 fixedRowCount={1}
                                 fixedColumnCount={1}
                                 rowCount={rowCount}
@@ -204,9 +204,14 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
     };
 
     useEffect(() => {
-        setScroll({
-            row: driversList.findIndex((driver) => driver._id === visionTracker?.invoice?.driverId), col: moment(visionTracker?.invoice?.date).day()
-        })
+        if (visionTracker)
+            setScroll({
+                row: driversList.findIndex((driver) => driver._id === visionTracker?.invoice?.driverId), col: moment(visionTracker?.invoice?.date).day()
+            })
+
+        else {
+            setScroll({ row: 0, col: 0 })
+        }
     }, [visionTracker])
 
     return (

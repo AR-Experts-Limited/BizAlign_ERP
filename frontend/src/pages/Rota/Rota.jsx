@@ -871,7 +871,7 @@ const Rota = () => {
                                     <InputGroup
                                         type="dropdown"
                                         label="Services with Ratecard available"
-                                        value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service}
+                                        value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service || ''}
                                         onChange={(e) => handleAdditionalService(e.target.value)}
                                     >
                                         <option value=''>-Select service-</option>
