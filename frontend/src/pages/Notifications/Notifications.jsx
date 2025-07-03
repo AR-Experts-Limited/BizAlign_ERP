@@ -6,6 +6,7 @@ import { fetchDrivers, updateDriverDoc } from '../../features/drivers/driverSlic
 import moment from 'moment';
 import Modal from '../../components/Modal/Modal';
 import DatePicker from '../../components/Datepicker/DatePicker';
+import { AutoSizer } from 'react-virtualized';
 
 
 const Notifications = () => {
