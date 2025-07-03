@@ -30,7 +30,6 @@ const TableFeatures = ({ columns, setColumns, content, setContent, repopulate, s
 
   // Debounced search handler
   const handleSearch = (value, column, originalData) => {
-    console.log(value)
     if (!value.trim()) {
       setContent([...originalData]);
       return;

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { FaTrashAlt } from "react-icons/fa";
 import { FixedSizeList } from 'react-window';
 import InputGroup from '../../components/InputGroup/InputGroup';
+import { AutoSizer } from 'react-virtualized';
 
 const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, handleDeleteDriver, onDisableDriver }) => {
 
@@ -84,7 +85,7 @@ const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, 
     };
 
     return (
-        <div className="overflow-auto">
+        <div className="flex-1 flex flex-col h-full">
             {/* Header */}
             <div className="w-full flex text-sm md:text-base sticky top-0 bg-white z-8 text-gray-400 border-b border-gray-300">
                 <div className="font-light py-2 px-0 text-center w-15 max-w-15">#</div>
@@ -97,14 +98,21 @@ const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, 
             </div>
 
             {/* Body */}
-            <FixedSizeList
-                height={700}
-                width="100%"
-                itemCount={sortedDriversList.length}
-                itemSize={70}
-            >
-                {Row}
-            </FixedSizeList>
+            <div className='flex-1 h-full'>
+                <AutoSizer>
+                    {({ width, height }) => {
+                        return (
+                            <FixedSizeList
+                                height={height}
+                                width={width}
+                                itemCount={sortedDriversList.length}
+                                itemSize={70}
+                            >
+                                {Row}
+                            </FixedSizeList>)
+                    }}
+                </AutoSizer>
+            </div>
         </div>
     );
 };

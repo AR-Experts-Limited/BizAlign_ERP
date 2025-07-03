@@ -359,7 +359,7 @@ const Notifications = () => {
             </div>
 
             <h2 className="text-sm md:text-xl mb-2 font-bold dark:text-white">Notifications</h2>
-            <div className="flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-auto">
+            <div className="flex-1 flex flex-col w-full h-full bg-white rounded-lg border border-neutral-200 overflow-hidden">
                 <div className="z-15 sticky top-0 flex items-center justify-between bg-white backdrop-blur-md p-2 rounded-t-lg border-b border-neutral-200">
                     <div className="text-sm md:text-base">Notifications List</div>
                     <TableFeatures
@@ -372,22 +372,27 @@ const Notifications = () => {
                     />
                 </div>
 
-                <div className="overflow-auto">
+                <div className="flex-1 flex flex-col h-full w-full">
                     <div className="flex w-full text-sm md:text-base sticky top-0 bg-white z-8 text-gray-400 border-b border-gray-300">
                         <div className="font-light py-2 px-0 text-center w-8 max-w-8">#</div>
                         {Object.keys(displayColumns).map((col) => (
                             <div key={col} className="flex-1 font-light py-2 px-0 text-center min-w-32">{col}</div>
                         ))}
                     </div>
-
-                    <FixedSizeList
-                        height={580}
-                        width="100%"
-                        itemCount={notificationsList.length}
-                        itemSize={75}
-                    >
-                        {Row}
-                    </FixedSizeList>
+                    <div className="rounded-md flex-1 h-full  w-full">
+                        <AutoSizer>
+                            {({ width, height }) => {
+                                return (<FixedSizeList
+                                    height={height}
+                                    width={width}
+                                    itemCount={notificationsList.length}
+                                    itemSize={75}
+                                >
+                                    {Row}
+                                </FixedSizeList>)
+                            }}
+                        </AutoSizer>
+                    </div>
                 </div>
             </div>
 

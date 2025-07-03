@@ -144,191 +144,193 @@ const Incentives = () => {
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
-            <h2 className="text-xl mb-3 font-bold dark:text-white">Incentives</h2>
-            <div className="h-full grid grid-cols-1 md:grid-cols-7 gap-3">
-                {/* Add new incentive section */}
-                <div className="h-full md:col-span-2 w-full bg-white dark:bg-dark shadow-lg border border-neutral-300 dark:border-dark-3 rounded-lg">
-                    <div className="relative overflow-auto max-h-[42rem]">
-                        <div className="sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white">
-                            <h3>Add new incentive</h3>
-                        </div>
-                        <div className="p-4 pb-8 flex flex-col gap-3">
-                            {/* Site selection */}
-                            <div>
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Select Site"
-                                    icon={<FaBuildingUser className='text-neutral-200' size={20} />}
-                                    iconPosition="left"
-                                    required={true}
-                                    className={`${newIncentive.site === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        setNewIncentive({ ...newIncentive, site: e.target.value });
-                                        setErrors({ ...errors, site: false });
-                                    }}
-                                    error={errors.site}
-                                    value={newIncentive.site}
-                                    disabled={userDetails?.role === 'OSM'}
-                                >
-                                    <option value="">- Select Site -</option>
-                                    {sites.map((site) => (
-                                        <option key={site.siteKeyword} value={site.siteKeyword}>
-                                            {site.siteName}
-                                        </option>
-                                    ))}
-                                </InputGroup>
-                                {errors.site && <p className="text-red-400 text-sm mt-1">* Site is required</p>}
+            <div className='flex flex-col w-full h-full'>
+                <h2 className="text-xl mb-3 font-bold dark:text-white">Incentives</h2>
+                <div className='flex-1 flex overflow-auto gap-3'>
+                    {/* Add new incentive section */}
+                    <div className='h-full flex-1 flex-[2] flex flex-col w-full bg-white dark:bg-dark border border-neutral-300 dark:border-dark-3 rounded-lg'>
+                        <div className='relative overflow-auto flex-1 flex flex-col'>
+                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
+                                <h3>Add new incentive</h3>
                             </div>
-
-                            {/* Service selection */}
-                            <div>
-                                <InputGroup
-                                    type="dropdown"
-                                    label="Select Service"
-                                    icon={<i class="absolute top-3.5 left-4.5 text-neutral-200 text-[1.2rem] fi fi-rr-shipping-fast"></i>}
-                                    iconPosition="left"
-                                    required={true}
-                                    className={`${newIncentive.service === '' && 'text-gray-400'}`}
-                                    onChange={(e) => {
-                                        setNewIncentive({ ...newIncentive, service: e.target.value });
-                                        setErrors({ ...errors, service: false });
-                                    }}
-                                    error={errors.service}
-                                    value={newIncentive.service}
-                                >
-                                    <option value="">- Select Service -</option>
-                                    {services.map((service) => (
-                                        <option key={service._id} value={service.title}>
-                                            {service.title}
-                                        </option>
-                                    ))}
-                                </InputGroup>
-                                {errors.service && <p className="text-red-400 text-sm mt-1">* Service is required</p>}
-                            </div>
-
-                            {/* Month selection */}
-                            <div>
-                                <label className="text-sm font-medium block mb-3">Month <span className="text-red-400">*</span></label>
-                                <div className={`relative [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5`}>
-                                    <Flatpickr
-                                        value={newIncentive.month}
-                                        placeholder="Select Month"
-                                        onChange={handleMonthChange}
-                                        options={{
-                                            plugins: [new monthSelectPlugin({
-                                                shorthand: true,
-                                                dateFormat: "Y-m",
-                                                theme: "light"
-                                            })],
-                                            dateFormat: "Y-m",
+                            <div className="p-4 pb-8 flex flex-col gap-3">
+                                {/* Site selection */}
+                                <div>
+                                    <InputGroup
+                                        type="dropdown"
+                                        label="Select Site"
+                                        icon={<FaBuildingUser className='text-neutral-200' size={20} />}
+                                        iconPosition="left"
+                                        required={true}
+                                        className={`${newIncentive.site === '' && 'text-gray-400'}`}
+                                        onChange={(e) => {
+                                            setNewIncentive({ ...newIncentive, site: e.target.value });
+                                            setErrors({ ...errors, site: false });
                                         }}
-                                        className={`w-full pl-12 p-3 border-[1.5px] rounded-md ${errors.month ? 'border-red-400' : 'border-neutral-300'} focus:outline-none focus:border-2 focus:border-primary-500`}
-                                    />
-                                    {newIncentive.month ? (
-                                        <TiDelete
-                                            onClick={() => setNewIncentive({ ...newIncentive, month: '', type: '' })}
-                                            className="size-7 cursor-pointer text-red-light right-3 left-auto"
-                                        />
-                                    ) : (
-                                        <IoCalendarOutline className="pointer-events-none size-5 text-neutral-300" />
-                                    )}
+                                        error={errors.site}
+                                        value={newIncentive.site}
+                                        disabled={userDetails?.role === 'OSM'}
+                                    >
+                                        <option value="">- Select Site -</option>
+                                        {sites.map((site) => (
+                                            <option key={site.siteKeyword} value={site.siteKeyword}>
+                                                {site.siteName}
+                                            </option>
+                                        ))}
+                                    </InputGroup>
+                                    {errors.site && <p className="text-red-400 text-sm mt-1">* Site is required</p>}
                                 </div>
-                                {errors.month && <p className="text-red-400 text-sm mt-1">* Month is required</p>}
-                            </div>
 
-                            {/* Incentive type */}
-                            <div>
-                                <InputGroup
-                                    type="text"
-                                    label="Incentive Type"
-                                    required={true}
-                                    value={newIncentive.type}
-                                    disabled={true}
-                                    placeholder="Select month to determine type"
-                                    error={errors.type}
-                                    icon={<i class="absolute top-3.5 left-4.5 fi fi-rr-handshake-deal-loan text-neutral-300 text-[1.2rem]"></i>}
-                                    iconPosition="left"
-                                />
-                                {errors.type && <p className="text-red-400 text-sm mt-1">* Incentive type is required</p>}
-                            </div>
+                                {/* Service selection */}
+                                <div>
+                                    <InputGroup
+                                        type="dropdown"
+                                        label="Select Service"
+                                        icon={<i class="absolute top-3.5 left-4.5 text-neutral-200 text-[1.2rem] fi fi-rr-shipping-fast"></i>}
+                                        iconPosition="left"
+                                        required={true}
+                                        className={`${newIncentive.service === '' && 'text-gray-400'}`}
+                                        onChange={(e) => {
+                                            setNewIncentive({ ...newIncentive, service: e.target.value });
+                                            setErrors({ ...errors, service: false });
+                                        }}
+                                        error={errors.service}
+                                        value={newIncentive.service}
+                                    >
+                                        <option value="">- Select Service -</option>
+                                        {services.map((service) => (
+                                            <option key={service._id} value={service.title}>
+                                                {service.title}
+                                            </option>
+                                        ))}
+                                    </InputGroup>
+                                    {errors.service && <p className="text-red-400 text-sm mt-1">* Service is required</p>}
+                                </div>
 
-                            {/* Rate */}
-                            <div>
-                                <InputGroup
-                                    type="number"
-                                    label="Incentive Amount (£)"
-                                    required={true}
-                                    min={0}
-                                    step="any"
-                                    iconPosition="left"
-                                    icon={<FaPoundSign className="text-neutral-300" />}
-                                    onChange={(e) => {
-                                        setNewIncentive({ ...newIncentive, rate: parseFloat(e.target.value) });
-                                        setErrors({ ...errors, rate: false });
-                                    }}
-                                    error={errors.rate}
-                                    value={newIncentive.rate}
-                                />
-                                {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid incentive amount is required</p>}
-                            </div>
+                                {/* Month selection */}
+                                <div>
+                                    <label className="text-sm font-medium block mb-3">Month <span className="text-red-400">*</span></label>
+                                    <div className={`relative [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5`}>
+                                        <Flatpickr
+                                            value={newIncentive.month}
+                                            placeholder="Select Month"
+                                            onChange={handleMonthChange}
+                                            options={{
+                                                plugins: [new monthSelectPlugin({
+                                                    shorthand: true,
+                                                    dateFormat: "Y-m",
+                                                    theme: "light"
+                                                })],
+                                                dateFormat: "Y-m",
+                                            }}
+                                            className={`w-full pl-12 p-3 border-[1.5px] rounded-md ${errors.month ? 'border-red-400' : 'border-neutral-300'} focus:outline-none focus:border-2 focus:border-primary-500`}
+                                        />
+                                        {newIncentive.month ? (
+                                            <TiDelete
+                                                onClick={() => setNewIncentive({ ...newIncentive, month: '', type: '' })}
+                                                className="size-7 cursor-pointer text-red-light right-3 left-auto"
+                                            />
+                                        ) : (
+                                            <IoCalendarOutline className="pointer-events-none size-5 text-neutral-300" />
+                                        )}
+                                    </div>
+                                    {errors.month && <p className="text-red-400 text-sm mt-1">* Month is required</p>}
+                                </div>
 
-                            <button
-                                onClick={handleAddIncentive}
-                                disabled={Object.values(errors).some((error) => error)}
-                                className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
-                            >
-                                Add
-                            </button>
+                                {/* Incentive type */}
+                                <div>
+                                    <InputGroup
+                                        type="text"
+                                        label="Incentive Type"
+                                        required={true}
+                                        value={newIncentive.type}
+                                        disabled={true}
+                                        placeholder="Select month to determine type"
+                                        error={errors.type}
+                                        icon={<i class="absolute top-3.5 left-4.5 fi fi-rr-handshake-deal-loan text-neutral-300 text-[1.2rem]"></i>}
+                                        iconPosition="left"
+                                    />
+                                    {errors.type && <p className="text-red-400 text-sm mt-1">* Incentive type is required</p>}
+                                </div>
+
+                                {/* Rate */}
+                                <div>
+                                    <InputGroup
+                                        type="number"
+                                        label="Incentive Amount (£)"
+                                        required={true}
+                                        min={0}
+                                        step="any"
+                                        iconPosition="left"
+                                        icon={<FaPoundSign className="text-neutral-300" />}
+                                        onChange={(e) => {
+                                            setNewIncentive({ ...newIncentive, rate: parseFloat(e.target.value) });
+                                            setErrors({ ...errors, rate: false });
+                                        }}
+                                        error={errors.rate}
+                                        value={newIncentive.rate}
+                                    />
+                                    {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid incentive amount is required</p>}
+                                </div>
+
+                                <button
+                                    onClick={handleAddIncentive}
+                                    disabled={Object.values(errors).some((error) => error)}
+                                    className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
+                                >
+                                    Add
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Incentives list section */}
-                <div className="h-full relative md:col-span-5 w-full bg-white dark:bg-dark dark:border-dark-3 shadow-lg border border-neutral-300 rounded-lg">
-                    <div className="z-5 rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white">
-                        <h3>Incentives list</h3>
-                    </div>
-                    <div className="p-4 overflow-auto max-h-[39.5rem]">
-                        <table className="table-general">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Site</th>
-                                    <th>Service Title</th>
-                                    <th>Month</th>
-                                    <th>Incentive Type</th>
-                                    <th>Rate</th>
-                                    {/* <th>Added By</th>
+                    {/* Incentives list section */}
+                    <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
+                        <div className='flex rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                            <h3>Incentives list</h3>
+                        </div>
+                        <div className='flex-1 flex flex-col p-2 overflow-auto h-full'>
+                            <table className="table-general overflow-auto">
+                                <thead>
+                                    <tr className="sticky -top-2 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
+                                        <th>#</th>
+                                        <th>Site</th>
+                                        <th>Service Title</th>
+                                        <th>Month</th>
+                                        <th>Incentive Type</th>
+                                        <th>Rate</th>
+                                        {/* <th>Added By</th>
                                     <th>Added On</th> */}
-                                    <th>Options</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {incentives.map((incentive) => (
-                                    <tr key={incentive._id}>
-                                        <td>{String(incentive._id).slice(-4)}</td>
-                                        <td>{incentive.site}</td>
-                                        <td>{incentive.service}</td>
-                                        <td>{new Date(incentive.month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</td>
-                                        <td>{incentive.type}</td>
-                                        <td>£ {incentive.rate}</td>
-                                        {/* <td>
+                                        <th>Options</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {incentives.map((incentive) => (
+                                        <tr key={incentive._id}>
+                                            <td>{String(incentive._id).slice(-4)}</td>
+                                            <td>{incentive.site}</td>
+                                            <td>{incentive.service}</td>
+                                            <td>{new Date(incentive.month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</td>
+                                            <td>{incentive.type}</td>
+                                            <td>£ {incentive.rate}</td>
+                                            {/* <td>
                                             {incentive.addedBy?.name}<br />
                                             {incentive.addedBy?.email}
                                         </td> 
                                         <td>{new Date(incentive.addedBy?.addedOn).toLocaleString()}</td>*/}
-                                        <td>
-                                            <button
-                                                onClick={() => handleDeleteIncentive(incentive._id)}
-                                                className="p-2 rounded-md hover:bg-neutral-200 text-red-400"
-                                            >
-                                                <MdOutlineDelete size={17} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            <td>
+                                                <button
+                                                    onClick={() => handleDeleteIncentive(incentive._id)}
+                                                    className="p-2 rounded-md hover:bg-neutral-200 text-red-400"
+                                                >
+                                                    <MdOutlineDelete size={17} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -13,8 +13,10 @@ import InputGroup from '../../components/InputGroup/InputGroup';
 import { FcApproval, FcClock, FcTodoList, FcHighPriority, FcCheckmark } from "react-icons/fc";
 import { BsCheckCircleFill } from "react-icons/bs";
 import { AiOutlineClockCircle } from "react-icons/ai";
-import { cosineSimilarityFromText } from './similarity'
-{/* <AiOutlineClockCircle className="text-yellow-500 text-xl" />, */ }
+import { compareServiceStrings } from './similarity'
+import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
+import { fetchServices } from '../../features/services/serviceSlice';
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 const stageIcons = {
@@ -26,6 +28,7 @@ const stageIcons = {
 };
 
 const ManageSummary = () => {
+    const dispatch = useDispatch()
     const [rangeType, setRangeType] = useState('weekly');
     const [rangeOptions, setRangeOptions] = useState({});
     const [selectedRangeIndex, setSelectedRangeIndex] = useState();
@@ -42,13 +45,23 @@ const ManageSummary = () => {
     const [currentInvoice, setCurrentInvoice] = useState(null)
     const [selectedInvoices, setSelectedInvoices] = useState([]);
     const originalMilesRef = useRef(null);
+    const originalServiceRef = useRef(null);
     const events = useSelector((state) => state.sse.events);
     const error = useSelector((state) => state.sse.error);
     const connected = useSelector((state) => state.sse.connected);
+    const { list: services, serviceStatus } = useSelector((state) => state.services);
+    const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
+    const [visionIds, setVisionIds] = useState([])
+    const [visionTracker, setVisionTracker] = useState('')
+
 
     const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
     const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList };
 
+    useEffect(() => {
+        if (ratecardStatus === 'idle') dispatch(fetchRatecards());
+        if (serviceStatus === 'idle') dispatch(fetchServices());
+    }, [serviceStatus, dispatch]);
 
     useEffect(() => {
         if (events && (events.type === "approvalStatusUpdated")) {
@@ -71,67 +84,114 @@ const ManageSummary = () => {
                 const response = await axios.get(`${API_BASE_URL}/api/dayInvoice`, {
                     params: {
                         driverId: driversList.map((driver) => driver._id),
-                        startdate: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
-                        enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
+                        startdate: new Date(new Date(moment(rangeOptionsVal[2]?.start).format('YYYY-MM-DD')).setHours(0, 0, 0, 0)),
+                        enddate: new Date(new Date(moment(rangeOptionsVal[2]?.end).format('YYYY-MM-DD')).setHours(0, 0, 0, 0)),
                     },
                 });
-                setInvoices(response.data);
+                setInvoices(response.data.sort((a, b) => a.driverName.localeCompare(b.driverName)));
             };
 
-            if (!cacheRangeOption) {
-                fetchInvoices();
-                setCacheRangeOption(rangeOptions);
-            }
-            else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) ||
-                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
-                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
-                fetchInvoices();
-                setCacheRangeOption(rangeOptions);
-            }
+            // if (!cacheRangeOption) {
+            //     fetchInvoices();
+            //     setCacheRangeOption(rangeOptions);
+            // }
+            // else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) ||
+            //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+            //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
+            //     fetchInvoices();
+            //     setCacheRangeOption(rangeOptions);
+            // }
+            fetchInvoices()
         }
+        setVisionIds([])
+        setVisionTracker('')
+
     }, [rangeOptions, driversList]);
 
 
     useEffect(() => {
-        const map = {};
+        const updateInvoices = async () => {
+            const map = {};
+            let directInvoiceGen = [];
 
-        invoices.forEach(invoice => {
-            if (invoice.site !== selectedSite)
-                return
-            const invoiceDate = new Date(invoice.date).toLocaleDateString();
-            const invoiceName = invoice.driverName?.trim();
-            const invoiceService = invoice.mainService?.trim();
-            const existingCsvData = invoice.csvData || null
+            for (const invoice of invoices) {
+                if (invoice.site !== selectedSite) continue;
 
-            let matchedCsv = null
+                const invoiceDate = new Date(invoice.date).toLocaleDateString();
+                const invoiceDriverName = String(invoice.driverName?.trim()).toLowerCase();
+                const invoiceTransporterName = String(
+                    driversList.find((driver) => driver._id === invoice.driverId)?.transporterName?.trim()
+                ).toLowerCase();
+                const invoiceService = invoice.mainService?.trim();
 
-            const key = `${invoiceDate}_${invoiceName}`;
-            if (existingCsvData)
-                matchedCsv = existingCsvData
+                const existingCsvData = invoice.csvData || null;
+                let matchedCsv = null;
 
-            else
-                matchedCsv = csvData[key] || null;
+                // First, try matching with driverName
+                const driverKey = `${invoiceDate}_${invoiceDriverName}`;
+                matchedCsv = existingCsvData || csvData[driverKey] || null;
 
+                // If no match and transporterName exists, try matching with transporterName
+                if (!matchedCsv && invoiceTransporterName) {
+                    const transporterKey = `${invoiceDate}_${invoiceTransporterName}`;
+                    matchedCsv = csvData[transporterKey] || null;
+                }
 
-            const dateKey = new Date(invoice.date).toLocaleDateString('en-UK');
-            const mapKey = `${dateKey}_${invoice.driverId}`;
+                const dateKey = new Date(invoice.date).toLocaleDateString('en-UK');
+                const mapKey = `${dateKey}_${invoice.driverId}`;
 
-            map[mapKey] = {
-                invoice,
-                matchedCsv,
-            };
+                const csvService = matchedCsv ? matchedCsv['Service Type'] : null;
+                const similarity = matchedCsv ? compareServiceStrings(invoiceService, csvService) : {};
 
-            {/*Comment this when testing with erp_rainaltd */ }
-            if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
-                const similarity = cosineSimilarityFromText(invoice.mainService, matchedCsv?.['Service Type'])
-                const match = (Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance'])) ? true : false
-                if (match) {
-                    let invoiceMatch = { ...invoice, approvalStatus: 'Under Approval' }
-                    updateInvoiceApprovalStatus({ invoice: invoiceMatch, matchedCsv })
+                map[mapKey] = {
+                    invoice,
+                    matchedCsv: matchedCsv ? { ...matchedCsv, similarity } : null,
+                };
+
+                if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
+                    const match =
+                        Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance']) &&
+                        similarity.isSimilar;
+                    if (match) {
+                        let invoiceMatch = { ...invoice, approvalStatus: 'Under Approval' };
+                        directInvoiceGen.push({
+                            id: invoice._id,
+                            updateData: { approvalStatus: 'Invoice Generation', csvData: matchedCsv },
+                        });
+                    }
                 }
             }
-        });
-        setInvoiceMap(map);
+
+            if (directInvoiceGen.length > 0) {
+                try {
+                    const response = await axios.put(
+                        `${API_BASE_URL}/api/dayInvoice/updateApprovalStatusBatch`,
+                        {
+                            updates: directInvoiceGen,
+                            site: selectedSite,
+                        }
+                    );
+                    const updatedInvoices = response.data.updated;
+
+                    updatedInvoices.map((upinv) => {
+                        const dateKey = new Date(upinv.date).toLocaleDateString('en-UK');
+                        const mapKey = `${dateKey}_${upinv.driverId}`;
+                        map[mapKey] = {
+                            upinv,
+                            matchedCsv: upinv.csvData,
+                        };
+                    })
+
+                } catch (error) {
+                    console.error('Error updating invoices:', error);
+                    // Handle error as needed
+                }
+            }
+
+            setInvoiceMap(map);
+        };
+
+        updateInvoices();
     }, [invoices, csvData, selectedSite]);
 
 
@@ -147,7 +207,7 @@ const ManageSummary = () => {
             setCsvData({})
             return
         }
-        const requiredColumns = ["Date", "Station", "Delivery Associate", "Service Type", "Total Distance Allowance"];
+        const requiredColumns = ["Date", "Delivery Associate", "Service Type", "Planned Duration", "Total Distance Allowance"];
         const file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -172,11 +232,10 @@ const ManageSummary = () => {
                     // Step 1: Preprocess CSV data into a map
                     filteredData.forEach(csv => {
                         const csvDate = new Date(moment(csv.Date, 'DD/MM/YYYY')).toLocaleDateString();
-                        const csvName = csv['Delivery Associate']?.trim();
-                        const csvService = csv['Service Type']?.trim();
+                        const csvName = String(csv['Delivery Associate']?.trim()).toLowerCase();
 
                         const key = `${csvDate}_${csvName}`;
-                        csvLookup[key] = csv;
+                        csvLookup[key] = { ...csv, 'Service Type': csv['Service Type']?.trim() + ' - ' + csv['Planned Duration']?.trim() };
                     })
                     setCsvData(csvLookup);
                 },
@@ -190,17 +249,17 @@ const ManageSummary = () => {
     }
 
     const handleSelectAll = (e) => {
-        let allSelectedInvoices = []
+        let allSelectedInvoices = new Set()
         if (e.target.name === 'selectAll') {
             const selectedApprovalStatus = invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus
-            allSelectedInvoices.push(selectedInvoices[0])
+            allSelectedInvoices.add(selectedInvoices[0])
             Object.keys(invoiceMap).map((invKey) => {
-                if (invoiceMap[invKey]?.invoice.approvalStatus === selectedApprovalStatus) {
-                    allSelectedInvoices.push(invKey)
+                if (invoiceMap[invKey]?.invoice.approvalStatus === selectedApprovalStatus && invoiceMap[invKey]?.matchedCsv) {
+                    allSelectedInvoices.add(invKey)
                 }
             })
         }
-        setSelectedInvoices(allSelectedInvoices)
+        setSelectedInvoices([...allSelectedInvoices])
     }
 
     const updateInvoiceApprovalStatus = async (currentInvoice) => {
@@ -212,9 +271,11 @@ const ManageSummary = () => {
             "completed"
         ];
 
-        const { invoice, matchedCsv } = currentInvoice
+        let { invoice, matchedCsv, matchingRatecard } = currentInvoice
         const currentStatus = invoice.approvalStatus;
         const nextStatusIndex = stages.indexOf(currentStatus) + 1;
+        let prevRateOnlyTotal = invoice.serviceRateforMain + invoice.byodRate + invoice.calculatedMileage
+        invoice = matchingRatecard ? { ...invoice, serviceRateforMain: matchingRatecard.serviceRate, byodRate: matchingRatecard.byodRate, mileage: matchingRatecard.mileage } : invoice
 
         if (nextStatusIndex >= stages.length) {
             console.warn("Already at final stage.");
@@ -244,9 +305,13 @@ const ManageSummary = () => {
             updatedInvoice = [{
                 id: invoice._id,
                 updateData: {
+                    mainService: invoice.mainService,
+                    serviceRateforMain: invoice.serviceRateforMain,
+                    byodRate: invoice.byodRate,
+                    mileage: invoice.mileage,
                     miles: invoice.miles,
                     calculatedMileage: Number((invoice.miles * invoice.mileage).toFixed(2)),
-                    total: invoice.total - invoice.calculatedMileage + Number((invoice.miles * invoice.mileage).toFixed(2)),
+                    total: (invoice.total - (prevRateOnlyTotal || 0)) + invoice.serviceRateforMain + invoice.byodRate + Number((invoice.miles * invoice.mileage).toFixed(2)),
                     approvalStatus: stages[nextStatusIndex],
                     csvData: matchedCsv
 
@@ -286,13 +351,13 @@ const ManageSummary = () => {
         const invoiceBelongstoSite = invoice?.site === selectedSite
 
         return (
-            <div key={day.date} className='w-full h-full'>
+            <div key={day.date} name={invoice?._id} className={`w-full h-full `}>
                 {(() => {
                     // Render invoice cell
                     if (invoice && invoiceBelongstoSite) {
                         return (
                             <div className={`relative flex justify-center h-full w-full`}>
-                                <div className='relative max-w-40'>
+                                <div className='relative max-w-40 w-full'>
                                     <div
 
                                         onClick={(e) => {
@@ -313,10 +378,12 @@ const ManageSummary = () => {
                                             else {
                                                 setCurrentInvoice({ ...invoiceMap[key] });
                                                 originalMilesRef.current = invoiceMap[key]?.invoice?.miles
+                                                originalServiceRef.current = invoiceMap[key]?.invoice?.mainService
                                             }
                                         }}
-                                        className={`relative z-6 w-full h-full flex flex gap-1  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
-                                            ${disabledSelection && '!text-gray-300 !pointers-event-none'}
+                                        className={`relative z-6 w-full h-full flex flex gap-2  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
+                                        ${visionTracker?.invoice?._id === invoice?._id && 'bg-yellow-100'}
+                                        ${disabledSelection && '!text-gray-300 !pointers-event-none'}
                                             ${!matchedCsv
                                                 ? 'border-dashed border-gray-300'
                                                 : selectedInvoices.includes(key)
@@ -342,6 +409,17 @@ const ManageSummary = () => {
         )
     }
 
+    const handleServiceTypeChange = (e) => {
+        if (e.target.value !== originalServiceRef.current) {
+            const isMatchingService = services.find((service) => compareServiceStrings(service.title, e.target.value).isSimilar)
+            const matchingRatecard = isMatchingService ? ratecards.find((rc) => rc.serviceTitle === isMatchingService.title && rc.serviceWeek === currentInvoice?.invoice.serviceWeek && rc.vehicleType === currentInvoice?.invoice.driverVehicleType) : null
+            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, mainService: isMatchingService.title }, restrictEdit: !matchingRatecard && originalServiceRef.current !== e.target.value }))
+        }
+        else {
+            setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, mainService: e.target.value }, restrictEdit: null }))
+        }
+    }
+
     return (
         <>
             <TableStructure title={'Manage Summary'}
@@ -352,10 +430,16 @@ const ManageSummary = () => {
                 handleFileChange={handleFileChange}
                 selectedInvoices={selectedInvoices}
                 handleSelectAll={handleSelectAll}
-                updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} />
+                updateInvoiceApprovalStatus={updateInvoiceApprovalStatus}
+                setVisionIds={setVisionIds}
+                visionIds={visionIds}
+                visionTracker={visionTracker}
+                setVisionTracker={setVisionTracker} />
+
             <Modal isOpen={currentInvoice} onHide={() => setCurrentInvoice(null)}>
                 {(() => {
-                    const misMatch = (Number(currentInvoice?.invoice?.miles)) !== Number(currentInvoice?.matchedCsv?.['Total Distance Allowance']) ? true : false
+                    const misMatchMiles = (Number(currentInvoice?.invoice?.miles)) !== Number(currentInvoice?.matchedCsv?.['Total Distance Allowance']) ? true : false
+                    const misMatchServiceType = currentInvoice && !compareServiceStrings(currentInvoice?.invoice?.mainService, currentInvoice?.matchedCsv?.['Service Type'])?.isSimilar
 
                     return (<>
                         <h2 className="text-lg px-4 py-2 border-b border-neutral-300">Invoice Comparison</h2>
@@ -378,25 +462,36 @@ const ManageSummary = () => {
                                     <tbody>
                                         <tr className="border-b border-gray-200">
                                             <td className="px-4 py-2 font-medium text-gray-700">Service</td>
-                                            <td className="px-4 py-2">{currentInvoice?.matchedCsv["Service Type"]}</td>
-                                            <td className="px-4 py-2">{currentInvoice?.invoice?.mainService}</td>
+                                            <td className={`px-4 py-2 ${misMatchServiceType ? 'text-red-500' : 'text-green-600'
+                                                }`}>
+                                                {currentInvoice?.matchedCsv['Service Type'].trim() !== '-' ? currentInvoice?.matchedCsv['Service Type'] : 'N/A'}
+                                            </td>
+                                            <td className={`px-4 py-2 ${misMatchServiceType ? 'text-red-500' : 'text-green-600'
+                                                }`}>
+                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' ?
+                                                    <InputGroup type='dropdown' onChange={(e) => handleServiceTypeChange(e)}>
+                                                        <option value={originalServiceRef.current}>{originalServiceRef.current}</option>
+                                                        {currentInvoice?.matchedCsv['Service Type']?.trim() !== '-' && <option value={currentInvoice?.matchedCsv['Service Type']?.trim()}>{currentInvoice?.matchedCsv['Service Type']?.trim()}</option>}
+                                                    </InputGroup> :
+                                                    currentInvoice?.invoice?.mainService}
+                                            </td>
                                         </tr>
                                         <tr className="border-b border-gray-200">
                                             <td className="px-4 py-2 font-medium text-gray-700">Miles / Distance</td>
                                             <td
-                                                className={`px-4 py-2 ${misMatch ? 'text-red-500' : 'text-green-600'
+                                                className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
                                                     }`}
                                             >
-                                                {currentInvoice?.matchedCsv["Total Distance Allowance"]}
+                                                {currentInvoice?.matchedCsv["Total Distance Allowance"] || 'N/A'}
                                             </td>
                                             <td
-                                                className={`px-4 py-2 ${misMatch ? 'text-red-500' : 'text-green-600'
+                                                className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
                                                     }`}
                                             >
                                                 {currentInvoice?.invoice.approvalStatus == 'Under Edit' ?
                                                     <InputGroup type='dropdown' onChange={(e) => setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, miles: e.target.value } }))}>
                                                         <option value={originalMilesRef.current}>{originalMilesRef.current}</option>
-                                                        <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>
+                                                        {currentInvoice?.matchedCsv["Total Distance Allowance"] && <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>}
                                                     </InputGroup> :
                                                     currentInvoice?.invoice?.miles}
                                             </td>
@@ -406,6 +501,7 @@ const ManageSummary = () => {
                                 </table>
 
                             </div>
+                            {currentInvoice?.restrictEdit && <div className='flex justify-end'><div className='text-center w-fit bg-red-300/50 px-2 py-1 text-sm rounded-md border border-red-500 text-red-500'> Ratecard unavailable for selected service, week and vehicle type</div></div>}
                             {(() => {
                                 const stages = [
                                     "Access Requested",

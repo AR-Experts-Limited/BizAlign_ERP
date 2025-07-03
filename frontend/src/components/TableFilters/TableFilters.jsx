@@ -242,7 +242,7 @@ const TableFilters = ({ title, state, setters, invoiceMap, handleFileChange, sel
             {
                 title === 'Manage Summary' && selectedInvoices.length > 0 &&
                 <div className='w-full flex items-center justify-around gap-1 rounded-md border-[1.5px] max-sm:col-span-2 border-neutral-300 py-1 px-1 mt-2.5 overflow-auto'>
-                    <div className=' text-xs'><RenderStageButton currentInvoice={invoiceMap[selectedInvoices[0]]} updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} /></div>
+                    <div className=' text-xs'><RenderStageButton selectedInvoices={selectedInvoices} currentInvoice={invoiceMap[selectedInvoices[0]]} updateInvoiceApprovalStatus={updateInvoiceApprovalStatus} /></div>
                     <button name='selectAll' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-primary-500 px-2 py-1 whitespace-nowrap'>Select All</button>
                     <button name='clear' onClick={(e) => handleSelectAll(e)} className='text-white text-xs rounded-md bg-red-500 px-2 py-1'>Clear</button>
                 </div>

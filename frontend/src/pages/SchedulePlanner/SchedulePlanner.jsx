@@ -138,46 +138,51 @@ const SchedulePlanner = () => {
 
     }, [serviceStatus, standbyDriverStatus, dispatch]);
 
+    const prevDriversList = useRef(driversList);
+
     useEffect(() => {
         const fetchSchedules = async () => {
-            if (driversList.length > 0 && rangeOptions) {
-                const rangeOptionsVal = Object.values(rangeOptions)
-                const fetchSchedules = async () => {
-                    let loadingTimeout = setTimeout(() => setLoading(true), 350);
+            if (driversList.length === 0 || !rangeOptions) return;
 
-                    try {
-                        const response = await axios.get(`${API_BASE_URL}/api/schedule/filter1`, {
-                            params: {
-                                driverId: driversList.map((driver) => driver._id),
-                                startDay: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
-                                endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
-                            },
-                        });
+            let loadingTimeout = setTimeout(() => setLoading(true), 350);
 
-                        clearTimeout(loadingTimeout); // cancel the delayed loader
-                        setSchedules(response.data);
-                    } catch (error) {
-                        clearTimeout(loadingTimeout);
-                        console.error(error);
-                    } finally {
-                        setLoading(false);
-                    }
-                };
+            try {
+                const rangeOptionsVal = Object.values(rangeOptions);
+                const response = await axios.get(`${API_BASE_URL}/api/schedule/filter1`, {
+                    params: {
+                        driverId: driversList.map((driver) => driver._id),
+                        startDay: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
+                        endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
+                    },
+                });
 
-                if (!cacheRangeOption) {
-                    fetchSchedules()
-                    setCacheRangeOption(rangeOptions)
-                }
-                else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 || Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
-                    fetchSchedules()
-                    setCacheRangeOption(rangeOptions)
-                }
-
+                clearTimeout(loadingTimeout);
+                setSchedules(response.data);
+                setCacheRangeOption(rangeOptions);
+            } catch (error) {
+                clearTimeout(loadingTimeout);
+                console.error(error);
+            } finally {
+                setLoading(false);
             }
-        }
-        fetchSchedules()
-    }, [rangeOptions, driversList])
+        };
 
+        // Check if driversList has changed by comparing with previous value
+        const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
+        prevDriversList.current = driversList;
+
+        // Check if rangeOptions change requires a fetch
+        const shouldFetchRange =
+            !cacheRangeOption ||
+            !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+
+        // Fetch if driversList changed or rangeOptions change requires it
+        if (driversListChanged || shouldFetchRange) {
+            fetchSchedules();
+        }
+    }, [rangeOptions, driversList]);
 
     useEffect(() => {
         let map = {}

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from 'react-redux';
 
-export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus }) => {
+export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvoiceApprovalStatus }) => {
     // const navigate = useNavigate()
     const { userDetails } = useSelector((state) => state.auth);
 
@@ -12,7 +12,7 @@ export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus 
                     onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
                     className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
                 >
-                    Grant Access
+                    Grant Access {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                 </button>
             );
         case "Under Edit":
@@ -28,10 +28,11 @@ export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus 
             else
                 return (
                     <button
+                        disabled={currentInvoice.restrictEdit}
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                        className="bg-primary-300 text-white px-2 py-1 rounded  "
+                        className="bg-primary-300 text-white px-2 py-1 rounded  disabled:!cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-700"
                     >
-                        Submit Edit
+                        Submit Edit {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                     </button>
                 );
         case "Invoice Generation":
@@ -50,7 +51,7 @@ export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus 
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
                         className="bg-primary-300 text-white px-2 py-1 rounded  "
                     >
-                        Generate Invoice
+                        Generate Invoice {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                     </button>
                 );
 
@@ -61,7 +62,7 @@ export const RenderStageButton = ({ currentInvoice, updateInvoiceApprovalStatus 
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
                         className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
                     >
-                        Approve Invoice
+                        Approve Invoice {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                     </button>
                 );
             else
