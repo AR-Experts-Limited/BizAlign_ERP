@@ -51,7 +51,7 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
     const { userDetails } = useSelector((state) => state.auth);
 
     return (
-        <div className="navbar z-20 p-2 md:p-5 flex items-center justify-between h-18 bg-neutral-50 w-screen border-b border-stone-400/40 dark:bg-dark dark:text-white">
+        <div className="navbar z-500 p-2 md:p-5 flex items-center justify-between h-18 bg-neutral-50 w-screen border-b border-stone-400/40 dark:bg-dark dark:text-white">
             <div className="flex-1 "><button className={`rounded-lg p-2 hover:bg-neutral-200 hover:text-white`} onClick={() => setSidebarIsOpen(prev => !prev)} ><IoChevronForward
                 className={`transform transition duration-500 ${sidebarIsOpen ? 'rotate-180' : ''}`}
                 size={20}
@@ -80,8 +80,8 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                         </button>
                     </div>
 
-                    <div id="userOptions" className={`flex flex-col absolute top-9 md:top-12 right-0 bg-white/80 shadow-lg backdrop-blur-sm rounded-lg border-2 border-neutral-200 transition-all duration-300 origin-top-right transform ${userOptionsOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
-                        <div className="flex flex-col p-1 md:p-2">
+                    <div id="userOptions" className={` flex flex-col absolute top-9 md:top-12 right-0 bg-white/80 shadow-lg backdrop-blur-sm rounded-lg border-2 border-neutral-200 transition-all duration-300 origin-top-right transform ${userOptionsOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+                        <div className="flex flex-col p-1 md:p-2 ">
                             <button onClick={() => navigate('/my-profile')} className={`hover:bg-zinc-300/70 rounded-md p-2 text-xs md:text-sm w-full flex  items-center gap-2`}>
                                 <FiUsers size={15} /> View Profile
                             </button>

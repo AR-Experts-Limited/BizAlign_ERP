@@ -20,8 +20,7 @@ import { fetchServices } from '../../features/services/serviceSlice';
 import { fetchStandbyDrivers } from '../../features/standbydrivers/standbydriverSlice';
 import { getIncentiveDetails, getDeductionDetails, getInstallmentDetails } from './supportFunctions';
 import TotalBreakdown from './TotalBreakdown';
-import { MultiGrid, AutoSizer } from "react-virtualized";
-import "react-virtualized/styles.css";
+import { debounce } from 'lodash';
 
 // Configure moment locale
 moment.updateLocale('en', {
@@ -137,7 +136,6 @@ const Rota = () => {
     const [days, setDays] = useState([]);
     const [schedules, setSchedules] = useState([]);
     const [scheduleMap, setScheduleMap] = useState({});
-    const [weeklyMap, setWeeklyMap] = useState({});
     const [cacheRangeOption, setCacheRangeOption] = useState(null);
     const [prevRangeType, setPrevRangeType] = useState(rangeType);
     const [rotaDetail, setRotaDetail] = useState(null);
@@ -196,7 +194,6 @@ const Rota = () => {
     useEffect(() => {
         const scheduleMap = {};
         const weeklyMap = {};
-
         schedules.forEach(sch => {
             const dateKey = new Date(sch.day).toLocaleDateString('en-UK');
             const key = `${dateKey}_${sch.driverId}`;
@@ -208,7 +205,6 @@ const Rota = () => {
         });
 
         setScheduleMap(scheduleMap);
-        setWeeklyMap(weeklyMap);
     }, [schedules]);
 
     const prevDriversList = useRef(driversList);
@@ -217,7 +213,16 @@ const Rota = () => {
         const fetchSchedules = async () => {
             if (driversList.length === 0 || !rangeOptions) return;
 
-            let loadingTimeout = setTimeout(() => setLoading(true), 350);
+            let loadingTimeout;
+            const shouldLoad =
+                !cacheRangeOption ||
+                !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+
+            if (shouldLoad) {
+                loadingTimeout = setTimeout(() => setLoading(true), 350);
+            }
 
             try {
                 const rangeOptionsVal = Object.values(rangeOptions);
@@ -228,7 +233,6 @@ const Rota = () => {
                         endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
-
                 clearTimeout(loadingTimeout);
                 setSchedules(response.data);
                 setCacheRangeOption(rangeOptions);
@@ -240,24 +244,26 @@ const Rota = () => {
             }
         };
 
+        const debouncedFetchSchedules = debounce(fetchSchedules, 20);
+
         // Check if driversList has changed by comparing with previous value
-        const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
-        prevDriversList.current = driversList;
+        // const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
+        // prevDriversList.current = driversList;
 
-        // Check if rangeOptions change requires a fetch
-        const shouldFetchRange =
-            !cacheRangeOption ||
-            !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
-            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
-            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+        // // Check if rangeOptions change requires a fetch
+        // const shouldFetchRange =
+        //     !cacheRangeOption ||
+        //     !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
 
-        // Fetch if driversList changed or rangeOptions change requires it
-        if (driversListChanged || shouldFetchRange) {
-            fetchSchedules();
-        }
+        // // Fetch if driversList changed or rangeOptions change requires it
+        // if (driversListChanged || shouldFetchRange) {
+        debouncedFetchSchedules();
+        return () => debouncedFetchSchedules.cancel(); // Cleanup on unmount
     }, [rangeOptions, driversList]);
 
-    // Track range type changes
+    //Track range type changes
     useEffect(() => {
         if (rangeType !== prevRangeType) {
             setCacheRangeOption(rangeOptions);
@@ -871,7 +877,7 @@ const Rota = () => {
                                     <InputGroup
                                         type="dropdown"
                                         label="Services with Ratecard available"
-                                        value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service}
+                                        value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service || ''}
                                         onChange={(e) => handleAdditionalService(e.target.value)}
                                     >
                                         <option value=''>-Select service-</option>

@@ -159,7 +159,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         return (
                             <MultiGrid
                                 ref={gridRef}
-                                key={`${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}`}
+                                key={`${JSON.stringify(visionTracker)}-${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}`}
                                 fixedRowCount={1}
                                 fixedColumnCount={1}
                                 rowCount={rowCount}
@@ -208,6 +208,10 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
             setScroll({
                 row: driversList.findIndex((driver) => driver._id === visionTracker?.invoice?.driverId), col: moment(visionTracker?.invoice?.date).day()
             })
+
+        else {
+            setScroll({ row: 0, col: 0 })
+        }
     }, [visionTracker])
 
     return (
