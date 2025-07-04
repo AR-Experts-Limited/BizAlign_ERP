@@ -35,6 +35,7 @@ const sessionTimeRoutes = require('./routes/sessionTime')
 const approvalsRoutes = require('./routes/approvals')
 const { registerClient } = require('./utils/sseService');
 const overdueDrivers = require('./routes/overdueDrivers');
+const appVersionRoutes = require('./routes/applicationVersion');
 
 
 const appNotifications = require('./routes/applicationNotifications'); // App
@@ -120,6 +121,7 @@ app.use('/api/appNotifications', appNotifications);//AppWeb
 app.use('/api/location', applicationLocationRoutes);//App
 app.use('/api/appUnsignedDocs', appUnsignedDocs);//App
 app.use('/api/appInstallments', appInstallmentsRoutes);//App
+app.use('/api', appVersionRoutes);
 
 
 // Use the auth routes

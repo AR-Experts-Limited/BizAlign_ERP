@@ -298,7 +298,7 @@ const Rota = () => {
             driverName: `${firstName} ${lastName}`,
             driverEmail: Email,
             driverVehicleType: getDriverTypeForDate(driver, day),
-            date: day,
+            date: new Date(day),
             site,
             serviceWeek: week,
             mainService: service,

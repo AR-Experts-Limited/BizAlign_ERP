@@ -107,7 +107,7 @@ const PassportTab = ({ newDriver, onInputChange, errors }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(newDriver.passportDocumentArray || [])
+                                    {[...(newDriver.passportDocumentArray || [])]
                                         .sort((a, b) => (new Date(b.timestamp) - new Date(a.timestamp))).map((passDoc, index) => (
                                             <tr>
                                                 <td>{newDriver.passportDocumentArray.length - index}</td>
