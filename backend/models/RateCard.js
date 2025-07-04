@@ -18,5 +18,6 @@ const rateCardSchema = new mongoose.Schema({
 });
 
 const RateCard = mongoose.model('RateCard', rateCardSchema);
+rateCardSchema.index({ vehicleType: 1, serviceTitle: 1, serviceWeek: 1 }, { unique: true })
 
 module.exports = RateCard;

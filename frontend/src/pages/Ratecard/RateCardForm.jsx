@@ -54,7 +54,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
         newService,
         newServiceInfo
     ]);
-    { console.log(rateCard) }
+
     useEffect(() => {
         checkExistingRateCards();
     }, [rateCard.serviceTitle, rateCard.serviceWeek, weekbyCalendar]);
@@ -356,6 +356,12 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                                     checked={newService}
                                     onChange={(e) => {
                                         setNewService(e.target.checked);
+                                        setNewServiceInfo({
+                                            title: '',
+                                            hours: '',
+                                            minutes: '0',
+                                            totalHours: ''
+                                        })
                                         setErrors(prev => ({ ...prev, serviceTitle: false }));
                                     }}
                                 />
@@ -541,7 +547,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                         {errors.hourlyRate && (
                             <p className='text-sm m-1 text-red-400'>
                                 *{rateCard.vehicleType === 'Own Vehicle' && 'Adjusted '}
-                                hourly rate is below the minimum rate (£{rateCard.minimumRate.toFixed(2)} /hr)
+                                hourly rate is below the minimum rate (£{rateCard?.minimumRate?.toFixed(2)} /hr)
                             </p>
                         )}
                     </div>
@@ -550,6 +556,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                         <InputGroup
                             type="number"
                             iconPosition='left'
+                            min={1}
                             icon={<FaPoundSign className='text-neutral-300' />}
                             placeholder="Select byod rate"
                             label="Byod Rate"

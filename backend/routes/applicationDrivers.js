@@ -317,13 +317,13 @@ router.patch('/user/:user_ID/documents', upload.single('document'), async (req, 
         original: uploadResult.url,
         timestamp
       };
-      
+
       if (!Array.isArray(driver.profilePicture)) {
         driver.profilePicture = [];
       }
       driver.profilePicture.push(newVersion);
-    } 
-    
+    }
+
     // If it's an additionalDoc (special)
     else if (documentType === "additionalDocs") {
       if (!docLabel || fileGroupIndex === undefined) {
@@ -341,7 +341,7 @@ router.patch('/user/:user_ID/documents', upload.single('document'), async (req, 
         driver.additionalDocs.set(docLabel, []);
       }
       const docGroups = driver.additionalDocs.get(docLabel);
-      
+
       const groupIdx = parseInt(fileGroupIndex);
       if (!Array.isArray(docGroups[groupIdx])) {
         docGroups[groupIdx] = [];
@@ -349,8 +349,8 @@ router.patch('/user/:user_ID/documents', upload.single('document'), async (req, 
       docGroups[groupIdx].push(newVersion);
 
       driver.additionalDocs.set(docLabel, docGroups);
-    } 
-    
+    }
+
     // If it's a normal document
     else {
       newVersion = {
@@ -382,7 +382,7 @@ router.patch('/user/:user_ID/documents', upload.single('document'), async (req, 
 router.get('/user/:user_ID', async (req, res) => {
   const Driver = req.db.model('Driver', require('../models/Driver').schema);
   const { user_ID } = req.params;
- 
+
   try {
     const driver = await Driver.findOne({ user_ID });
 
@@ -390,7 +390,7 @@ router.get('/user/:user_ID', async (req, res) => {
       return res.status(404).json({ message: 'Driver not found' });
     }
 
-    const driverObj = driver.toObject(); 
+    const driverObj = driver.toObject();
 
     // Correctly process latest profilePicture
     if (driverObj.profilePicture?.length > 0) {
@@ -403,10 +403,10 @@ router.get('/user/:user_ID', async (req, res) => {
       driverObj.profilePicture = null;
     }
 
-   //console.log(driverObj.profilePicture);
+    //console.log(driverObj.profilePicture);
 
     res.status(200).json(driverObj);
- 
+
   } catch (error) {
     console.error('Error fetching driver by user_ID:', error);
     res.status(500).json({ message: 'Internal server error', error });
