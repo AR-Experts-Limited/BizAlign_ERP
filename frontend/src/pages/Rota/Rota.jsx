@@ -1040,7 +1040,7 @@ const Rota = () => {
                             </div>
                         )}
                     </div>
-                    <div className={`z-7 absolute bottom-21 left-0 w-full md:w-[25rem] ${rotaDetail?.dayInvoice?.calculatedMileage ? '-translate-y-0 opacity-100' : 'translate-y-5 opacity-0'} transition-all duration-200`}>
+                    <div className={`z-7 absolute bottom-20 left-0 w-full md:w-[25rem] ${rotaDetail?.dayInvoice?.calculatedMileage ? '-translate-y-0 opacity-100' : 'translate-y-5 opacity-0'} transition-all duration-200`}>
                         <div className='border-t border-x border-neutral-300 bg-white/70 dark:bg-dark-4/70 backdrop-blur-lg h-6 w-full rounded-t-2xl flex justify-center items-center p-1'>
                             <button onClick={() => setOpenTotalBreakdown(prev => !prev)} className={`px-7 py-1 hover:bg-gray-200 rounded-md ${openTotalBreakdown && 'rotate-180'}`}>
                                 <FaChevronUp size={12} />

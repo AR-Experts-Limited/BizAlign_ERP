@@ -928,7 +928,7 @@ const WeeklyInvoice = () => {
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>)}
 
                                             {currentInvoice?.invoice.invoices.some(
-                                                (invoice) => invoice.deductionDetail.length > 0) && (
+                                                (invoice) => invoice.deductionDetail?.length > 0) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Total Deductions</th>
                                                 )}
                                             {currentInvoice?.invoice.invoices.some(
@@ -1008,7 +1008,7 @@ const WeeklyInvoice = () => {
                                                                 £{(invoice.incentiveDetailforMain?.rate || 0) + (invoice.incentiveDetailforAdditional?.rate || 0)}
                                                             </td>)}
                                                         {currentInvoice?.invoice.invoices.some(
-                                                            (invoice) => invoice.deductionDetail.length > 0) && (
+                                                            (invoice) => invoice.deductionDetail?.length > 0) && (
                                                                 <td className="text-sm font-medium text-red-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                                     {totalDeductions > 0 ? `-£${totalDeductions}` : `-`}
                                                                 </td>
@@ -1037,7 +1037,7 @@ const WeeklyInvoice = () => {
                                                     (currentInvoice?.invoice.invoices.some(
                                                         (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(
-                                                        (invoice) => invoice.deductionDetail.length > 0) ? 1 : 0) +
+                                                        (invoice) => invoice.deductionDetail?.length > 0) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(
                                                         (invoice) =>
                                                             invoice.additionalServiceDetails?.service || invoice.additionalServiceApproval === 'Requested'
@@ -1089,7 +1089,7 @@ const WeeklyInvoice = () => {
                                     </div>
                                 )}
                                 {currentInvoice?.invoice.invoices.some(
-                                    (invoice) => invoice.deductionDetail.length > 0) && (
+                                    (invoice) => invoice.deductionDetail?.length > 0) && (
                                         <div className="rounded-lg w-full overflow-hidden">
                                             <table className="min-w-full border-collapse border border-gray-200 dark:border-dark-5">
                                                 <thead>
@@ -1102,7 +1102,7 @@ const WeeklyInvoice = () => {
                                                 <tbody>
                                                     {currentInvoice.invoice.invoices.map(inv => (
                                                         <tr key={inv._id} className="bg-gray-50 dark:bg-dark-4">
-                                                            {inv.deductionDetail.map((ded) => (
+                                                            {inv.deductionDetail?.map((ded) => (
                                                                 <>
                                                                     <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{new Date(ded.date).toLocaleDateString()}</td>
                                                                     <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{ded.serviceType}</td>
