@@ -8,6 +8,7 @@ import RateCardTable from './RateCardTable';
 import './Ratecard.scss'
 import TrashBin from '../../components/UIElements/TrashBin';
 import SuccessTick from '../../components/UIElements/SuccessTick'
+import Spinner from '../../components/UIElements/Spinner'
 import Modal from '../../components/Modal/Modal'
 import InputGroup from '../../components/InputGroup/InputGroup'
 
@@ -31,6 +32,7 @@ const Ratecard = () => {
     const [deleteRatecards, setDeleteRatecards] = useState([])
     const [rateCard, setRateCard] = useState(clearRateCard);
     const [toastOpen, setToastOpen] = useState(false);
+    const [loading, setLoading] = useState(false)
 
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
@@ -41,7 +43,9 @@ const Ratecard = () => {
     }, [ratecardStatus, serviceStatus, dispatch]);
 
     const handleDeleteRatecard = async (ids, confirm = false) => {
+        setLoading(true)
         const reduxReturn = await dispatch(deleteRatecard({ ids, confirm })).unwrap()
+        setLoading(false)
         if (!reduxReturn.response.data.confirm) {
             setDeleteRatecards(ids)
         }
@@ -58,7 +62,10 @@ const Ratecard = () => {
     };
 
     const handleAddRateCard = async (rateCard, newService, newServiceInfo, existingweek) => {
-        dispatch(addRatecard(rateCard))
+        setLoading(true)
+        await dispatch(addRatecard(rateCard))
+        setLoading(false)
+
         setRateCard(clearRateCard)
         if (newService) {
             dispatch(addService({ title: newServiceInfo.title, hours: newServiceInfo.totalHours }))
@@ -78,7 +85,10 @@ const Ratecard = () => {
     }
 
     const handleUpdateRateCard = async () => {
-        dispatch(updateRatecard(rateCard))
+        setLoading(true)
+        await dispatch(updateRatecard(rateCard))
+        setLoading(false)
+
         setMode('create')
         setRateCard(clearRateCard)
         setToastOpen({
@@ -101,6 +111,11 @@ const Ratecard = () => {
                     {toastOpen?.content}
                 </div>
             </div>
+            <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
+                </div>
+            </div>
             <div className='flex flex-col w-full h-full dark:bg-dark-3'>
                 <div className='text-xl font-bold dark:text-white'>Rate Card</div>
                 <div className='flex-1 flex overflow-auto gap-3'>
@@ -115,6 +130,7 @@ const Ratecard = () => {
                         clearRateCard={clearRateCard}
                         onAddRatecard={handleAddRateCard}
                         onUpdateRatecard={handleUpdateRateCard}
+                        loading={loading}
                     />
 
                     <RateCardTable
@@ -124,6 +140,7 @@ const Ratecard = () => {
                         onDelete={handleDeleteRatecard}
                         onUpdate={onUpdateSelect}
                         onUpdateActive={handleUpdateActiveStatus}
+                        loading={loading}
                     />
                 </div>
             </div>

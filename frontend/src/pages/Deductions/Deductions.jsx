@@ -297,7 +297,7 @@ const Deductions = () => {
 
                                             {dropdownOpen && (
                                                 <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
-                                                    {(driversBySite[newDeduction.site] || [])
+                                                    {(driversBySite[newDeduction.site] || []).filter((driver) => !driver.disabled)
                                                         .filter((driver) =>
                                                             `${driver.firstName} ${driver.lastName}`
                                                                 .toLowerCase()

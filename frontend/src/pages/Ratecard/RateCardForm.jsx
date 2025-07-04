@@ -5,8 +5,9 @@ import InputWrapper from '../../components/InputGroup/InputWrapper';
 import RateCardWeek from '../../components/Calendar/RateCardWeek';
 import WeekRangeDropdown from './WeekRangeDropdown';
 import { FaPoundSign } from "react-icons/fa";
+import Spinner from '../../components/UIElements/Spinner';
 
-const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, services, onAddRatecard, onUpdateRatecard, mode, setMode }) => {
+const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, services, onAddRatecard, onUpdateRatecard, mode, setMode, loading }) => {
     const [newService, setNewService] = useState(false);
     const [newServiceInfo, setNewServiceInfo] = useState({
         title: '',
@@ -575,21 +576,22 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                             </p>
                         )}
                         {mode !== 'edit' ? <button
-                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er])}
+                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading}
                             onClick={handleAddRateCard}
-                            className='ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
+                            className='flex items-center gap-1 ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                         >
                             Add
                         </button> :
                             <div className='flex justify-end w-full gap-2'>
                                 <button
-                                    disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er])}
+                                    disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading}
                                     onClick={() => onUpdateRatecard()}
-                                    className=' border w-fit h-fit border-amber-500 bg-amber-500 text-white rounded-md py-1 px-2 hover:text-amber-500 hover:bg-transparent disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
+                                    className='flex items-center gap-1 border w-fit h-fit border-amber-500 bg-amber-500 text-white rounded-md py-1 px-2 hover:text-amber-500 hover:bg-transparent disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                                 >
                                     Update
                                 </button>
                                 <button
+                                    disabled={loading}
                                     onClick={() => {
                                         setMode('create')
                                         setRateCard(clearRateCard)

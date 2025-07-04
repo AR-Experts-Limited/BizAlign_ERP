@@ -261,7 +261,7 @@ const Instalments = () => {
 
                                             {dropdownOpen && (
                                                 <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
-                                                    {(driversBySite[newInstalment.site] || [])
+                                                    {(driversBySite[newInstalment.site] || []).filter((driver) => !driver.disabled)
                                                         .filter((driver) =>
                                                             `${driver.firstName} ${driver.lastName}`
                                                                 .toLowerCase()
@@ -421,6 +421,7 @@ const Instalments = () => {
                                                     {instalment.signed ? (
                                                         <div className='flex gap-1'>
                                                             <a
+                                                                target="_blank"
                                                                 href={instalment.installmentDocument}
                                                                 className="flex justify-around gap-2 text-green-800 w-fit text-sm px-2 py-1 bg-green-100 border border-green-800/60 shadow rounded hover:bg-green-200 transition-colors"
                                                             >

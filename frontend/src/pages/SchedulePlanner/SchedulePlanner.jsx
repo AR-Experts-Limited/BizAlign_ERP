@@ -232,7 +232,7 @@ const SchedulePlanner = () => {
         try {
             const newSchedule = await dispatch(addSchedule({
                 driverId: addScheduleData.driver._id,
-                day: addScheduleData.date,
+                day: new Date(addScheduleData.date).toUTCString(),
                 service: addScheduleData.service,
                 user_ID: addScheduleData.driver.user_ID,
                 associatedRateCard: addScheduleData.associatedRateCard,

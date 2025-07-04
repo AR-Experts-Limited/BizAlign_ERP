@@ -8,7 +8,7 @@ import { groupRateCards } from './groupRateCards';
 import WeekInput from '../../components/Calendar/WeekInput';
 import moment from 'moment'
 
-const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActive, mode }) => {
+const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActive, mode, loading }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
     const [dropdownPositions, setDropdownPositions] = useState({});
     const [groupedRateCards, setGroupedRateCards] = useState([])
@@ -242,6 +242,7 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActiv
                                                 <td className="border-b border-neutral-200">
                                                     <div className="flex justify-center gap-2">
                                                         <button
+                                                            disabled={toastOpen || loading}
                                                             onClick={() => {
                                                                 setSelectedGroupUpdate(group._id);
                                                                 const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]]);
@@ -260,13 +261,13 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActiv
                                                                     vanRentHours: group.vanRentHours,
                                                                 });
                                                             }}
-                                                            className="p-2 rounded-md hover:bg-neutral-200 text-amber-300"
+                                                            className="p-2 rounded-md hover:bg-neutral-200 text-amber-300 disabled:text-gray-300"
                                                         >
                                                             <FiEdit3 size={17} />
                                                         </button>
                                                         <button
                                                             className="p-2 rounded-md hover:bg-neutral-200 text-red-400 disabled:text-gray-300"
-                                                            disabled={toastOpen}
+                                                            disabled={toastOpen || loading}
                                                             onClick={() => {
                                                                 if (!toastOpen) onDelete(selectedIds.length > 0 ? selectedIds : [group.weekIdMap[group.serviceWeeks[0]]]);
                                                                 setSelectedWeeks({});
