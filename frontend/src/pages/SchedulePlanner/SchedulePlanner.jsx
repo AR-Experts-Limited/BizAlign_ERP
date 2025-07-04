@@ -20,6 +20,7 @@ import { RiZzzFill } from "react-icons/ri";
 import { cn } from '../../lib/utils'
 import { MultiGrid, AutoSizer } from "react-virtualized";
 import "react-virtualized/styles.css";
+import { debounce } from 'lodash'; // or import from './utils/debounce';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -144,7 +145,17 @@ const SchedulePlanner = () => {
         const fetchSchedules = async () => {
             if (driversList.length === 0 || !rangeOptions) return;
 
-            let loadingTimeout = setTimeout(() => setLoading(true), 350);
+            // let loadingTimeout = setTimeout(() => setLoading(true), 350);
+            let loadingTimeout;
+            const shouldLoad =
+                !cacheRangeOption ||
+                !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+
+            if (shouldLoad) {
+                loadingTimeout = setTimeout(() => setLoading(true), 350);
+            }
 
             try {
                 const rangeOptionsVal = Object.values(rangeOptions);
@@ -171,17 +182,18 @@ const SchedulePlanner = () => {
         const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
         prevDriversList.current = driversList;
 
+        const debouncedFetchSchedules = debounce(fetchSchedules, 20);
         // Check if rangeOptions change requires a fetch
-        const shouldFetchRange =
-            !cacheRangeOption ||
-            !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
-            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
-            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+        // const shouldFetchRange =
+        //     !cacheRangeOption ||
+        //     !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
 
         // Fetch if driversList changed or rangeOptions change requires it
-        if (driversListChanged || shouldFetchRange) {
-            fetchSchedules();
-        }
+
+        debouncedFetchSchedules();
+        return () => debouncedFetchSchedules.cancel(); // Cleanup on unmount
     }, [rangeOptions, driversList]);
 
     useEffect(() => {
@@ -357,10 +369,10 @@ const SchedulePlanner = () => {
             content = <div className='h-full w-full rounded-md bg-gray-200 animate-pulse'></div>
         }
         else if (standbyDriver) {
-            if (disabledDriver) {
-                content = renderPlaceholder();
+            if (standbySchedule && schedule) {
+                content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
             }
-            else if (standbySchedule && !schedule) {
+            if (standbySchedule && !schedule) {
                 if (continuousSchedule < 3) {
                     const label = continuousSchedule === "1" ? 'Unavailable' : 'Day-off';
                     content = (
@@ -374,8 +386,9 @@ const SchedulePlanner = () => {
                 else {
                     content = <div className='flex  border-[1.5px] border-neutral-200 h-full w-full rounded-md max-w-40'>{renderClickableCell(driver, day, standbyDriver)}</div>
                 }
-            } else if (standbySchedule && schedule) {
-                content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
+            }
+            else if (disabledDriver) {
+                content = renderPlaceholder();
             }
         } else if (standbySchedule && schedule) {
             content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });

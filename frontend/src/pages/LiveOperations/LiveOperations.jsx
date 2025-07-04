@@ -8,8 +8,7 @@ import axios from 'axios';
 import Modal from '../../components/Modal/Modal'
 import { ImageViewer } from './ImageViewer'
 import { FcApproval } from "react-icons/fc";
-
-
+import { debounce } from 'lodash'; // or import from './utils/debounce';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -59,7 +58,16 @@ const LiveOperations = () => {
         const fetchSchedules = async () => {
             if (driversList.length === 0 || !rangeOptions) return;
 
-            let loadingTimeout = setTimeout(() => setLoading(true), 350);
+            let loadingTimeout;
+            const shouldLoad =
+                !cacheRangeOption ||
+                !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+
+            if (shouldLoad) {
+                loadingTimeout = setTimeout(() => setLoading(true), 350);
+            }
 
             try {
                 const rangeOptionsVal = Object.values(rangeOptions);
@@ -86,17 +94,21 @@ const LiveOperations = () => {
         const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
         prevDriversList.current = driversList;
 
+        const debouncedFetchSchedules = debounce(fetchSchedules, 50);
+
         // Check if rangeOptions change requires a fetch
-        const shouldFetchRange =
-            !cacheRangeOption ||
-            !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
-            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
-            Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+        // const shouldFetchRange =
+        //     !cacheRangeOption ||
+        //     !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
 
         // Fetch if driversList changed or rangeOptions change requires it
-        if (driversListChanged || shouldFetchRange) {
-            fetchSchedules();
-        }
+        // if (driversListChanged || shouldFetchRange) {
+        debouncedFetchSchedules();
+        //}
+        return () => debouncedFetchSchedules.cancel(); // Cleanup on unmount
+
     }, [rangeOptions, driversList]);
 
     useEffect(() => {
