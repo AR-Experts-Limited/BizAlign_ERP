@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const axios = require('axios');
+const mongoose = require('mongoose');
+
 const { PDFDocument, rgb } = require('pdf-lib');
 const { sendToClients } = require('../utils/sseService');
 const { uploadPdfToS3 } = require('../utils/applications3Helper');
@@ -75,73 +77,6 @@ router.get('/filter', async (req, res) => {
   }
 });
 
-// POST a new deduction and send a notification
-router.post('/', async (req, res) => {
-  const Deduction = req.db.model('Deductions', require('../models/deductions').schema);
-  const Notification = req.db.model('Notification', require('../models/notifications').schema);
-  const { TestUser } = req.db.model('User', require('../models/User').schema);
-
-  const { site, user_ID, driverId, driverName, serviceType, rate, date } = req.body;
-
-  try {
-    if (!user_ID) {
-      return res.status(400).json({ message: 'user_ID is required.' });
-    }
-
-    // Create the new deduction
-    const newDeduction = new Deduction({
-      site,
-      user_ID,
-      driverId,
-      driverName,
-      serviceType,
-      rate,
-      date,
-    });
-    await newDeduction.save();
-
-    // Find the user to get the push token
-    const user = await TestUser.findOne({ user_ID });
-    if (!user || !user.expoPushToken) {
-      console.error('User not found or push token is missing.');
-    } else {
-      // Send push notification
-      const expo = new Expo();
-      const message = {
-        to: user.expoPushToken,
-        sound: 'default',
-        title: 'New Deduction Added',
-        body: `A new deduction has been added for ${driverName} at ${site}.`,
-        data: { deductionId: newDeduction._id },
-      };
-
-      try {
-        await expo.sendPushNotificationsAsync([message]);
-      } catch (notificationError) {
-        console.error('Error sending push notification:', notificationError.message);
-      }
-
-      // Save notification in the database
-
-      const newNotification = new Notification({
-        user_ID: user_ID,
-        title: 'New Deduction Added',
-        body: `A new deduction has been added for ${driverName} at ${site}.`,
-        data: { deductionId: newDeduction._id },
-      });
-      await newNotification.save();
-    }
-    sendToClients(
-      req.db, {
-      type: 'deductionUpdated', // Custom event to signal data update
-    });
-    // Return success response
-    res.status(201).json({ message: 'Deduction added and notification sent.', deduction: newDeduction });
-  } catch (error) {
-    console.error('Error adding deduction:', error);
-    res.status(500).json({ message: 'Error adding deduction', error });
-  }
-});
 
 router.patch('/:id/signed', async (req, res) => {
   const Deduction = req.db.model('Deductions', require('../models/deductions').schema);
@@ -157,10 +92,15 @@ router.patch('/:id/signed', async (req, res) => {
       return res.status(404).json({ message: 'Deduction not found.' });
     }
 
+    // NEW: addedBy.addedOn
+    const addedOnLondonDate = moment(existingDeduction.addedBy?.addedOn)
+      .tz('Europe/London')
+      .format('DD/MM/YYYY');
+
     const londonDate = moment(existingDeduction.date).tz('Europe/London').format('DD/MM/YYYY');
 
     // Load template
-    const templateUrl = 'https://rainacrm.s3.us-east-1.amazonaws.com/templates/template_deduction.pdf';
+    const templateUrl = 'https://rainacrm.s3.us-east-1.amazonaws.com/templates/deduction_new_template.pdf';
     const templateResponse = await axios.get(templateUrl, { responseType: 'arraybuffer' });
     const templateBytes = Buffer.from(templateResponse.data, 'binary');
     const pdfDoc = await PDFDocument.load(templateBytes);
@@ -172,13 +112,15 @@ router.patch('/:id/signed', async (req, res) => {
     form.getTextField('serviceType').setText(existingDeduction.serviceType);
     form.getTextField('rate').setText(`£${existingDeduction.rate}`);
     form.getTextField('date').setText(londonDate);
-    form.getTextField('signature').setText(typedName);
+    form.getTextField('week').setText(existingDeduction.week);
+    form.getTextField('vehicleRegPlate').setText(existingDeduction.vehicleRegPlate);
+    form.getTextField('addedOnDate').setText(addedOnLondonDate);
 
     const signatureResponse = await axios.get(signature, { responseType: 'arraybuffer' });
     const signaturePng = await pdfDoc.embedPng(signatureResponse.data);
     page1.drawImage(signaturePng, {
       x: 350,
-      y: 290,
+      y: 200,
       width: 60,
       height: 60,
     });
@@ -223,8 +165,16 @@ router.patch('/:id/signed', async (req, res) => {
             width: finalWidth,
             height: finalHeight,
           });
+        } else if (fileExtension === 'pdf') {
+          const attachedPdfResponse = await axios.get(documentUrl, { responseType: 'arraybuffer' });
+          const attachedPdfDoc = await PDFDocument.load(attachedPdfResponse.data);
+
+          const pages = await pdfDoc.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
+          pages.forEach((page) => {
+            pdfDoc.addPage(page);
+          });
         } else {
-          // Add a link instead of image
+          // fallback: show document link
           const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
           page2.drawText(`Link to attached document:`, {
             x: 50,
@@ -277,45 +227,58 @@ router.patch('/:id/signed', async (req, res) => {
 });
 
 
-// Endpoint to list invoices from S3
+// GET the latest invoice for a given user_ID
 router.get('/invoices', async (req, res) => {
-  const DayInvoice = req.db.model('DayInvoice', require('../models/DayInvoice').schema);
   const { user_ID } = req.query;
 
+  if (!user_ID) {
+    return res.status(400).json({ message: 'user_ID is required.' });
+  }
+
+  const WeeklyInvoice = req.db.model(
+    'WeeklyInvoice',
+    require('../models/weeklyInvoice').schema
+  );
+
   try {
-    if (!user_ID) {
-      return res.status(400).json({ message: 'user_ID is required.' });
-    }
+    const [latest] = await WeeklyInvoice.aggregate([
+      { $match: { user_ID } },
+      { $unwind: '$sentInvoice' },
+      { $sort: { 'sentInvoice.date': -1 } },
+      { $limit: 1 },
+      {
+        $project: {
+          _id: 0,
+          serviceWeek: 1,
+          document: '$sentInvoice.document'
+        }
+      }
+    ]);
 
-    const invoices = await DayInvoice.find({ user_ID });
 
-    if (!invoices || invoices.length === 0) {
+    if (!latest) {
       return res.status(404).json({
+        invoices: [],
         message: 'No invoices found.'
       });
     }
 
-    // valid invoices only 
-    const validInvoices = invoices.filter(invoice => invoice.invoicedoc);
 
-    if (validInvoices.length === 0) {
-      return res.status(404).json({ message: 'No valid invoices found.' });
-    }
+    const invoices = [
+      {
+        key: `${latest.serviceWeek}-Invoice`,
+        url: latest.document
+      }
+    ];
 
-    // Convert invoices into an array of objects containing key and url to be fetched in app
-    const invoiceList = validInvoices.map(invoice => ({
-      key: invoice.invoicedoc.split('/').pop(),
-      url: invoice.invoicedoc
-    }));
-
-    return res.status(200).json({
-      invoices: invoiceList,
-      message: 'Successfully retrieved invoices.'
-    });
-
+    // 6) Send it back
+    return res.status(200).json({ invoices });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
-    res.status(500).json({ message: 'Error fetching invoices.', error: error.message });
+    console.error('Error fetching latest invoice:', error);
+    return res.status(500).json({
+      message: 'Error fetching invoices.',
+      error: error.message
+    });
   }
 });
 

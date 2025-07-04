@@ -96,6 +96,7 @@ router.post('/', async (req, res) => {
         $inc: { count: 1 },
         $set: {
           driverId,
+          user_ID: driverData.user_ID,
           driverEmail: driverEmail || newInvoice.driverEmail,
           driverVehicleType: driverVehicleType || newInvoice.driverVehicleType,
           driverName: driverName || newInvoice.driverName,

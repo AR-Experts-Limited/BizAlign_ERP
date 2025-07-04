@@ -6,6 +6,10 @@ const weeklyInvoiceSchema = new mongoose.Schema({
         ref: 'Driver',
         index: true,
     },
+    user_ID: {
+        type: String,
+        required: true,
+    },
     serviceWeek: {
         type: String,
         required: true,

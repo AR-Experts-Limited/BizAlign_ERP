@@ -16,5 +16,6 @@ const DeductionSchema = new mongoose.Schema({
 });
 
 const Deduction = mongoose.model('Deduction', DeductionSchema);
+DeductionSchema.index({ driverId: 1, date: 1 })
 
 module.exports = Deduction;
