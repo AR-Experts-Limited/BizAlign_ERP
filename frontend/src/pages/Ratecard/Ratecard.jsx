@@ -33,6 +33,7 @@ const Ratecard = () => {
     const [rateCard, setRateCard] = useState(clearRateCard);
     const [toastOpen, setToastOpen] = useState(false);
     const [loading, setLoading] = useState(false)
+    const [confirmModal, setConfirmModal] = useState(false)
 
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
@@ -131,6 +132,7 @@ const Ratecard = () => {
                         onAddRatecard={handleAddRateCard}
                         onUpdateRatecard={handleUpdateRateCard}
                         loading={loading}
+                        setConfirmModal={setConfirmModal}
                     />
 
                     <RateCardTable
@@ -156,6 +158,29 @@ const Ratecard = () => {
                         </div>
                     </>
                 </div>
+            </Modal >
+            <Modal isOpen={confirmModal}>
+                <div className='flex flex-col'>
+                    <div className='p-3 border-b  border-neutral-300'>Confirm Ratecard</div>
+                    <div className='px-8 py-4 rounded-md border border-neutral-300 m-5'>
+                        <div className='grid grid-cols-2 gap-2 text-sm'>
+                            <div>Service:</div>
+                            <div>{rateCard?.serviceTitle}</div>
+                            <div>Service Weeks:</div>
+                            <div className='border border-neutral-300 bg-white p-2 overflow-x-auto'>{rateCard.serviceWeek.map((sweek) => (<div>{sweek},</div>))}</div>
+                            <div>Service Rate:</div>
+                            <div >£{rateCard?.serviceRate}</div>
+                            <div>Byod rate:</div>
+                            <div>£{rateCard?.byodRate}</div>
+                            <div>Mileage:</div>
+                            <div>£{rateCard?.mileage}</div>
+                        </div>
+                    </div>
+                    <div className='flex gap-2 justify-end  border-t border-neutral-300 p-3'>
+                        <button onClick={handleAddRateCard} className='bg-primary-500 text-white text-sm border-1 border-primary-500 rounded-lg p-1 hover:bg-white hover:text-primary-500 dark:hover:bg-dark-4'>Confirm</button>
+                        <button onClick={() => setConfirmModal(false)} className='bg-amber-500 text-white text-sm border-1 border-amber-500 rounded-lg p-1 hover:bg-white hover:text-amber-500 dark:hover:bg-dark-4'>Cancel</button>
+                    </div>
+                </div >
             </Modal >
         </div >
     );

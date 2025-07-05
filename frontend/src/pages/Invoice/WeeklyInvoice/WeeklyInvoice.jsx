@@ -1101,15 +1101,17 @@ const WeeklyInvoice = () => {
                                                 </thead>
                                                 <tbody>
                                                     {currentInvoice.invoice.invoices.map(inv => (
-                                                        <tr key={inv._id} className="bg-gray-50 dark:bg-dark-4">
-                                                            {inv.deductionDetail?.map((ded) => (
-                                                                <>
-                                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{new Date(ded.date).toLocaleDateString()}</td>
-                                                                    <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{ded.serviceType}</td>
-                                                                    <td className="text-sm text-red-700 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{ded.rate}</td>
-                                                                </>
-                                                            ))}
-                                                        </tr>
+                                                        <>
+                                                            {
+                                                                inv.deductionDetail?.map((ded) => (
+                                                                    <tr className='min-w-full'>
+                                                                        <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{new Date(ded.date).toLocaleDateString()}</td>
+                                                                        <td className="text-sm text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">{ded.serviceType}</td>
+                                                                        <td className="text-sm text-red-700 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5"> - £{ded.rate}</td>
+                                                                    </tr>
+                                                                ))
+                                                            }
+                                                        </>
                                                     ))}
                                                 </tbody>
                                             </table>

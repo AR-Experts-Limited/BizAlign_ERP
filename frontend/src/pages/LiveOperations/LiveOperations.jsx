@@ -135,7 +135,11 @@ const LiveOperations = () => {
 
         const appData = scheduleMap[key]?.appData;
         const schedule = scheduleMap[key]?.schedule;
-        const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
+        const standbySchedule = standbydrivers.find((s) => {
+            const sDate = new Date(s.day);
+            const dDate = new Date(dateObj);
+            return sDate.toDateString() === dDate.toDateString() && s.driverId === driver._id;
+        });
         const streak = streaks[driver._id]?.[dateKey] || 0;
         const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
 

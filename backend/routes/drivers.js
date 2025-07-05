@@ -1069,11 +1069,35 @@ router.post('/toggleDriver/:id', asyncHandler(async (req, res) => {
           to: email,
           cc: 'fleet@rainaltd.com',
           subject: 'Vehicle Return - Off Hire',
-          html: `...`, // Your email template
+          html: `
+          <div>
+          <p>Dear Independent Contractor,</p>
+    
+          <p>Please accept this communication to inform you that the vehicle hired yourself has been returned to us. To complete the Off-Hire process, our Fleet Team will now carry out a thorough inspection of the vehicle.
+          If any new damages or issues are identified during the inspection, you will receive a detailed email containing:
+    
+          <ul>
+          <li>On-Hire photographs</li>
+          <li>Off-Hire photographs</li>
+          <li>Supporting photographs of any damages (if applicable)</li>
+          <li>An estimate or invoice for any necessary repairs</li>
+          <li>If no further issues are found, no additional communication will be required.</li>
+    
+          <p>
+          Regarding Final Payment:
+          If applicable, your final payment will be processed once the off-hire inspection is complete within 30 days and all matters (including potential damage costs) are settled. If you do not receive payment, and no response has been provided within 30 days, please contact us at admin@rainaltd.com.</p>
+          
+          <p>Thank you for your cooperation. Should you have any questions or require further assistance, please email admin@rainaltd.com</p>
+    
+          <p>
+          Best regards,</br>
+          Raina Ltd</br>
+          </p>
+          </div>
+        `,
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`Email sent to ${email}`);
       } catch (err) {
         console.error(`Failed to send email to ${email}:`, err);
       }
