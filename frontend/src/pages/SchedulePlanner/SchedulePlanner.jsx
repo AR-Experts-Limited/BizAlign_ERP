@@ -257,7 +257,7 @@ const SchedulePlanner = () => {
         const existingData = standbydrivers.find((standbyschedule) => new Date(standbyschedule.day).getTime() == new Date(date).getTime() && standbyschedule.driverId === driver._id)
 
         if (existingData) {
-            dispatch(deleteStandbyDriver({ driverId: driver._id, day: new Date(date), _id: existingData._id }))
+            dispatch(deleteStandbyDriver({ driverId: driver._id, day: new Date(date).toUTCString(), _id: existingData._id }))
         }
         else {
             dispatch(addStandbyDriver(
@@ -265,7 +265,7 @@ const SchedulePlanner = () => {
                     firstName: driver.firstName,
                     lastName: driver.lastName,
                     driverId: driver._id,
-                    day: date,
+                    day: new Date(date).toUTCString(),
                     site: selectedSite,
                 }))
         }

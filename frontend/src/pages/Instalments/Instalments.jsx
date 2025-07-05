@@ -109,6 +109,7 @@ const Instalments = () => {
             const response = await axios.post(`${API_BASE_URL}/api/installments`, data);
             setInstalments([...instalments, response.data.installment]);
             setNewInstalment(clearInstalment)
+            setSearchTerm('')
         } catch (error) {
             console.error('Error adding deduction:', error);
         }
@@ -223,6 +224,7 @@ const Instalments = () => {
                                         onChange={(e) => {
                                             setNewInstalment({ ...newInstalment, site: e.target.value });
                                             setErrors({ ...errors, site: false });
+                                            setSearchTerm('')
                                         }}
                                         error={errors.site}
                                         value={newInstalment.site}

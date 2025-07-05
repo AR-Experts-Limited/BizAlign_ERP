@@ -23,6 +23,14 @@ const upload = multer({
       const date = new Date().toLocaleDateString()
       cb(null, `${databaseName}/Installments/${user_ID}/${date}/${file.originalname}`);
     },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = /jpeg|jpg|png/;
+      if (allowedTypes.test(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+      }
+    },
   }),
 });
 
