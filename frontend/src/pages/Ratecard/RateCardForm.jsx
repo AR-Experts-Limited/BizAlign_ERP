@@ -180,7 +180,8 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
             return;
         }
 
-        onAddRatecard(rateCard, newService, newServiceInfo, errors.existingweek);
+        setConfirmModal({ mode: 'add', rateCard, newService, newServiceInfo, error: errors.existingweek })
+        //onAddRatecard(rateCard, newService, newServiceInfo, errors.existingweek);
     };
 
     const handleVehicleTypeChange = (e) => {
@@ -577,7 +578,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                         )}
                         {mode !== 'edit' ? <button
                             disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading}
-                            onClick={() => setConfirmModal(true)}
+                            onClick={handleAddRateCard}
                             className='flex items-center gap-1 ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                         >
                             Add
@@ -585,7 +586,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                             <div className='flex justify-end w-full gap-2'>
                                 <button
                                     disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading}
-                                    onClick={() => onUpdateRatecard()}
+                                    onClick={() => setConfirmModal({ mode: 'update' })}
                                     className='flex items-center gap-1 border w-fit h-fit border-amber-500 bg-amber-500 text-white rounded-md py-1 px-2 hover:text-amber-500 hover:bg-transparent disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                                 >
                                     Update
