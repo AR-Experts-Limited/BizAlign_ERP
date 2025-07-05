@@ -284,7 +284,7 @@ const Rota = () => {
 
         if (invoice) {
             setRotaDetail({
-                dayInvoice: invoice,
+                dayInvoice: { driver, ...invoice },
                 deductions: invoice.deductionDetail ? invoice.deductionDetail : deductions,
                 incentiveDetailforMain: invoice.incentiveDetail ? invoice.incentiveDetail : incentives,
                 existingInvoice: true
@@ -888,7 +888,7 @@ const Rota = () => {
                                                 ratecards,
                                                 rotaDetail?.dayInvoice?.serviceWeek,
                                                 service.title,
-                                                rotaDetail?.dayInvoice?.driverVehicleType
+                                                rotaDetail?.dayInvoice?.driver
                                             ) && service.title !== rotaDetail?.dayInvoice?.mainService) {
                                                 return (
                                                     <option key={service._id} value={service.title}>
