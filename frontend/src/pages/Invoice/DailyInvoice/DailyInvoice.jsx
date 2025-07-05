@@ -10,6 +10,7 @@ import { jsPDF } from "jspdf";
 import InputWrapper from '../../../components/InputGroup/InputWrapper';
 import { PrintableContent } from './PrintContent';
 import { fetchDrivers } from '../../../features/drivers/driverSlice';
+import { debounce } from 'lodash';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -31,6 +32,7 @@ const DailyInvoice = () => {
     const [isPrintReady, setIsPrintReady] = useState(null)
     const [driverDetails, setDriverDetails] = useState({})
     const [currentInvoice, setCurrentInvoice] = useState(null)
+    const [loading, setLoading] = useState(false)
 
     const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
 
@@ -42,10 +44,50 @@ const DailyInvoice = () => {
         if (driverStatus === 'idle') dispatch(fetchDrivers());
     }, [driverStatus, dispatch]);
 
+    // useEffect(() => {
+    //     if (driversList.length > 0 && rangeOptions) {
+    //         const rangeOptionsVal = Object.values(rangeOptions);
+    //         const fetchInvoices = async () => {
+    //             const response = await axios.get(`${API_BASE_URL}/api/dayInvoice`, {
+    //                 params: {
+    //                     driverId: driversList.map((driver) => driver._id),
+    //                     startdate: new Date(moment(rangeOptionsVal[0]?.start).format('YYYY-MM-DD')),
+    //                     enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
+    //                 },
+    //             });
+    //             setInvoices(response.data);
+    //         };
+
+    //         if (!cacheRangeOption) {
+    //             fetchInvoices();
+    //             setCacheRangeOption(rangeOptions);
+    //         }
+    //         else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) ||
+    //             Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+    //             Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
+    //             fetchInvoices();
+    //             setCacheRangeOption(rangeOptions);
+    //         }
+    //     }
+    // }, [rangeOptions, driversList, selectedSite]);
+
     useEffect(() => {
-        if (driversList.length > 0 && rangeOptions) {
-            const rangeOptionsVal = Object.values(rangeOptions);
-            const fetchInvoices = async () => {
+        const fetchInvoices = async () => {
+            if (driversList.length === 0 || !rangeOptions) return;
+
+            let loadingTimeout;
+            const shouldLoad =
+                !cacheRangeOption ||
+                !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+
+            if (shouldLoad) {
+                loadingTimeout = setTimeout(() => setLoading(true), 350);
+            }
+
+            try {
+                const rangeOptionsVal = Object.values(rangeOptions);
                 const response = await axios.get(`${API_BASE_URL}/api/dayInvoice`, {
                     params: {
                         driverId: driversList.map((driver) => driver._id),
@@ -53,21 +95,35 @@ const DailyInvoice = () => {
                         enddate: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
+                clearTimeout(loadingTimeout);
                 setInvoices(response.data);
-            };
+                setCacheRangeOption(rangeOptions);
+            } catch (error) {
+                clearTimeout(loadingTimeout);
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-            if (!cacheRangeOption) {
-                fetchInvoices();
-                setCacheRangeOption(rangeOptions);
-            }
-            else if (!(Object.keys(cacheRangeOption).find((i) => i === selectedRangeIndex)) ||
-                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
-                Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === (Object.keys(cacheRangeOption).length - 1)) {
-                fetchInvoices();
-                setCacheRangeOption(rangeOptions);
-            }
-        }
-    }, [rangeOptions, driversList, selectedSite]);
+        const debouncedFetchInvoices = debounce(fetchInvoices, 20);
+
+        // Check if driversList has changed by comparing with previous value
+        // const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
+        // prevDriversList.current = driversList;
+
+        // // Check if rangeOptions change requires a fetch
+        // const shouldFetchRange =
+        //     !cacheRangeOption ||
+        //     !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
+        //     Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
+
+        // // Fetch if driversList changed or rangeOptions change requires it
+        // if (driversListChanged || shouldFetchRange) {
+        debouncedFetchInvoices();
+        return () => debouncedFetchInvoices.cancel(); // Cleanup on unmount
+    }, [rangeOptions, driversList]);
 
     useEffect(() => {
         let map = {};
@@ -156,7 +212,10 @@ const DailyInvoice = () => {
             <div key={day.date} className='h-full w-full' >
                 {(() => {
                     // Render invoice cell
-                    if (invoice) {
+                    if (loading) {
+                        return <div className='h-full w-full rounded-md bg-gray-200 animate-pulse'></div>
+                    }
+                    else if (invoice) {
                         return (
                             <div className={`relative flex justify-center h-full w-full `}>
                                 <div className='relative max-w-40'>

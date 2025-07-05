@@ -356,8 +356,11 @@ const SchedulePlanner = () => {
         const key = `${dateKey}_${driver._id}`;
 
         const schedule = scheduleMap[key];
-        const standbySchedule = standbydrivers.find((s) => new Date(s.day).getTime() === dateObj.getTime() && s.driverId === driver._id);
-
+        const standbySchedule = standbydrivers.find((s) => {
+            const sDate = new Date(s.day);
+            const dDate = new Date(dateObj);
+            return sDate.toDateString() === dDate.toDateString() && s.driverId === driver._id;
+        });
         const streak = streaks[driver._id]?.[dateKey] || 0;
         const continuousSchedule = continuousStatus[driver._id]?.[dateKey] || "3";
 
@@ -383,13 +386,14 @@ const SchedulePlanner = () => {
                         </div>
                     );
                 }
+                else if (disabledDriver) {
+                    content = renderPlaceholder();
+                }
                 else {
                     content = <div className='flex  border-[1.5px] border-neutral-200 h-full w-full rounded-md max-w-40'>{renderClickableCell(driver, day, standbyDriver)}</div>
                 }
             }
-            else if (disabledDriver) {
-                content = renderPlaceholder();
-            }
+
         } else if (standbySchedule && schedule) {
             content = renderScheduleBox({ schedule, scheduleBelongtoSite, streak });
         } else if (Object.keys(scheduleMap).length > 0 && standbySchedule && !schedule) {
