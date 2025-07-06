@@ -4,7 +4,7 @@ import 'flatpickr/dist/themes/light.css';
 import './Calendar.css'
 import { BiChevronDown } from "react-icons/bi";
 
-function RateCardWeek({ value, onChange, disabled, mode }) {
+function RateCardWeek({ value, onChange, disabled, mode, existingWeeks }) {
     const containerRef = useRef(null);
     const flatpickrRef = useRef(null);
 
@@ -140,6 +140,7 @@ function RateCardWeek({ value, onChange, disabled, mode }) {
                             key={index}
                             className="inline-flex items-center shrink-0 bg-gray-100 px-3 py-1 rounded-full text-sm hover:bg-gray-200 transition-colors"
                         >
+                            {existingWeeks.includes(week) && <i class="flex items-center text-red-500 mr-1 fi fi-sr-location-exclamation"></i>}
                             {week}
                             {mode !== 'edit' && <span onClick={(e) => {
                                 e.stopPropagation();

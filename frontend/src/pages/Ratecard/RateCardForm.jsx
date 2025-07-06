@@ -247,6 +247,8 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
     };
 
     const handleWeekChange = (e) => {
+        console.log('existing weeks', [...new Set(ratecards.filter(({ serviceWeek }) => (rateCard?.serviceWeek || []).includes(serviceWeek)).map(({ serviceWeek }) => serviceWeek))]
+        )
         setErrors(prev => ({ ...prev, existingweek: ratecards.some((item) => e.includes(item.serviceWeek)) }))
         setRateCard(prev => ({ ...prev, serviceWeek: e }));
         setErrors(prev => ({ ...prev, serviceWeek: false }));
@@ -455,6 +457,12 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                     </InputWrapper>
 
                     <InputWrapper title={'Week'}>
+                        {errors.existingweek && (rateCard?.serviceWeek || []).filter((week) => ratecards.some(({ serviceWeek }) => serviceWeek === week)).length > 1 && (
+                            <div className='flex gap-4 justify-center items-center border border-red-600 rounded-md px-2 py-1 bg-red-200/50 text-sm text-red-600 m-1'>
+                                <div><i class="flex items-center text-[1rem] fi fi-sr-location-exclamation"></i></div>
+                                <div>Only one week with existing rate cards may be selected at any given time</div>
+                            </div>
+                        )}
                         <div>
                             <div className='flex items-center gap-1'>
                                 <input
@@ -472,6 +480,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                                 <RateCardWeek
                                     value={weekbyCalendar ? rateCard.serviceWeek : []}
                                     onChange={handleWeekChange}
+                                    existingWeeks={[...new Set(ratecards.filter(({ serviceWeek }) => (rateCard?.serviceWeek || []).includes(serviceWeek)).map(({ serviceWeek }) => serviceWeek))]}
                                     disabled={!weekbyCalendar || mode === 'edit'}
                                     mode={mode}
                                 />
@@ -571,13 +580,14 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                     </div>
 
                     <div className='w-full flex justify-between mt-2 gap-3 items-center'>
+
                         {errors.existingRateCard && (
                             <p className='text-sm text-red-400 m-1'>
                                 * A Rate Card already exists for the specified Service and for selected Week.
                             </p>
                         )}
                         {mode !== 'edit' ? <button
-                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading}
+                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading || (errors.existingweek && ratecards.filter((item) => rateCard?.serviceWeek?.includes(item.serviceWeek)).length > 1)}
                             onClick={handleAddRateCard}
                             className='flex items-center gap-1 ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                         >

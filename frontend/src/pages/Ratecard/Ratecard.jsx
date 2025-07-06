@@ -141,6 +141,7 @@ const Ratecard = () => {
                         toastOpen={toastOpen}
                         ratecards={ratecards}
                         mode={mode}
+                        rateCard={rateCard}
                         onDelete={handleDeleteRatecard}
                         onUpdate={onUpdateSelect}
                         onUpdateActive={handleUpdateActiveStatus}

@@ -8,7 +8,7 @@ import { groupRateCards } from './groupRateCards';
 import WeekInput from '../../components/Calendar/WeekInput';
 import moment from 'moment'
 
-const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActive, mode, loading }) => {
+const RateCardTable = ({ rateCard, toastOpen, ratecards, onDelete, onUpdate, onUpdateActive, mode, loading }) => {
     const [selectedWeeks, setSelectedWeeks] = useState({});
     const [dropdownPositions, setDropdownPositions] = useState({});
     const [groupedRateCards, setGroupedRateCards] = useState([])
@@ -184,7 +184,7 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActiv
                                                 <td className="border-b border-neutral-200">{group.serviceTitle}</td>
                                                 <td className="border-b border-neutral-200">
                                                     <div className="relative group">
-                                                        <button className={`w-full max-h-13 h-fit overflow-auto text-left ${group.serviceWeeks?.length > 1 && 'border-[1.5px] bg-white'} border-neutral-200 rounded-md  px-1 py-2 outline-none focus:border-primary-400`}>
+                                                        <button className={`w-full max-h-13 h-fit overflow-auto text-left ${group.serviceWeeks?.length > 1 && 'border-[1.5px] bg-white'} ${group?.serviceWeeks?.some((item) => rateCard?.serviceWeek.includes(item)) && 'border-red-400'} border-neutral-200 rounded-md  px-1 py-2 outline-none focus:border-primary-400`}>
                                                             <div className={`flex flex-nowrap gap-2 ${(selectedWeeks[group._id]?.length > 1) ? 'pb-5' : ''}`}>
                                                                 {selectedWeeks[group._id]?.length > 0 ?
                                                                     selectedWeeks[group._id].map((week) => (
@@ -228,6 +228,7 @@ const RateCardTable = ({ toastOpen, ratecards, onDelete, onUpdate, onUpdateActiv
                                                                                 }));
                                                                             }}
                                                                         />
+                                                                        {rateCard?.serviceWeek.includes(week) && <i class="flex items-center text-red-500 fi fi-sr-location-exclamation"></i>}
                                                                         {week}
                                                                     </label>
                                                                 ))}
