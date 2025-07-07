@@ -1,11 +1,12 @@
 // src/features/ratecards/RateCardForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import InputGroup from '../../components/InputGroup/InputGroup';
 import InputWrapper from '../../components/InputGroup/InputWrapper';
 import RateCardWeek from '../../components/Calendar/RateCardWeek';
 import WeekRangeDropdown from './WeekRangeDropdown';
 import { FaPoundSign } from "react-icons/fa";
 import Spinner from '../../components/UIElements/Spinner';
+import { areWeeksContinuous } from './supportFunctions'
 
 const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, services, onAddRatecard, onUpdateRatecard, mode, setMode, loading, setConfirmModal }) => {
     const [newService, setNewService] = useState(false);
@@ -31,6 +32,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
     });
     const [breakdownHTML, setBreakdownHTML] = useState('');
     const [weekbyCalendar, setWeekbyCalendar] = useState(true);
+    const allExistingWeeks = useRef([])
 
     useEffect(() => {
         if (mode === 'edit') {
@@ -38,10 +40,16 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
         }
     }, [mode])
 
+    // useEffect(() => {
+    //     if (mode !== 'edit')
+    //         setRateCard(prev => ({ ...prev, serviceWeek: [] }))
+    // }, [weekbyCalendar])
+
     useEffect(() => {
-        if (mode !== 'edit')
-            setRateCard(prev => ({ ...prev, serviceWeek: [] }))
-    }, [weekbyCalendar])
+        if (!areWeeksContinuous(rateCard.serviceWeek)) {
+            setWeekbyCalendar(true)
+        }
+    }, [rateCard.serviceWeek])
 
     useEffect(() => {
         calculateHourlyRate();
@@ -179,8 +187,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
         if (errors.existingRateCard) {
             return;
         }
-
-        setConfirmModal({ mode: 'add', rateCard, newService, newServiceInfo, error: errors.existingweek })
+        setConfirmModal({ mode: 'add', rateCard, newService, newServiceInfo, existingWeeks: rateCard.serviceWeek.filter((rcweek) => ratecards.some((rc) => rc.serviceWeek === rcweek)) })
         //onAddRatecard(rateCard, newService, newServiceInfo, errors.existingweek);
     };
 
@@ -247,7 +254,6 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
     };
 
     const handleWeekChange = (e) => {
-        setErrors(prev => ({ ...prev, existingweek: ratecards.some((item) => e.includes(item.serviceWeek)) }))
         setRateCard(prev => ({ ...prev, serviceWeek: e }));
         setErrors(prev => ({ ...prev, serviceWeek: false }));
     };
@@ -425,7 +431,13 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                                     checked={!newService}
                                     onChange={() => {
                                         setNewService(false);
-                                        setErrors(prev => ({ ...prev, serviceTitle: false }));
+                                        setNewServiceInfo({
+                                            title: '',
+                                            hours: '',
+                                            minutes: '0',
+                                            totalHours: ''
+                                        })
+                                        setErrors(prev => ({ ...prev, newService: false, serviceTitle: false }));
                                     }}
                                 />
                                 <label className='font-medium text-sm'> Existing Service</label>
@@ -455,48 +467,82 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                     </InputWrapper>
 
                     <InputWrapper title={'Week'}>
-                        <div>
-                            <div className='flex items-center gap-1'>
-                                <input
-                                    type='radio'
-                                    disabled={mode === 'edit'}
-                                    checked={weekbyCalendar}
-                                    onChange={() => {
-                                        setWeekbyCalendar(prev => !prev);
-                                        setErrors(prev => ({ ...prev, serviceWeek: false }));
-                                    }}
-                                />
-                                <label className='text-sm font-medium'>Select Weeks <span className='text-red-400'>*</span></label>
+                        {(rateCard?.serviceWeek || []).filter((week) => ratecards.some(({ serviceWeek }) => serviceWeek === week)).length > 1 && (
+                            <div className='flex gap-4 justify-center items-center border border-red-600 rounded-md px-2 py-1 bg-red-200/50 text-sm text-red-600 m-1'>
+                                <div><i class="flex items-center text-[1rem] fi fi-sr-location-exclamation"></i></div>
+                                <div>Only one week with existing rate cards may be selected for adding at any given time</div>
                             </div>
-                            <div className='mt-3'>
-                                <RateCardWeek
-                                    value={weekbyCalendar ? rateCard.serviceWeek : []}
-                                    onChange={handleWeekChange}
-                                    disabled={!weekbyCalendar || mode === 'edit'}
+                        )}
+
+                        <div className='relative'>
+                            <div
+                                className={` w-full rounded-lg border-[1.5px] px-5.5 py-3.5 flex items-center gap-1 border-neutral-300 overflow-auto pr-14 bg-transparent outline-none transition  dark:border-dark-3 dark:bg-dark-2 ${errors.serviceWeek && 'border-red-400 animate-pulse'}`}
+                            >
+                                {rateCard?.serviceWeek?.length > 0 ? (
+                                    rateCard?.serviceWeek?.map((week, index) => (
+                                        <span
+                                            key={index}
+                                            className="inline-flex items-center shrink-0 bg-gray-100 px-3 py-1 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                                        >
+                                            {[...new Set(ratecards.filter(({ serviceWeek }) => (rateCard?.serviceWeek || []).includes(serviceWeek)).map(({ serviceWeek }) => serviceWeek))].includes(week) && mode !== 'edit' && <i class="flex items-center text-red-500 mr-1 fi fi-sr-location-exclamation"></i>}
+                                            {week}
+                                            {mode !== 'edit' && <span onClick={() => setRateCard(prev => ({ ...prev, serviceWeek: prev.serviceWeek.filter(exweek => exweek !== week) }))} className="cursor-pointer shrink-0 flex items-center justify-center ml-1 h-5 w-5 text-gray-500 hover:bg-red-300 rounded-full">×</span>}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className={`text-gray-400`}>Select weeks</span>
+                                )}
+                            </div>
+                            {rateCard?.serviceWeek?.length > 0 && <button disabled={mode === 'edit'} onClick={() => setRateCard(prev => ({ ...prev, serviceWeek: [] }))} className='flex items-center px-4  border-[1.5px] rounded-r-lg  border-neutral-300 bg-gray-100 absolute top-0 right-0 h-full disabled:!text-gray-400 disabled:hover:text-gray-400 text-red-500  hover:text-red-600 '><i class=" text-[1.2rem] flex item-center fi fi-ss-cross-circle"></i></button>}
+                            {errors.serviceWeek && <p className='text-red-400 text-sm '>* Please select at least one week</p>}
+                        </div>
+
+                        <div className='flex justify-center border-[1.5px] border-neutral-300 rounded-md'>
+                            <div className='flex-[2] border-r border-neutral-300 p-2'>
+
+                                <div className='flex items-center gap-1'>
+                                    <input
+                                        type='radio'
+                                        disabled={mode === 'edit'}
+                                        checked={weekbyCalendar}
+                                        onChange={() => {
+                                            setWeekbyCalendar(prev => !prev);
+                                            setErrors(prev => ({ ...prev, serviceWeek: false }));
+                                        }}
+                                    />
+                                    <label className='text-sm font-medium'>Select Weeks <span className='text-red-400'>*</span></label>
+                                </div>
+                                <div className='mt-3'>
+                                    <RateCardWeek
+                                        value={weekbyCalendar ? rateCard.serviceWeek : []}
+                                        onChange={handleWeekChange}
+                                        existingWeeks={[...new Set(ratecards.filter(({ serviceWeek }) => (rateCard?.serviceWeek || []).includes(serviceWeek)).map(({ serviceWeek }) => serviceWeek))]}
+                                        disabled={!weekbyCalendar || mode === 'edit'}
+                                        mode={mode}
+                                    />
+                                </div>
+                            </div>
+                            <div className='flex-[4] p-2'>
+                                <div className='flex items-center gap-1'>
+                                    <input
+                                        type='radio'
+                                        disabled={mode === 'edit' || !areWeeksContinuous(rateCard?.serviceWeek)}
+                                        checked={!weekbyCalendar}
+                                        onChange={() => {
+                                            setWeekbyCalendar(prev => !prev);
+                                            setErrors(prev => ({ ...prev, serviceWeek: false }));
+                                        }}
+                                    />
+                                    <label className='text-sm font-medium'>Select Week Range <span className='text-red-400'>*</span></label>
+                                </div>
+                                <WeekRangeDropdown
                                     mode={mode}
+                                    value={rateCard.serviceWeek}
+                                    onChange={handleWeekChange}
+                                    disabled={weekbyCalendar}
                                 />
                             </div>
                         </div>
-                        <div>
-                            <div className='flex items-center gap-1'>
-                                <input
-                                    type='radio'
-                                    disabled={mode === 'edit'}
-                                    checked={!weekbyCalendar}
-                                    onChange={() => {
-                                        setWeekbyCalendar(prev => !prev);
-                                        setErrors(prev => ({ ...prev, serviceWeek: false }));
-                                    }}
-                                />
-                                <label className='text-sm font-medium'>Select Week Range <span className='text-red-400'>*</span></label>
-                            </div>
-                            <WeekRangeDropdown
-                                onChange={handleWeekChange}
-                                disabled={weekbyCalendar}
-                                selectedWeeks={rateCard.serviceWeek}
-                            />
-                        </div>
-                        {errors.serviceWeek && <p className='text-red-400 text-sm mt-1'>* Please select at least one week</p>}
                     </InputWrapper>
 
                     <div>
@@ -514,9 +560,9 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                         />
                         {errors.mileage && (
                             <p className='text-red-400 text-sm mt-1'>* Mileage is required</p>)}
-                        {errors.existingweek &&
+                        {(rateCard?.serviceWeek || []).some((week) => ratecards.some(({ serviceWeek }) => serviceWeek === week)) &&
                             (<p className='text-sm text-red-400 mt-1'>
-                                * Modifying the mileage may impact the mileage values of the existing rate cards for the selected weeks
+                                * Modifying the mileage may impact the mileage values of the existing rate cards for the selected week
                             </p>)}
                     </div>
 
@@ -571,13 +617,14 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                     </div>
 
                     <div className='w-full flex justify-between mt-2 gap-3 items-center'>
+
                         {errors.existingRateCard && (
                             <p className='text-sm text-red-400 m-1'>
                                 * A Rate Card already exists for the specified Service and for selected Week.
                             </p>
                         )}
                         {mode !== 'edit' ? <button
-                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading}
+                            disabled={Object.keys(errors).some((er) => er !== 'existingweek' && errors[er]) || loading || ((rateCard?.serviceWeek || []).filter((week) => ratecards.some(({ serviceWeek }) => serviceWeek === week)).length > 1)}
                             onClick={handleAddRateCard}
                             className='flex items-center gap-1 ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white'
                         >
@@ -595,6 +642,7 @@ const RateCardForm = ({ ratecards, rateCard, setRateCard, clearRateCard, service
                                     disabled={loading}
                                     onClick={() => {
                                         setMode('create')
+                                        setErrors({})
                                         setRateCard(clearRateCard)
                                     }
                                     }

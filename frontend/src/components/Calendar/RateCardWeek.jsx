@@ -3,8 +3,9 @@ import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/light.css';
 import './Calendar.css'
 import { BiChevronDown } from "react-icons/bi";
+import weekSelect from 'flatpickr/dist/plugins/weekSelect/weekSelect';
 
-function RateCardWeek({ value, onChange, disabled, mode }) {
+function RateCardWeek({ value, onChange, disabled, mode, existingWeeks }) {
     const containerRef = useRef(null);
     const flatpickrRef = useRef(null);
 
@@ -15,11 +16,11 @@ function RateCardWeek({ value, onChange, disabled, mode }) {
         selectedWeeksRef.current = selectedWeeks;
     }, [selectedWeeks]);
 
-    useEffect(() => {
-        if (disabled && mode !== 'edit') {
-            setSelectedWeeks([]);
-        }
-    }, [disabled])
+    // useEffect(() => {
+    //     if (disabled && mode !== 'edit') {
+    //         setSelectedWeeks([]);
+    //     }
+    // }, [disabled])
 
     useEffect(() => {
         setSelectedWeeks(value)
@@ -130,7 +131,7 @@ function RateCardWeek({ value, onChange, disabled, mode }) {
 
     return (
         <div ref={containerRef} className={`relative`}>
-            <div
+            {/* <div
                 className={`w-full rounded-lg border-[1.5px] px-5.5 py-3.5 flex items-center gap-1 border-neutral-300 overflow-auto bg-transparent outline-none transition ${disabled && '!bg-neutral-50 pointer-events-none'} ${isCalendarOpen && 'border-primary-500'} dark:border-dark-3 dark:bg-dark-2`}
                 onClick={() => { if (mode !== 'edit') setIsCalendarOpen(true) }}
             >
@@ -140,6 +141,7 @@ function RateCardWeek({ value, onChange, disabled, mode }) {
                             key={index}
                             className="inline-flex items-center shrink-0 bg-gray-100 px-3 py-1 rounded-full text-sm hover:bg-gray-200 transition-colors"
                         >
+                            {existingWeeks.includes(week) && <i class="flex items-center text-red-500 mr-1 fi fi-sr-location-exclamation"></i>}
                             {week}
                             {mode !== 'edit' && <span onClick={(e) => {
                                 e.stopPropagation();
@@ -153,7 +155,9 @@ function RateCardWeek({ value, onChange, disabled, mode }) {
                 <div className="ml-auto">
                     <BiChevronDown size={18} />
                 </div>
-            </div>
+            </div> */}
+
+            <button disabled={disabled} onClick={() => { if (mode !== 'edit') setIsCalendarOpen(prev => !prev) }} className='relative bg-gray-100 border border-gray-300 shadow flex gap-1 rounded px-2 py-1 text-xs disabled:text-gray-400'><i class="flex items-center text-[1rem] fi fi-rr-calendar-week"></i>Open Calendar</button>
 
             {isCalendarOpen && (
                 <div className="absolute z-10 mt-1 shadow-lg">
@@ -164,6 +168,14 @@ function RateCardWeek({ value, onChange, disabled, mode }) {
                             inline: true,
                             weekNumbers: true,
                             showMonths: 1,
+                            defaultDate: selectedWeeks.length > 0
+                                ? (() => {
+                                    const [year, week] = selectedWeeks[0]?.split('-W').map(Number);
+                                    const jan1 = new Date(year, 0, 1);
+                                    const dayOffset = (week - 1) * 7 - jan1.getDay();
+                                    return new Date(jan1.setDate(jan1.getDate() + dayOffset));
+                                })()
+                                : '',
                             onChange: (selectedDates) => handleDateSelect(selectedDates),
                             onReady: (_, __, fp) => {
                                 fp.calendarContainer.classList.add('custom-flatpickr');

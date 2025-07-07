@@ -123,6 +123,9 @@ function WeekInput({ value, display, onChange, error, filter = false }) {
                             inline: true,
                             weekNumbers: true,
                             showMonths: 1,
+                            defaultDate: selectedWeek
+                                ? selectedWeek.startOfWeek
+                                : '',
                             onChange: handleDateSelect,
                             onReady: (_, __, fp) => {
                                 fp.calendarContainer.classList.add('custom-flatpickr');

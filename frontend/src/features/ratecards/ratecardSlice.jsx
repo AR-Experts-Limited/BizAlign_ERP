@@ -9,8 +9,8 @@ export const fetchRatecards = createAsyncThunk('Ratecards/fetchRatecards', async
     return response.data;
 });
 
-export const addRatecard = createAsyncThunk('Ratecards/addRatecard', async (Ratecard) => {
-    const response = await axios.post(`${API_BASE_URL}/api/ratecards`, Ratecard);
+export const addRatecard = createAsyncThunk('Ratecards/addRatecard', async ({ rateCard, existingWeeks }) => {
+    const response = await axios.post(`${API_BASE_URL}/api/ratecards`, { ...rateCard, existingWeeks });
     return response.data;
 });
 
