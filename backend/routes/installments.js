@@ -20,8 +20,12 @@ const upload = multer({
     key: (req, file, cb) => {
       const databaseName = req.db.db.databaseName
       const user_ID = req.body.user_ID;
-      const date = new Date().toLocaleDateString()
-      cb(null, `${databaseName}/Installments/${user_ID}/${date}/${file.originalname}`);
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const folderName = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_` +
+        `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+      cb(null, `${databaseName}/Installments/${user_ID}/AddedOn_${folderName}/${file.originalname}`);
     },
     fileFilter: (req, file, cb) => {
       const allowedTypes = /jpeg|jpg|png/;

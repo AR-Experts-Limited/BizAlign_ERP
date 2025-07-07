@@ -35,7 +35,7 @@ const Instalments = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [documentView, setDocumentView] = useState(null)
-
+    const installmentFileRef = useRef(null)
 
     const [errors, setErrors] = useState({
         driverId: false,
@@ -92,7 +92,7 @@ const Instalments = () => {
             const { firstName: firstName, lastName: lastName } = driverDetail[0]
             const { installmentRate, tenure } = newInstalment
             const newInstallmentObj = {
-                ...newInstalment, user_ID: driverDetail[0].user_ID, installmentPending: installmentRate, spreadRate: (installmentRate / tenure).toFixed(3), driverName: firstName + ' ' + lastName,
+                ...newInstalment, installmentPending: installmentRate, spreadRate: (installmentRate / tenure).toFixed(3), driverName: firstName + ' ' + lastName,
             }
             const data = new FormData()
 
@@ -105,10 +105,12 @@ const Instalments = () => {
                     }
                 }
             });
+            data.append('user_ID', driverDetail[0].user_ID)
             data.append('signed', false)
             const response = await axios.post(`${API_BASE_URL}/api/installments`, data);
             setInstalments([...instalments, response.data.installment]);
             setNewInstalment(clearInstalment)
+            installmentFileRef.current.value = ''
             setSearchTerm('')
         } catch (error) {
             console.error('Error adding deduction:', error);
@@ -369,7 +371,9 @@ const Instalments = () => {
                                     <div className="relative mt-1">
                                         <InputGroup
                                             type="file"
+                                            ref={installmentFileRef}
                                             fileStyleVariant="style1"
+                                            accept=".jpg,.jpeg,.png"
                                             onChange={handleFileChange}
                                         />
                                     </div>
@@ -474,9 +478,15 @@ const Instalments = () => {
                                                                 </div>
                                                             ) : (
                                                                 <div className='flex flex-col items-center gap-2 rounded bg-white border border border-neutral-200 py-2 px-1'>
-                                                                    <span id={`fileName-${instalment._id}`} className="text-sm text-gray-700 truncate max-w-[100px]">
-                                                                        {decodeURIComponent(instalment.installmentDocument.split(`${instalment.user_ID}/`)[1])}
-                                                                    </span>
+                                                                    <div className='relative group w-full'>
+                                                                        <div className=' truncate max-w-[150px]'></div>
+                                                                        <span id={`fileName-${instalment._id}`} className="text-sm text-gray-700 truncate max-w-[100px]">
+                                                                            {decodeURIComponent(instalment.installmentDocument.split(`/`)[7])}
+                                                                        </span>
+                                                                        <div className='absolute top-1/2 left-1/2 -translate-x-1/2  -translate-y-1/2 hidden group-hover:block bg-gray-700 text-white px-2 py-1 text-xs rounded whitespace-nowrap'>
+                                                                            {decodeURIComponent(instalment.installmentDocument.split(`/`)[7])}
+                                                                        </div>
+                                                                    </div>
                                                                     <div className='flex gap-1'>
                                                                         <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">
                                                                             <i class="flex items-center fi fi-rr-file-signature"></i> Pending

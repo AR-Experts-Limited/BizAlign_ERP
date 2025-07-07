@@ -107,7 +107,6 @@ const WeeklyInvoice = () => {
             });
             currentWeek.add(1, 'week');
         }
-        console.log(weeksArray)
         setWeeks(weeksArray);
     }, [selectedMonth]);
 
@@ -321,8 +320,8 @@ const WeeklyInvoice = () => {
         return weeks.map((week) => {
             const key = `${driver._id}_${week.week}`;
             const invoice = groupedInvoices[key];
-            const isToday = moment(week, 'week').format('YYYY-[W]ww') === moment().format('YYYY-[W]ww');
-            const cellClass = isToday ? 'bg-amber-100/30' : '';
+            const isToday = moment(week.week, 'YYYY-[W]www').isSame(moment(), 'week');
+            const cellClass = isToday ? 'bg-amber-100/20' : '';
             return (
                 <td key={week.week} className={cellClass}>
                     {invoice && (

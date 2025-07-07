@@ -354,7 +354,7 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
             formData.append('companyId', userDetails.companyId)
             const counterUpdate = await axios.put(`${API_BASE_URL}/api/idcounter/Driver`, {});
             try {
-                const response = await dispatch(addDriver(formData));
+                const response = await dispatch(addDriver(formData)).unwrap();;
                 setPersonnelMode('view');
                 setToastOpen({
                     content: <>

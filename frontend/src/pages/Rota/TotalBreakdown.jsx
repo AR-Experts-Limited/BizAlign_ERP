@@ -23,9 +23,7 @@ const TotalBreakdown = ({
     const additionalServiceTotal = additionalServiceDetails
         ? Number((Number(additionalServiceDetails.serviceRate || 0) +
             Number(additionalServiceDetails.byodRate || 0) +
-            Number(additionalServiceDetails.miles || 0) * Number(additionalServiceDetails.mileage || 0)).toFixed(2)) +
-        Number(incentiveDetailforAdditional?.rate || 0)
-
+            Number(additionalServiceDetails.miles || 0) * Number(additionalServiceDetails.mileage || 0)).toFixed(2))
         : 0;
     const { userDetails } = useSelector((state) => state.auth);
 
@@ -56,18 +54,18 @@ const TotalBreakdown = ({
                     <span>£</span>
                     <span className="text-right">{additionalServiceTotal}</span>
                 </div>}
-                {incentiveDetailforMain &&
+                {(incentiveDetailforMain || incentiveDetailforAdditional) &&
                     <div className="grid grid-cols-[6fr_1fr_1fr] text-green-600">
                         <span>Incentives:</span>
                         <span>+£</span>
-                        <span className="text-right">{incentiveDetailforMain.rate}</span>
+                        <span className="text-right">{Number(incentiveDetailforMain?.rate || 0) + Number(incentiveDetailforAdditional?.rate || 0)}</span>
                     </div>}
 
-                <div className="grid grid-cols-[6fr_1fr_1fr] text-red-600">
+                {deductionDetail?.length > 0 && <div className="grid grid-cols-[6fr_1fr_1fr] text-red-600">
                     <span>Other Deductions:</span>
                     <span>-£</span>
                     <span className="text-right">{totalDeductions}</span>
-                </div>
+                </div>}
                 <hr className="my-3 border-t-2 border-primary-200" />
                 <div className="grid grid-cols-[7fr_1fr_1fr] text-xl font-bold text-green-700">
                     <span>Total:</span>

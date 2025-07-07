@@ -203,6 +203,8 @@ const ManageSummary = () => {
     }, [rangeOptions]);
 
     const handleFileChange = (e) => {
+        setVisionIds([])
+        setVisionTracker('')
         if (!e) {
             setCsvData({})
             return
@@ -359,8 +361,6 @@ const ManageSummary = () => {
         const key = `${dateKey}_${driver._id}`;
         const invoice = invoiceMap[key]?.invoice;
         const matchedCsv = invoiceMap[key]?.matchedCsv;
-        const isToday = dateObj.toDateString() === new Date().toDateString();
-        const cellClass = isToday ? 'bg-amber-100/30' : '';
         const disabledSelection = (invoice && selectedInvoices.length > 0 && key !== selectedInvoices[0] && invoiceMap[selectedInvoices[0]]?.invoice.approvalStatus !== invoice.approvalStatus) ? true : false
         const invoiceBelongstoSite = invoice?.site === selectedSite
 
@@ -482,7 +482,7 @@ const ManageSummary = () => {
                                             </td>
                                             <td className={`px-4 py-2 ${misMatchServiceType ? 'text-red-500' : 'text-green-600'
                                                 }`}>
-                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' ?
+                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' && originalServiceRef.current !== currentInvoice?.matchedCsv['Service Type']?.trim() ?
                                                     <InputGroup type='dropdown' onChange={(e) => handleServiceTypeChange(e)}>
                                                         <option value={originalServiceRef.current}>{originalServiceRef.current}</option>
                                                         {currentInvoice?.matchedCsv['Service Type']?.trim() !== '-' && <option value={currentInvoice?.matchedCsv['Service Type']?.trim()}>{currentInvoice?.matchedCsv['Service Type']?.trim()}</option>}
@@ -502,7 +502,7 @@ const ManageSummary = () => {
                                                 className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
                                                     }`}
                                             >
-                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' ?
+                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' && originalMilesRef.current !== currentInvoice?.matchedCsv["Total Distance Allowance"] ?
                                                     <InputGroup type='dropdown' onChange={(e) => setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, miles: e.target.value } }))}>
                                                         <option value={originalMilesRef.current}>{originalMilesRef.current}</option>
                                                         {currentInvoice?.matchedCsv["Total Distance Allowance"] && <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>}

@@ -119,7 +119,7 @@ const ManageUsers = () => {
     }
 
     const canEditUser = (user) => {
-        return currentUser?.id !== user._id && isPrivileged(currentUser?.role, user.role)
+        return currentUser?.id !== user?._id && isPrivileged(currentUser?.role, user?.role)
     }
 
     const initiateDeleteUser = (user) => {
