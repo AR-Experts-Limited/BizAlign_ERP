@@ -52,6 +52,7 @@ const InputGroup = forwardRef(({
   min,
   step,
   inputStyles,
+  accept,
   maxLength,
 }, ref) => {
   const id = useId();
@@ -178,6 +179,7 @@ const InputGroup = forwardRef(({
             onChange={onChange}
             value={value}
             min={min}
+            accept={accept}
             step={step}
             defaultValue={defaultValue}
             className={cn(

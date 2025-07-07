@@ -19,7 +19,7 @@ const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, 
             <div style={{ ...style, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '5px' }} key={driver._id}>
                 <div
                     className={`${driver.disabled ? 'bg-gray-100 text-gray-400' : ''} cursor-pointer hover:bg-gray-50 flex w-full`}
-                    onClick={() => handleEditDriver(driver)}
+                    onClick={() => !driver.disabled ? handleEditDriver(driver) : null}
                 >
                     <div className="flex justify-center items-center p-3 text-center w-15 max-w-15 text-sm border-b border-gray-300">{index + 1}</div>
 
@@ -68,15 +68,16 @@ const PersonnelsTable = ({ driversList, columns, userDetails, handleEditDriver, 
 
                     {['Admin', 'super-admin'].includes(userDetails.role) && <div className="flex items-center justify-center p-3 text-center w-20 border-b border-gray-300">
                         <div className="flex justify-center">
-                            <div
+                            <button
+                                disabled={driver.disabled}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteDriver(driver._id, driver.siteSelection, driver.user_ID);
                                 }}
-                                className="flex justify-center items-center w-7 h-7 rounded-md p-1 hover:bg-gray-200 text-red-500"
+                                className="flex justify-center items-center w-7 h-7 rounded-md p-1 hover:bg-gray-200 text-red-500 disabled:text-gray-400"
                             >
                                 <FaTrashAlt size={16} />
-                            </div>
+                            </button>
                         </div>
                     </div>}
                 </div>

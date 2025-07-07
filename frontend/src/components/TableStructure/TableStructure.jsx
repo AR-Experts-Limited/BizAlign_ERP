@@ -67,21 +67,11 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
         }
     }, [driversBySite, selectedSite, searchDriver, standbydrivers, days]);
 
-
-    // useEffect(() => {
-    //     setVisionIds([])
-    //     setVisionTracker('')
-    //     setScrollToRow(0)
-    // }, [selectedSite, selectedRangeIndex])
-
     const GridComponent = () => {
-
         const rowCount = driversList.length + 1;
         const columnCount = days?.length + 1;
         const topLeftRowHeight = 50
         const defaultRowHeight = 120;
-
-
 
         // Provide variable rowHeight as function
         const getRowHeight = ({ index }) => {
@@ -149,8 +139,12 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         const columnWidth = ({ index }) => {
                             if (rangeType === 'daily') {
                                 return Math.floor(width / 2);
-                            } else if (rangeType === 'weekly') {
-                                return Math.floor(width / 7);
+                            }
+                            else if (rangeType === 'weekly') {
+                                return Math.max(200, Math.floor(width / 7));
+                            }
+                            else if (rangeType === 'biweekly') {
+                                return Math.max(200, Math.floor(width / 14));
                             }
                             else {
                                 return 200
@@ -159,7 +153,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         return (
                             <MultiGrid
                                 ref={gridRef}
-                                key={`${JSON.stringify(visionTracker)}-${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}`}
+                                key={`${JSON.stringify(visionTracker)}-${selectedSite}-${JSON.stringify(days.map(d => d.date))}-${JSON.stringify(standbydrivers.map(sd => sd._id))}-${JSON.stringify(standbydriversList.map(sd => sd._id))}-${width}-${height}`}
                                 fixedRowCount={1}
                                 fixedColumnCount={1}
                                 rowCount={rowCount}
@@ -223,7 +217,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                     <button onClick={() => setIsFilterOpen(prev => !prev)} className={`rounded-lg p-2 hover:bg-gray-200 hover:text-primary-500 ${isFilterOpen && 'bg-gray-200 text-primary-500'}`}><i class="flex items-center text-[1rem] fi fi-rr-filter-list"></i></button>
                 </div >
                 <div className='flex-1 flex flex-col h-full p-2'>
-                    <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'}`}>
+                    <div className={`transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-40 pb-2 opacity-100 visibility-visible' : 'max-h-0 opacity-0 visibility-hidden'} `}>
                         <TableFilters
                             title={title}
                             state={state}
@@ -239,7 +233,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         <div className="flex p-2 gap-2 md:gap-5 justify-around bg-neutral-100/90 dark:bg-dark-2 shadow border-[1.5px] border-neutral-300/80 dark:border-dark-5 rounded-lg overflow-visible dark:!text-white mb-2">
                             {/* No Matched CSV */}
                             <div className="flex items-center gap-1">
-                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && (
+                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && !visionTracker?.matchedCsv && (
                                     <button
                                         name="previous"
                                         onClick={() => handleNavigation('previous')}
@@ -258,13 +252,13 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${(visionTracker?.invoice?.approvalStatus === 'Access Requested' && !visionTracker?.invoice?.csvData) && 'bg-neutral-300 shadow-md'
-                                        }`}
+                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${(visionTracker?.invoice?.approvalStatus === 'Access Requested' && !visionTracker?.matchedCsv) && 'bg-neutral-300 shadow-md'
+                                        } `}
                                 >
                                     <div className="bg-gray-200 h-4 w-4 rounded border border-dashed border-gray-500"></div>
                                     No Matched CSV ({Object.values(invoiceMap).filter((inv) => !inv.matchedCsv).length})
                                 </button>
-                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && (
+                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && !visionTracker?.matchedCsv && (
                                     <button
                                         name="next"
                                         onClick={() => handleNavigation('next')}
@@ -277,7 +271,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
 
                             {/* Access Requested */}
                             <div className="flex items-center gap-1">
-                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.invoice?.csvData && (
+                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.matchedCsv && (
                                     <button
                                         name="previous"
                                         onClick={() => handleNavigation('previous')}
@@ -304,8 +298,8 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus && visionTracker?.invoice?.csvData === 'Access Requested' && 'bg-neutral-300 shadow-md'
-                                        }`}
+                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.matchedCsv && 'bg-neutral-300 shadow-md'
+                                        } `}
                                 >
                                     <FcHighPriority size={20} />
                                     Access Requested (
@@ -314,7 +308,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                     ).length || 0}
                                     )
                                 </button>
-                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.invoice?.csvData && (
+                                {visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.matchedCsv && (
                                     <button
                                         name="next"
                                         onClick={() => handleNavigation('next')}
@@ -354,8 +348,8 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Edit' && 'bg-neutral-300 shadow-md'
-                                        }`}
+                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Edit' && 'bg-neutral-300 shadow-md'
+                                        } `}
                                 >
                                     <i className="flex items-center text-[1rem] text-amber-500 fi fi-rr-pen-square"></i>
                                     Under Edit (
@@ -404,8 +398,8 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Approval' && 'bg-neutral-300 shadow-md'
-                                        }`}
+                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Approval' && 'bg-neutral-300 shadow-md'
+                                        } `}
                                 >
                                     <i className="flex items-center text-[1rem] text-sky-500 fi fi-rs-memo-circle-check"></i>
                                     Under Approval (
@@ -454,8 +448,8 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'Invoice Generation' && 'bg-neutral-300 shadow-md'
-                                        }`}
+                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Invoice Generation' && 'bg-neutral-300 shadow-md'
+                                        } `}
                                 >
                                     <FcClock className="!text-primary-500" size={22} />
                                     Waiting for Invoice Generation (
@@ -504,8 +498,8 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'completed' && 'bg-neutral-300 shadow-md'
-                                        }`}
+                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'completed' && 'bg-neutral-300 shadow-md'
+                                        } `}
                                 >
                                     <BsCheckCircleFill className="text-green-600 text-xl" />
                                     Invoice Generated (
