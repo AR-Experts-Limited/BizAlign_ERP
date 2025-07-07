@@ -44,21 +44,24 @@ router.post('/', async (req, res) => {
       active,
       mileage,
       addedBy,
-      modifiedBy
+      modifiedBy,
+      existingWeeks
     } = req.body;
 
     let { dateAdded } = req.body;
-    dateAdded = new Date(dateAdded); // Convert dateAdded to Date object
+    dateAdded = new Date(dateAdded);
 
-    if (!Array.isArray(serviceWeek)) {
-      return res.status(400).json({ message: 'serviceWeek must be an array' });
+    if (!Array.isArray(serviceWeek) || !Array.isArray(existingWeeks)) {
+      return res.status(400).json({ message: 'serviceWeek and existingWeeks must be arrays' });
     }
 
     const rateCardsAdded = [];
     const updatedRateCards = [];
 
+    // ----------------------------------
+    // PHASE 1: Add RateCards & update mileage
+    // ----------------------------------
     for (const week of serviceWeek) {
-      // Create new RateCard
       const newRateCard = new RateCard({
         serviceTitle,
         serviceRate: round2(serviceRate),
@@ -78,14 +81,22 @@ router.post('/', async (req, res) => {
 
       await newRateCard.save();
       rateCardsAdded.push(newRateCard);
+    }
 
-      // Update mileage for all RateCards in this week
-      await RateCard.updateMany(
-        { serviceWeek: week },
-        { $set: { mileage: round2(mileage) } }
-      );
+    // Update mileage for all RateCards in newly added weeks
+    await RateCard.updateMany(
+      { serviceWeek: { $in: serviceWeek } },
+      { $set: { mileage: round2(mileage) } }
+    );
 
-      // Get all RateCards for this week to find affected services
+    // Fetch updated rate cards for added weeks
+    const addedUpdated = await RateCard.find({ serviceWeek: { $in: serviceWeek } });
+    updatedRateCards.push(...addedUpdated);
+
+    // ----------------------------------
+    // PHASE 2: Update DayInvoices & WeeklyInvoices for existingWeeks
+    // ----------------------------------
+    for (const week of existingWeeks) {
       const allRateCards = await RateCard.find({ serviceWeek: week });
       const affectedServices = [...new Set(allRateCards.map(card => ({
         serviceTitle: card.serviceTitle,
@@ -94,9 +105,7 @@ router.post('/', async (req, res) => {
         byodRate: round2(card.byodRate)
       })))];
 
-      // Update DayInvoices for all affected services
       for (const { serviceTitle: affectedService, vehicleType: affectedVehicle, serviceRate: affectedRate, byodRate: affectedByod } of affectedServices) {
-        // Update DayInvoices for main service
         const invoicesForMain = await DayInvoice.find({
           serviceWeek: week,
           mainService: affectedService,
@@ -137,7 +146,6 @@ router.post('/', async (req, res) => {
           };
         });
 
-        // Update DayInvoices for additional service
         const invoicesForAdditional = await DayInvoice.find({
           serviceWeek: week,
           'additionalServiceDetails.service': affectedService,
@@ -183,7 +191,6 @@ router.post('/', async (req, res) => {
         await DayInvoice.bulkWrite(updateForAdditional);
       }
 
-      // Recalculate WeeklyInvoices for affected drivers
       const affectedDriverIds = [
         ...new Set([
           ...(await DayInvoice.find({ serviceWeek: week }).distinct('driverId')).map(id => id.toString())
@@ -206,7 +213,6 @@ router.post('/', async (req, res) => {
           );
         };
 
-        // Sum DayInvoice totals
         for (const inv of allInvoices) {
           const invBaseTotal = round2(inv.total);
           weeklyBaseTotal += invBaseTotal;
@@ -215,7 +221,6 @@ router.post('/', async (req, res) => {
           }
         }
 
-        // Add AdditionalCharges contributions
         let additionalChargesTotal = 0;
         for (const charge of weeklyInvoice.additionalChargesDetail || []) {
           let rateAdjustment = round2(charge.rate);
@@ -232,7 +237,6 @@ router.post('/', async (req, res) => {
         weeklyVatTotal = round2(weeklyVatTotal);
         const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
 
-        // Restore previous installment deductions
         const allInstallments = await Installment.find({ driverId });
         for (const detail of weeklyInvoice.installmentDetail || []) {
           const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
@@ -242,7 +246,6 @@ router.post('/', async (req, res) => {
           }
         }
 
-        // Calculate new installment deductions
         const installmentMap = new Map();
         let remainingTotal = weeklyTotalBeforeInstallments;
 
@@ -280,7 +283,6 @@ router.post('/', async (req, res) => {
 
         const finalWeeklyTotal = round2(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction));
 
-        // Update WeeklyInvoice
         await WeeklyInvoice.findOneAndUpdate(
           { driverId, serviceWeek: week },
           {
@@ -299,11 +301,8 @@ router.post('/', async (req, res) => {
       updatedRateCards.push(...updated);
     }
 
-    // Remove duplicates from updatedRateCards
     const addedIds = new Set(rateCardsAdded.map(card => card._id.toString()));
-    const uniqueUpdated = updatedRateCards.filter(
-      card => !addedIds.has(card._id.toString())
-    );
+    const uniqueUpdated = updatedRateCards.filter(card => !addedIds.has(card._id.toString()));
 
     sendToClients(req.db, {
       type: 'rateCardUpdated',
@@ -316,6 +315,8 @@ router.post('/', async (req, res) => {
     res.status(500).json({ message: 'Error adding rate card', error: error.message });
   }
 });
+
+
 
 // Update rate cards and related invoices
 router.put('/', async (req, res) => {

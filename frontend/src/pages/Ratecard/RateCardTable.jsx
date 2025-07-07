@@ -188,10 +188,10 @@ const RateCardTable = ({ rateCard, toastOpen, ratecards, onDelete, onUpdate, onU
                                                             <div className={`flex flex-nowrap gap-2 ${(selectedWeeks[group._id]?.length > 1) ? 'pb-5' : ''}`}>
                                                                 {selectedWeeks[group._id]?.length > 0 ?
                                                                     selectedWeeks[group._id].map((week) => (
-                                                                        <div key={week} className="whitespace-nowrap break-keep w-full bg-gray-100 px-1 py-1 rounded-lg text-[0.7rem]">
+                                                                        <div key={week} className={`flex  gap-1 whitespace-nowrap break-keep w-full bg-gray-100 px-1 py-1 rounded-lg text-[0.7rem] ${rateCard?.serviceWeek.includes(week) && 'text-red-500'}`}>
                                                                             {week}
                                                                         </div>
-                                                                    )) : <div>{group.serviceWeeks[0]}</div>}
+                                                                    )) : <div className={`${rateCard?.serviceWeek.includes(group.serviceWeeks[0]) && group?.serviceWeeks?.length == 1 && '!text-red-500'}`}>{group.serviceWeeks[0]}</div>}
                                                             </div>
                                                         </button>
                                                         {group.serviceWeeks?.length > 1 && <div className={`absolute z-10 hidden px-3 py-2 w-max bg-white border-[1.5px] border-neutral-200 rounded-md shadow-lg group-focus-within:block group-hover:block ${dropdownPositions[group._id] === 'top' ? 'bottom-full' : 'top-full'}`}>
@@ -213,7 +213,7 @@ const RateCardTable = ({ rateCard, toastOpen, ratecards, onDelete, onUpdate, onU
                                                                     </label>
                                                                 </div>
                                                                 {group.serviceWeeks.map((week, i) => (
-                                                                    <label key={i} className="flex items-center gap-3 mb-1 text-sm">
+                                                                    <label key={i} className={`flex items-center gap-3 mb-1 text-sm ${rateCard?.serviceWeek.includes(week) && 'text-red-500'}`}>
                                                                         <input
                                                                             type="checkbox"
                                                                             checked={selectedWeeks[group._id]?.includes(week) || false}
@@ -228,7 +228,6 @@ const RateCardTable = ({ rateCard, toastOpen, ratecards, onDelete, onUpdate, onU
                                                                                 }));
                                                                             }}
                                                                         />
-                                                                        {rateCard?.serviceWeek.includes(week) && <i class="flex items-center text-red-500 fi fi-sr-location-exclamation"></i>}
                                                                         {week}
                                                                     </label>
                                                                 ))}
@@ -243,11 +242,12 @@ const RateCardTable = ({ rateCard, toastOpen, ratecards, onDelete, onUpdate, onU
                                                 <td className="border-b border-neutral-200">
                                                     <div className="flex justify-center gap-2">
                                                         <button
-                                                            disabled={toastOpen || loading}
+                                                            disabled={toastOpen || loading || selectedWeeks[group._id]?.length > 1}
                                                             onClick={() => {
                                                                 setSelectedGroupUpdate(group._id);
                                                                 const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]]);
-                                                                const selectedWeekList = selectedWeeks[group._id] || Array(group.serviceWeeks[0]);
+                                                                const selectedWeekList = selectedWeeks[group._id]?.length > 0 ? selectedWeeks[group._id] : Array(group.serviceWeeks[0]);
+
                                                                 onUpdate({
                                                                     selectedIds: selectedIdsList,
                                                                     hourlyRate: group.hourlyRate,

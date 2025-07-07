@@ -199,6 +199,9 @@ function WeekFilter({ type, value, display, onChange }) {
                   inline: true,
                   weekNumbers: true,
                   showMonths: 1,
+                  defaultDate: selectedWeek
+                    ? selectedWeek.startOfWeek
+                    : '',
                   onChange: handleDateSelect,
                   onReady: (_, __, fp) => {
                     fp.calendarContainer.classList.add('custom-flatpickr');

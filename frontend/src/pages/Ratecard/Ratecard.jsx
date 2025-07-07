@@ -62,10 +62,10 @@ const Ratecard = () => {
         }
     };
 
-    const handleAddRateCard = async ({ rateCard, newService, newServiceInfo, existingweek }) => {
+    const handleAddRateCard = async ({ rateCard, newService, newServiceInfo, existingWeeks }) => {
         setLoading(true)
-        await dispatch(addRatecard(rateCard))
         setConfirmModal(null)
+        await dispatch(addRatecard({ rateCard, existingWeeks }))
         setLoading(false)
 
         setRateCard(clearRateCard)
@@ -88,8 +88,8 @@ const Ratecard = () => {
 
     const handleUpdateRateCard = async () => {
         setLoading(true)
-        await dispatch(updateRatecard(rateCard))
         setConfirmModal(null)
+        await dispatch(updateRatecard(rateCard))
         setLoading(false)
 
         setMode('create')

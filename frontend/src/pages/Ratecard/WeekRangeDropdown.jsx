@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { areWeeksContinuous } from './supportFunctions';
 
-const WeekRangeDropdown = ({ value, disabled, onChange }) => {
+const WeekRangeDropdown = ({ mode, value, disabled, onChange }) => {
     const [startWeek, setStartWeek] = useState('');
     const [endWeek, setEndWeek] = useState('');
     const [weeks, setWeeks] = useState([]);
@@ -28,19 +29,23 @@ const WeekRangeDropdown = ({ value, disabled, onChange }) => {
         generateWeeks();
     }, []);
 
-    useEffect(() => {
-        if (disabled) {
-            setStartWeek('')
-            setEndWeek('')
-        }
-    }, [disabled])
+    // useEffect(() => {
+    //     if (!areWeeksContinuous(value || [])) {
+    //         setStartWeek('')
+    //         setEndWeek('')
+    //     }
+    // }, [value])
 
     // Parse the current value if it's an array
     useEffect(() => {
-        if (value && Array.isArray(value) && value.length > 0) {
+        if (value && Array.isArray(value) && value.length > 0 && areWeeksContinuous(value) && mode !== 'edit') {
             const sorted = [...value].sort();
             setStartWeek(sorted[0]);
             setEndWeek(sorted[sorted.length - 1]);
+        }
+        else {
+            setStartWeek('')
+            setEndWeek('')
         }
     }, [value]);
 
@@ -100,7 +105,7 @@ const WeekRangeDropdown = ({ value, disabled, onChange }) => {
     };
 
     return (
-        <div className="mt-3 flex justify-between items-center gap-5">
+        <div className="mt-3 flex justify-between items-center">
             <select
                 value={startWeek}
                 onChange={handleStartWeekChange}
@@ -119,7 +124,7 @@ const WeekRangeDropdown = ({ value, disabled, onChange }) => {
                 ))}
             </select>
 
-            <span style={{ margin: '0 0.5rem' }}>to</span>
+            <span style={{ margin: '0 0.2rem' }}>-</span>
 
             <select
                 value={endWeek}

@@ -233,10 +233,24 @@ const ManageSummary = () => {
                     filteredData.forEach(csv => {
                         const csvDate = new Date(moment(csv.Date, 'DD/MM/YYYY')).toLocaleDateString();
                         const csvName = String(csv['Delivery Associate']?.trim()).toLowerCase();
-
                         const key = `${csvDate}_${csvName}`;
-                        csvLookup[key] = { ...csv, 'Service Type': csv['Service Type']?.trim() + ' - ' + csv['Planned Duration']?.trim() };
-                    })
+
+                        const serviceType = csv['Service Type']?.trim();
+                        const plannedDuration = csv['Planned Duration']?.trim();
+                        const totalDistance = parseFloat(csv['Total Distance Allowance']) || 0;
+
+                        if (csvLookup[key]) {
+                            // Add distance and append service info
+                            csvLookup[key]['Total Distance Allowance'] += totalDistance;
+                        } else {
+                            // Create new entry
+                            csvLookup[key] = {
+                                ...csv,
+                                'Service Type': `${serviceType} - ${plannedDuration}`,
+                                'Total Distance Allowance': totalDistance
+                            };
+                        }
+                    });
                     setCsvData(csvLookup);
                 },
                 error: (error) => {
@@ -413,7 +427,7 @@ const ManageSummary = () => {
         if (e.target.value !== originalServiceRef.current) {
             const isMatchingService = services.find((service) => compareServiceStrings(service.title, e.target.value).isSimilar)
             const matchingRatecard = isMatchingService ? ratecards.find((rc) => rc.serviceTitle === isMatchingService.title && rc.serviceWeek === currentInvoice?.invoice.serviceWeek && rc.vehicleType === currentInvoice?.invoice.driverVehicleType) : null
-            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, mainService: isMatchingService.title }, restrictEdit: !matchingRatecard && originalServiceRef.current !== e.target.value }))
+            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService }, restrictEdit: (!isMatchingService || !matchingRatecard) && originalServiceRef.current !== e.target.value }))
         }
         else {
             setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, mainService: e.target.value }, restrictEdit: null }))
