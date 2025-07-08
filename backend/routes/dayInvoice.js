@@ -268,7 +268,7 @@ router.put('/updateApprovalStatusBatch', async (req, res) => {
     const updatedDocs = await DayInvoice.find({ _id: { $in: updates.map(({ id }) => id) } });
 
     // Check if any update includes a change to the 'total' field
-    const hasTotalChange = updates.some(({ updateData }) => 'total' in updateData);
+    const hasTotalChange = updates.some(({ updateData }) => updateData.approvalStatus === 'Under Approval');
 
     if (hasTotalChange) {
       // Group updated invoices by driverId and serviceWeek for WeeklyInvoice updates

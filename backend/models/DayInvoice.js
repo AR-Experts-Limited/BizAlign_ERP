@@ -17,6 +17,14 @@ const dayInvoiceSchema = new mongoose.Schema({
   additionalService: { type: String },
   additionalServiceApproval: { type: String },
   shiftTimes: { type: Object },
+  rateCardIdforMain: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RateCard',
+  },
+  rateCardIdforAdditional: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RateCard',
+  },
   incentiveDetailforMain: {
     type: IncentiveSchema,
     default: null
@@ -54,8 +62,7 @@ const DayInvoice = mongoose.model('DayInvoice', dayInvoiceSchema);
 dayInvoiceSchema.index({ driverId: 1, date: 1 }, { unique: true });
 dayInvoiceSchema.index({ site: 1, serviceWeek: 1 });
 dayInvoiceSchema.index({ driverId: 1, serviceWeek: 1 });
-dayInvoiceSchema.index({ serviceWeek: 1, mainService: 1, driverVehicleType: 1 });
-dayInvoiceSchema.index({ serviceWeek: 1, 'additionalServiceDetails.service': 1, driverVehicleType: 1 });
+dayInvoiceSchema.index({ serviceWeek: 1 });
 
 
 

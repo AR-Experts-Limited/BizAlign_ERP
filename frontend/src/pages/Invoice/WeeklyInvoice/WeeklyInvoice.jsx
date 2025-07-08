@@ -623,12 +623,13 @@ const WeeklyInvoice = () => {
                                         {currentInvoice?.invoice.driverId.user_ID}
                                     </p>
                                 </div>
-                                {/* <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Vehicle Type</p>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Due Date:</p>
                                     <p className="text-base font-medium text-gray-900 dark:text-white">
-                                        {currentInvoice?.invoice.driverId.typeOfDriver}
+                                        {moment(currentInvoice?.invoice?.serviceWeek, 'GGGG-[W]WW').add(3, 'weeks').startOf('week').add(3, 'days').format('dddd,DD/MM/YYYY')}
                                     </p>
-                                </div> */}
+                                </div>
+
                                 {currentInvoice?.invoice.driverId.vatDetails?.vatNo && (
                                     <>
                                         <div>
@@ -1060,7 +1061,7 @@ const WeeklyInvoice = () => {
                                                     </td>
                                                 )}
                                             <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                £{currentInvoice?.invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0)}
+                                                £{currentInvoice?.invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0).toFixed(2)}
                                             </td>
                                         </tr>
                                     </tbody>
