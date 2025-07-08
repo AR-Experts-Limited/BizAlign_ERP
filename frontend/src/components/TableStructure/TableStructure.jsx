@@ -105,8 +105,6 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                 classNames += ` bg-white ${isToday ? '!bg-amber-100/20 relative' : 'relative'}`;
             }
 
-
-
             return (
                 <div key={key} className={classNames} style={style}>
                     {isTopLeft
@@ -252,7 +250,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${(visionTracker?.invoice?.approvalStatus === 'Access Requested' && !visionTracker?.matchedCsv) && 'bg-neutral-300 shadow-md'
+                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${(visionTracker?.invoice?.approvalStatus === 'Access Requested' && !visionTracker?.matchedCsv) && 'bg-neutral-300 shadow-md'
                                         } `}
                                 >
                                     <div className="bg-gray-200 h-4 w-4 rounded border border-dashed border-gray-500"></div>
@@ -298,7 +296,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.matchedCsv && 'bg-neutral-300 shadow-md'
+                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${(visionTracker?.invoice?.approvalStatus === 'Access Requested' && visionTracker?.matchedCsv) && 'bg-neutral-300 shadow-md'
                                         } `}
                                 >
                                     <FcHighPriority size={20} />
@@ -348,7 +346,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Edit' && 'bg-neutral-300 shadow-md'
+                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Edit' && 'bg-neutral-300 shadow-md'
                                         } `}
                                 >
                                     <i className="flex items-center text-[1rem] text-amber-500 fi fi-rr-pen-square"></i>
@@ -398,7 +396,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Approval' && 'bg-neutral-300 shadow-md'
+                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'Under Approval' && 'bg-neutral-300 shadow-md'
                                         } `}
                                 >
                                     <i className="flex items-center text-[1rem] text-sky-500 fi fi-rs-memo-circle-check"></i>
@@ -448,7 +446,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'Invoice Generation' && 'bg-neutral-300 shadow-md'
+                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'Invoice Generation' && 'bg-neutral-300 shadow-md'
                                         } `}
                                 >
                                     <FcClock className="!text-primary-500" size={22} />
@@ -498,7 +496,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                             setVisionTracker(null);
                                         }
                                     }}
-                                    className={`flex gap - 1 items - center text - xs hover: bg - neutral - 300 p - 1 rounded ${visionTracker?.invoice?.approvalStatus === 'completed' && 'bg-neutral-300 shadow-md'
+                                    className={`flex gap-1 items-center text-xs hover:bg-neutral-300 p-1 rounded ${visionTracker?.invoice?.approvalStatus === 'completed' && 'bg-neutral-300 shadow-md'
                                         } `}
                                 >
                                     <BsCheckCircleFill className="text-green-600 text-xl" />

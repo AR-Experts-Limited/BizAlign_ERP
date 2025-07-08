@@ -309,6 +309,7 @@ const Rota = () => {
             calculatedMileage: '',
             additionalServiceApproval: '',
             deductionDetail: deductions,
+            rateCardIdforMain: rateCard?._id,
             incentiveDetailforMain: incentives[0],
             total: 0,
         };
@@ -325,7 +326,7 @@ const Rota = () => {
 
         const { serviceWeek, driverVehicleType, date, site, driver } = rotaDetail.dayInvoice;
         const isAdmin = hasAdminPrivileges(userDetails.role);
-
+        let rateCardIdforAdditional = '';
         const incentiveDetailforAdditional = await getIncentiveDetails(additionalService, site, new Date(date));
 
         setRotaDetail((prev) => {
@@ -347,6 +348,7 @@ const Rota = () => {
                     additionalService,
                     driver
                 );
+                rateCardIdforAdditional = additionalServiceRatecard?._id
                 additionalServiceDetails = {
                     service: additionalService,
                     serviceRate: additionalService === 'Other' ? 0 : additionalServiceRatecard?.serviceRate || 0,
@@ -371,6 +373,7 @@ const Rota = () => {
                 ...prev,
                 dayInvoice: {
                     ...prev.dayInvoice,
+                    rateCardIdforAdditional,
                     incentiveDetailforAdditional: incentiveDetailforAdditional[0],
                     additionalServiceApproval: additionalService ? getApprovalStatus('', isAdmin) : '',
                     serviceRateforAdditional: isAdmin ? newAdditionalServiceTotal : 0,

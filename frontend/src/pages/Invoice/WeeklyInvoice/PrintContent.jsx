@@ -20,17 +20,23 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                 </div>
                 <div className="flex justify-between mb-2">
                     <div>
-                        <p className="text-[10px] mb-0.5"><span className="italic font-semibold">Site:</span> {invoice.site}</p>
+                        <p className='text-[10px] font-bold'>For Deliveries made during the week {invoice.serviceWeek}<br />Period {moment(invoice?.serviceWeek, 'GGGG-[W]WW').startOf('week').format('DD/MM/YYYY')} to {moment(invoice?.serviceWeek, 'GGGG-[W]WW').endOf('week').format('DD/MM/YYYY')} </p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] mb-0.5"><span className="italic font-semibold">Site:</span> {driverDetails?.siteSelection}</p>
                         <p className="text-[10px] mb-0.5"><span className="font-semibold">Service Week:</span> {invoice.serviceWeek}</p>
                         <p className="text-[10px] mb-0.5"><span className="font-semibold">Invoice Number:</span> {invoice.referenceNumber}</p>
                         <p className="text-[10px] mb-0.5">
                             <span className="font-semibold">Due Date:</span>{' '}
-                            {moment(invoice.serviceWeek, 'GGGG-[W]WW').startOf('week').add(17, 'days').format('YYYY-MM-DD')}
+                            {moment(invoice?.serviceWeek, 'GGGG-[W]WW').add(3, 'weeks').startOf('week').add(3, 'days').format('DD/MM/YYYY')}
                         </p>
                     </div>
-                    <div className='flex gap-3'>
-                        <div>
-                            <h4 className="text-[10px] font-bold mt-1 mb-2.5 border-b border-[#4B0082] pb-2">Bill From</h4>
+                </div>
+
+                <div className="flex flex-col mb-5">
+                    <div className="flex justify-between">
+                        <div className="flex-1 pr-2.5">
+                            <h4 className="text-[10px] font-bold mb-2 border-b border-[#4B0082] pb-2">Bill From</h4>
                             <p className="text-[10px]"><span className="font-semibold">Name:</span> {driverDetails?.firstName + ' ' + driverDetails?.lastName}</p>
                             {driverDetails?.address && <p className="text-[10px]"><span className="font-semibold">Address:</span> {driverDetails.address}</p>}
                             {driverDetails?.postcode && <p className="text-[10px]"><span className="font-semibold">Postcode:</span> {driverDetails.postcode}</p>}
@@ -38,22 +44,17 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                             {driverDetails?.utrNo && <p className="text-[10px]"><span className="font-semibold">UTR Number:</span> {driverDetails.utrNo}</p>}
                             {driverDetails?.vatDetails?.vatNo && <p className="text-[10px]"><span className="font-semibold">VAT No.:</span> {driverDetails.vatDetails?.vatNo}</p>}
                         </div>
-                        <div>
-                            <h4 className="text-[10px] font-bold mt-1 mb-2.5 border-b border-[#4B0082] pb-2">Company details</h4>
-                            {driverDetails?.companyName && <p className="text-[10px]"><span className="font-semibold">Company Name:</span> {driverDetails.companyName}</p>}
-                            {driverDetails?.companyRegNo && <p className="text-[10px]"><span className="font-semibold">Company Reg No:</span> {driverDetails.companyRegNo}</p>}
-                            {driverDetails?.companyRegAddress && <p className="text-[10px]"><span className="font-semibold">Company Reg Address:</span> {driverDetails.companyRegAddress}</p>}
-                            {driverDetails?.companyUtrNo && <p className="text-[10px]"><span className="font-semibold">Company UTR Number:</span> {driverDetails.companyUtrNo}</p>}
-                            {driverDetails?.companyVatDetails?.companyVatNo && <p className="text-[10px]"><span className="font-semibold">Company VAT No.:</span> {driverDetails.companyVatDetails?.companyVatNo}</p>}
-
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex flex-col mb-5">
-                    <div className="flex justify-between">
+                        {driverDetails?.employmentStatus === 'Limited Company' &&
+                            <div className="flex-1 pr-2.5">
+                                <h4 className="text-[10px] font-bold  mb-2 border-b border-[#4B0082] pb-2">Company details</h4>
+                                {driverDetails?.companyName && <p className="text-[10px]"><span className="font-semibold">Company Name:</span> {driverDetails.companyName}</p>}
+                                {driverDetails?.companyRegNo && <p className="text-[10px]"><span className="font-semibold">Company Reg No:</span> {driverDetails.companyRegNo}</p>}
+                                {driverDetails?.companyRegAddress && <p className="text-[10px]"><span className="font-semibold">Company Reg Address:</span> {driverDetails.companyRegAddress}</p>}
+                                {driverDetails?.companyUtrNo && <p className="text-[10px]"><span className="font-semibold">Company UTR Number:</span> {driverDetails.companyUtrNo}</p>}
+                                {driverDetails?.companyVatDetails?.companyVatNo && <p className="text-[10px]"><span className="font-semibold">Company VAT No.:</span> {driverDetails.companyVatDetails?.companyVatNo}</p>}
+                            </div>}
                         <div className="flex-1 pr-2.5">
-                            <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Bill To</h4>
+                            <h4 className="text-[10px] font-bold mb-2 border-b border-[#4B0082] pb-2">Bill To</h4>
                             <p className="text-[10px]">
                                 <strong>Raina Ltd.</strong><br />
                                 Digital World Centre,<br />
@@ -64,14 +65,14 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                 VAT No. 266927460
                             </p>
                         </div>
-                        <div className="flex-1 pl-2.5 text-right">
-                            <h4 className="text-[10px] font-bold mb-2.5 border-b border-[#4B0082] pb-2">Ship To</h4>
+                        <div className="flex-1 text-left">
+                            <h4 className="text-[10px] font-bold mb-2 border-b border-[#4B0082] pb-2">Ship To</h4>
                             <strong className='text-[10px]'>{invoice.site}</strong>
                             <p className="text-[10px]">{sites?.find((site) => site.siteKeyword === invoice.site)?.siteAddress}</p>
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
 
             <div className="break-before-page">
                 <div className="mb-0">
@@ -301,6 +302,6 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 });

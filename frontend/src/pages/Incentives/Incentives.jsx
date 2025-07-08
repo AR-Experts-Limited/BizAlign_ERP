@@ -17,6 +17,10 @@ import { fetchServices } from '../../features/services/serviceSlice';
 import { FaUser } from "react-icons/fa";
 import { FaBuildingUser } from "react-icons/fa6";
 import moment from 'moment';
+import SuccessTick from '../../components/UIElements/SuccessTick';
+import Spinner from '../../components/UIElements/Spinner';
+import TrashBin from '../../components/UIElements/TrashBin';
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -25,7 +29,8 @@ const Incentives = () => {
     const { list: sites, siteStatus } = useSelector((state) => state.sites);
     const { list: services, serviceStatus } = useSelector((state) => state.services);
     const { userDetails } = useSelector((state) => state.auth);
-
+    const [toastOpen, setToastOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
     const [newIncentive, setNewIncentive] = useState({
         site: userDetails?.site || '',
         service: '',
@@ -87,6 +92,7 @@ const Incentives = () => {
         if (!validateFields()) return;
 
         try {
+            setLoading(true)
             const incentiveToAdd = {
                 ...newIncentive,
                 // addedBy: {
@@ -97,18 +103,25 @@ const Incentives = () => {
             };
 
             const response = await axios.post(`${API_BASE_URL}/api/incentives`, incentiveToAdd);
+            setLoading(false)
             setIncentives([...incentives, response.data]);
 
             // Reset form
             setNewIncentive({
-                site: currentUser?.site || '',
+                site: userDetails?.site || '',
                 service: '',
                 month: '',
                 type: '',
                 rate: 0,
             });
 
-            // toast.success('Incentive added successfully');
+            setToastOpen({
+                content: <>
+                    <SuccessTick width={20} height={20} />
+                    <p className='text-sm font-bold text-green-500'>Incentive added successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error adding incentive:', error);
             // toast.error('Failed to add incentive');
@@ -117,9 +130,18 @@ const Incentives = () => {
 
     const handleDeleteIncentive = async (id) => {
         try {
+            setLoading(true)
             await axios.delete(`${API_BASE_URL}/api/incentives/${id}`);
+            setLoading(false)
+
             setIncentives(incentives.filter(incentive => incentive._id !== id));
-            // toast.success('Incentive deleted successfully');
+            setToastOpen({
+                content: <>
+                    <TrashBin width={20} height={20} />
+                    <p className='text-sm font-bold text-green-500'>Incentive deleted successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error deleting incentive:', error);
             // toast.error('Failed to delete incentive');
@@ -144,6 +166,16 @@ const Incentives = () => {
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-4 justify-around items-center'>
+                    {toastOpen?.content}
+                </div>
+            </div>
+            <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
+                </div>
+            </div>
             <div className='flex flex-col w-full h-full'>
                 <h2 className="text-xl mb-3 font-bold dark:text-white">Incentives</h2>
                 <div className='flex-1 flex overflow-auto gap-3'>

@@ -38,62 +38,6 @@ router.get('/driver', async (req, res) => {
 })
 
 // // Add a new Service
-// router.post('/', async (req, res) => {
-//   const Incentive = req.db.model('Incentive', require('../models/Incentive').schema);
-//   const { service, site, month, type, rate, addedBy } = req.body;
-
-//   try {
-//     const newIncentive = new Incentive({ site, service, month, type, rate, addedBy });
-//     await newIncentive.save();
-//     sendToClients(
-//       req.db, {
-//       type: 'incentivesUpdated', // Custom event to signal data update
-//     });
-//     res.status(201).json(newIncentive);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error adding incentive.', error });
-//   }
-// });
-
-// router.delete('/:id', async (req, res) => {
-//   const Incentive = req.db.model('Incentive', require('../models/Incentive').schema);
-//   const DayInvoice = req.db.model('DayInvoice', require("../models/DayInvoice").schema);
-//   try {
-//     const { driverId, _id, month, type, rate } = await Incentive.findById(req.params.id);
-//     const dayInvoices = await DayInvoice.find({
-//       driverId: driverId,
-//       'incentiveDetail._id': req.params.id
-//     })
-
-//     const updateDayInvoices = async () => {
-//       await Promise.all(
-//         dayInvoices.map(async (dayInvoice) => {
-//           await DayInvoice.updateOne(
-//             { _id: dayInvoice._id },
-//             {
-//               $set: {
-//                 total: dayInvoice.total - rate,
-//                 incentiveDetail: null,
-//               },
-//             }
-//           );
-//         })
-//       );
-//     };
-//     updateDayInvoices()
-//     sendToClients(
-//       req.db, {
-//       type: 'incentivesUpdated', // Custom event to signal data update
-//     });
-//     await Incentive.findByIdAndDelete(req.params.id)
-//     res.json({ message: 'Incentive deleted successfully' });
-//   } catch (error) {
-//     console.error('Error deleting incentive:', error);
-//     res.status(500).json({ message: 'Error deleting incentive', error });
-//   }
-// });
-
-
 router.post('/', async (req, res) => {
   const { service, site, month, type, rate, addedBy } = req.body;
 
@@ -129,49 +73,76 @@ router.post('/', async (req, res) => {
     });
 
     const affectedWeeklyInvoices = new Set();
+    const bulkDayInvoiceOps = [];
 
     // Step 3: Update DayInvoices
     for (const dayInvoice of dayInvoices) {
+      let update = {};
       let updated = false;
 
       if (dayInvoice.mainService === service) {
-        dayInvoice.incentiveDetailforMain = {
-          _id: newIncentive._id,
-          service: newIncentive.service,
-          type: newIncentive.type,
-          rate: newIncentive.rate,
+        update = {
+          ...update,
+          $set: {
+            incentiveDetailforMain: {
+              _id: newIncentive._id,
+              service: newIncentive.service,
+              type: newIncentive.type,
+              rate: newIncentive.rate,
+            },
+            total: +parseFloat(dayInvoice.total + newIncentive.rate).toFixed(2),
+          },
         };
-        dayInvoice.total = +parseFloat(dayInvoice.total + newIncentive.rate).toFixed(2);
         updated = true;
       }
 
       if (dayInvoice.additionalServiceDetails?.service === service) {
-        dayInvoice.incentiveDetailforAdditional = {
-          _id: newIncentive._id,
-          service: newIncentive.service,
-          type: newIncentive.type,
-          rate: newIncentive.rate,
+        update = {
+          ...update,
+          $set: {
+            ...update.$set,
+            incentiveDetailforAdditional: {
+              _id: newIncentive._id,
+              service: newIncentive.service,
+              type: newIncentive.type,
+              rate: newIncentive.rate,
+            },
+            total: +parseFloat(dayInvoice.total + newIncentive.rate).toFixed(2),
+          },
         };
-        dayInvoice.total = +parseFloat(dayInvoice.total + newIncentive.rate).toFixed(2);
         updated = true;
       }
 
       if (updated) {
-        await dayInvoice.save();
+        bulkDayInvoiceOps.push({
+          updateOne: {
+            filter: { _id: dayInvoice._id },
+            update,
+          },
+        });
         affectedWeeklyInvoices.add(`${dayInvoice.driverId}_${dayInvoice.serviceWeek}`);
       }
     }
 
+    if (bulkDayInvoiceOps.length > 0) {
+      await DayInvoice.bulkWrite(bulkDayInvoiceOps);
+    }
+
     // Step 4: Update affected WeeklyInvoices
+    const bulkWeeklyInvoiceOps = [];
+    const bulkInstallmentOps = [];
+
     for (const weeklyKey of affectedWeeklyInvoices) {
       const [driverId, serviceWeek] = weeklyKey.split('_');
-      const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
+      const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek })
+        .populate('installments')
+        .lean();
       if (!weeklyInvoice) continue;
 
       const allDayInvoices = await DayInvoice.find({
         _id: { $in: weeklyInvoice.invoices },
       }).lean();
-      const driver = await Driver.findById(driverId);
+      const driver = await Driver.findById(driverId).lean();
 
       let weeklyBaseTotal = 0;
       let weeklyVatTotal = 0;
@@ -200,22 +171,25 @@ router.post('/', async (req, res) => {
           rateAdjustment = -rateAdjustment;
         }
         additionalChargesTotal += +parseFloat(rateAdjustment).toFixed(2);
-        if (isVatApplicable(new Date(charge.week))) {
-          weeklyVatTotal += +parseFloat(rateAdjustment * 0.2).toFixed(2);
-        }
       }
 
       weeklyBaseTotal = +parseFloat(weeklyBaseTotal + additionalChargesTotal).toFixed(2);
       weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
       const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
-      // Restore previous installment deductions
-      const allInstallments = await Installment.find({ driverId });
+      // Create temporary copy of installments for recalculation
+      const tempInstallments = (weeklyInvoice.installments || []).map((inst) => ({
+        ...inst,
+        installmentPending: inst.installmentPending,
+      }));
+
+      // Restore previous installment deductions temporarily
+      const installmentPendingUpdates = new Map();
       for (const detail of weeklyInvoice.installmentDetail || []) {
-        const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        const inst = tempInstallments.find((i) => i._id.toString() === detail._id?.toString());
         if (inst && detail.deductionAmount > 0) {
           inst.installmentPending = +parseFloat(inst.installmentPending + detail.deductionAmount).toFixed(2);
-          await inst.save();
+          installmentPendingUpdates.set(inst._id.toString(), inst.installmentPending);
         }
       }
 
@@ -223,7 +197,7 @@ router.post('/', async (req, res) => {
       const installmentMap = new Map();
       let remainingTotal = weeklyTotalBeforeInstallments;
 
-      for (const inst of allInstallments) {
+      for (const inst of tempInstallments) {
         const instId = inst._id.toString();
         if (inst.installmentPending <= 0) continue;
 
@@ -235,7 +209,14 @@ router.post('/', async (req, res) => {
         if (deduction <= 0) continue;
 
         inst.installmentPending = +parseFloat(inst.installmentPending - deduction).toFixed(2);
-        await inst.save();
+
+        // Prepare bulk update for Installment
+        bulkInstallmentOps.push({
+          updateOne: {
+            filter: { _id: inst._id },
+            update: { $set: { installmentPending: inst.installmentPending } },
+          },
+        });
 
         installmentMap.set(instId, {
           _id: inst._id,
@@ -257,19 +238,28 @@ router.post('/', async (req, res) => {
 
       const finalWeeklyTotal = +Math.max(0, parseFloat(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
 
-      // Update WeeklyInvoice
-      await WeeklyInvoice.findByIdAndUpdate(
-        weeklyInvoice._id,
-        {
-          $set: {
-            total: finalWeeklyTotal,
-            vatTotal: weeklyVatTotal,
-            installmentDetail: mergedInstallments,
-            installments: mergedInstallments.map((inst) => inst._id),
+      // Prepare bulk update for WeeklyInvoice
+      bulkWeeklyInvoiceOps.push({
+        updateOne: {
+          filter: { _id: weeklyInvoice._id },
+          update: {
+            $set: {
+              total: finalWeeklyTotal,
+              vatTotal: weeklyVatTotal,
+              installmentDetail: mergedInstallments,
+              installments: mergedInstallments.map((inst) => inst._id),
+            },
           },
         },
-        { new: true }
-      );
+      });
+    }
+
+    // Execute bulk writes for Installments and WeeklyInvoices
+    if (bulkInstallmentOps.length > 0) {
+      await Installment.bulkWrite(bulkInstallmentOps);
+    }
+    if (bulkWeeklyInvoiceOps.length > 0) {
+      await WeeklyInvoice.bulkWrite(bulkWeeklyInvoiceOps);
     }
 
     sendToClients(req.db, { type: 'incentivesUpdated' });
@@ -306,37 +296,64 @@ router.delete('/:id', async (req, res) => {
     }
 
     const affectedWeeklyInvoices = new Set();
+    const bulkDayInvoiceOps = [];
 
     // Step 3: Update DayInvoices
     for (const dayInvoice of dayInvoices) {
+      let update = {};
       let updated = false;
 
       if (dayInvoice.incentiveDetailforMain?._id.toString() === incentiveId) {
-        dayInvoice.incentiveDetailforMain = null;
-        dayInvoice.total = +Math.max(0, parseFloat(dayInvoice.total - incentive.rate).toFixed(2));
+        update = {
+          ...update,
+          $set: {
+            incentiveDetailforMain: null,
+            total: +Math.max(0, parseFloat(dayInvoice.total - incentive.rate).toFixed(2)),
+          },
+        };
         updated = true;
       }
 
       if (dayInvoice.incentiveDetailforAdditional?._id.toString() === incentiveId) {
-        dayInvoice.incentiveDetailforAdditional = null;
-        dayInvoice.total = +Math.max(0, parseFloat(dayInvoice.total - incentive.rate).toFixed(2));
+        update = {
+          ...update,
+          $set: {
+            ...update.$set,
+            incentiveDetailforAdditional: null,
+            total: +Math.max(0, parseFloat(dayInvoice.total - incentive.rate).toFixed(2)),
+          },
+        };
         updated = true;
       }
 
       if (updated) {
-        await dayInvoice.save();
+        bulkDayInvoiceOps.push({
+          updateOne: {
+            filter: { _id: dayInvoice._id },
+            update,
+          },
+        });
         affectedWeeklyInvoices.add(`${dayInvoice.driverId}_${dayInvoice.serviceWeek}`);
       }
     }
 
+    if (bulkDayInvoiceOps.length > 0) {
+      await DayInvoice.bulkWrite(bulkDayInvoiceOps);
+    }
+
     // Step 4: Update affected WeeklyInvoices
+    const bulkWeeklyInvoiceOps = [];
+    const bulkInstallmentOps = [];
+
     for (const weeklyKey of affectedWeeklyInvoices) {
       const [driverId, serviceWeek] = weeklyKey.split('_');
-      const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek });
+      const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek })
+        .populate('installments')
+        .lean();
       if (!weeklyInvoice) continue;
 
       const allDayInvoices = await DayInvoice.find({ _id: { $in: weeklyInvoice.invoices } }).lean();
-      const driver = await Driver.findById(driverId);
+      const driver = await Driver.findById(driverId).lean();
 
       let weeklyBaseTotal = 0;
       let weeklyVatTotal = 0;
@@ -374,13 +391,19 @@ router.delete('/:id', async (req, res) => {
       weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
       const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
-      // Restore previous installment deductions
-      const allInstallments = await Installment.find({ driverId });
+      // Create temporary copy of installments for recalculation
+      const tempInstallments = (weeklyInvoice.installments || []).map((inst) => ({
+        ...inst,
+        installmentPending: inst.installmentPending,
+      }));
+
+      // Restore previous installment deductions temporarily
+      const installmentPendingUpdates = new Map();
       for (const detail of weeklyInvoice.installmentDetail || []) {
-        const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        const inst = tempInstallments.find((i) => i._id.toString() === detail._id?.toString());
         if (inst && detail.deductionAmount > 0) {
           inst.installmentPending = +parseFloat(inst.installmentPending + detail.deductionAmount).toFixed(2);
-          await inst.save();
+          installmentPendingUpdates.set(inst._id.toString(), inst.installmentPending);
         }
       }
 
@@ -388,7 +411,7 @@ router.delete('/:id', async (req, res) => {
       const installmentMap = new Map();
       let remainingTotal = weeklyTotalBeforeInstallments;
 
-      for (const inst of allInstallments) {
+      for (const inst of tempInstallments) {
         const instId = inst._id.toString();
         if (inst.installmentPending <= 0) continue;
 
@@ -400,7 +423,14 @@ router.delete('/:id', async (req, res) => {
         if (deduction <= 0) continue;
 
         inst.installmentPending = +parseFloat(inst.installmentPending - deduction).toFixed(2);
-        await inst.save();
+
+        // Prepare bulk update for Installment
+        bulkInstallmentOps.push({
+          updateOne: {
+            filter: { _id: inst._id },
+            update: { $set: { installmentPending: inst.installmentPending } },
+          },
+        });
 
         installmentMap.set(instId, {
           _id: inst._id,
@@ -422,19 +452,28 @@ router.delete('/:id', async (req, res) => {
 
       const finalWeeklyTotal = +Math.max(0, parseFloat(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
 
-      // Update WeeklyInvoice
-      await WeeklyInvoice.findByIdAndUpdate(
-        weeklyInvoice._id,
-        {
-          $set: {
-            total: finalWeeklyTotal,
-            vatTotal: weeklyVatTotal,
-            installmentDetail: mergedInstallments,
-            installments: mergedInstallments.map((inst) => inst._id),
+      // Prepare bulk update for WeeklyInvoice
+      bulkWeeklyInvoiceOps.push({
+        updateOne: {
+          filter: { _id: weeklyInvoice._id },
+          update: {
+            $set: {
+              total: finalWeeklyTotal,
+              vatTotal: weeklyVatTotal,
+              installmentDetail: mergedInstallments,
+              installments: mergedInstallments.map((inst) => inst._id),
+            },
           },
         },
-        { new: true }
-      );
+      });
+    }
+
+    // Execute bulk writes for DayInvoices, Installments, and WeeklyInvoices
+    if (bulkInstallmentOps.length > 0) {
+      await Installment.bulkWrite(bulkInstallmentOps);
+    }
+    if (bulkWeeklyInvoiceOps.length > 0) {
+      await WeeklyInvoice.bulkWrite(bulkWeeklyInvoiceOps);
     }
 
     // Step 5: Delete the Incentive
