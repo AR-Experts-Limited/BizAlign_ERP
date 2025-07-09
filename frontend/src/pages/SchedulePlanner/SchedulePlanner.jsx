@@ -113,6 +113,10 @@ const SchedulePlanner = () => {
     const { list: standbydrivers, standbyDriverStatus } = useSelector((state) => state.standbydrivers);
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
 
+    const loadingTimeoutRef = useRef(null);
+    const prevDriversList = useRef(driversList);
+
+
     useEffect(() => {
         if (events && (events.type === "scheduleAdded")) {
             console.log("Schedule Updated ! Refetching...");
@@ -138,17 +142,19 @@ const SchedulePlanner = () => {
 
     }, [serviceStatus, standbyDriverStatus, dispatch]);
 
-    const prevDriversList = useRef(driversList);
 
     useEffect(() => {
         const fetchSchedules = async () => {
             if (driversList.length === 0 || !rangeOptions) return;
 
-            // let loadingTimeout = setTimeout(() => setLoading(true), 350);
-            let loadingTimeout;
             // Check if driversList has changed by comparing with previous value
             const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
             prevDriversList.current = driversList;
+
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+            }
 
             const shouldLoad =
                 driversListChanged ||
@@ -158,7 +164,9 @@ const SchedulePlanner = () => {
                 Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
 
             if (shouldLoad) {
-                loadingTimeout = setTimeout(() => setLoading(true), 350);
+                loadingTimeoutRef.current = setTimeout(() => {
+                    setLoading(true);
+                }, 350);
             }
 
             try {
@@ -171,11 +179,15 @@ const SchedulePlanner = () => {
                     },
                 });
 
-                clearTimeout(loadingTimeout);
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+
                 setSchedules(response.data);
                 setCacheRangeOption(rangeOptions);
             } catch (error) {
-                clearTimeout(loadingTimeout);
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+
                 console.error(error);
             } finally {
                 setLoading(false);
