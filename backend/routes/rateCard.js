@@ -615,7 +615,7 @@ router.put('/', async (req, res) => {
 
     for (const weeklyInvoice of weeklyInvoices) {
       const driverData = weeklyInvoice.driverId;
-      const driverId = driverData._id;
+      const driverId = driverData?._id;
       const week = weeklyInvoice.serviceWeek;
 
       const allInvoices = await DayInvoice.find({ driverId, serviceWeek: week }).lean();

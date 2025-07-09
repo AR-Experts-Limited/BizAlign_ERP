@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from 'react-redux';
+import Spinner from '../../components/UIElements/Spinner'
 
-export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvoiceApprovalStatus }) => {
+export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvoiceApprovalStatus, loading = false }) => {
     // const navigate = useNavigate()
     const { userDetails } = useSelector((state) => state.auth);
 
@@ -9,10 +10,11 @@ export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvo
         case "Access Requested":
             return (
                 <button
+                    disabled={loading}
                     onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                    className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                    className="flex gap-1  items-center bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-700"
                 >
-                    Grant Access {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
+                    {loading && <Spinner />} Grant Access {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                 </button>
             );
         case "Under Edit":
@@ -28,11 +30,11 @@ export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvo
             else
                 return (
                     <button
-                        disabled={currentInvoice.restrictEdit}
+                        disabled={currentInvoice.restrictEdit || loading}
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                        className="bg-primary-300 text-white px-2 py-1 rounded  disabled:!cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-700"
+                        className="flex gap-1 items-center bg-primary-300 text-white px-2 py-1 rounded  disabled:!cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-700"
                     >
-                        Submit Edit {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
+                        {loading && <Spinner />} Submit Edit {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                     </button>
                 );
         case "Invoice Generation":
@@ -48,10 +50,11 @@ export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvo
             else
                 return (
                     <button
+                        disabled={loading}
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                        className="bg-primary-300 text-white px-2 py-1 rounded  "
+                        className="flex gap-1 items-center  bg-primary-300 text-white px-2 py-1 rounded disabled:bg-gray-300 disabled:text-gray-700 "
                     >
-                        Generate Invoice {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
+                        {loading && <Spinner />} Generate Invoice {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                     </button>
                 );
 
@@ -59,10 +62,11 @@ export const RenderStageButton = ({ selectedInvoices, currentInvoice, updateInvo
             if (userDetails.role !== 'OSM')
                 return (
                     <button
+                        disabled={loading}
                         onClick={() => updateInvoiceApprovalStatus(currentInvoice)}
-                        className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                        className="flex gap-1 items-center bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-700"
                     >
-                        Approve Invoice {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
+                        {loading && <Spinner />} Approve Invoice {selectedInvoices?.length > 0 && `(${selectedInvoices?.length})`}
                     </button>
                 );
             else

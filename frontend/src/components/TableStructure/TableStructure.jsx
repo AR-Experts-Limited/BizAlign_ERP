@@ -11,7 +11,7 @@ import { FaChevronLeft, FaChevronRight, FaEye } from "react-icons/fa";
 import { BsCheckCircleFill } from "react-icons/bs";
 
 
-const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus, visionIds, setVisionIds, visionTracker, setVisionTracker }) => {
+const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus, visionIds, setVisionIds, visionTracker, setVisionTracker, manageSummaryLoading }) => {
     const dispatch = useDispatch();
     const gridRef = useRef(null);
     const { driverStatus } = useSelector((state) => state.drivers);
@@ -220,6 +220,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                             title={title}
                             state={state}
                             setters={setters}
+                            manageSummaryLoading={manageSummaryLoading}
                             invoiceMap={invoiceMap}
                             handleFileChange={handleFileChange}
                             selectedInvoices={selectedInvoices}
@@ -302,7 +303,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                     <FcHighPriority size={20} />
                                     Access Requested (
                                     {Object.values(invoiceMap).filter(
-                                        (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Access Requested'
+                                        (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Access Requested'
                                     ).length || 0}
                                     )
                                 </button>
@@ -333,12 +334,12 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                         if (visionIds.length < 1 || visionTracker?.invoice?.approvalStatus !== 'Under Edit') {
                                             setVisionIds(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Under Edit'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Under Edit'
                                                 )
                                             );
                                             setVisionTracker(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Under Edit'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Under Edit'
                                                 )[0] || null
                                             );
                                         } else {
@@ -352,7 +353,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                     <i className="flex items-center text-[1rem] text-amber-500 fi fi-rr-pen-square"></i>
                                     Under Edit (
                                     {Object.values(invoiceMap).filter(
-                                        (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Under Edit'
+                                        (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Under Edit'
                                     ).length || 0}
                                     )
                                 </button>
@@ -383,12 +384,12 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                         if (visionIds.length < 1 || visionTracker?.invoice?.approvalStatus !== 'Under Approval') {
                                             setVisionIds(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Under Approval'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Under Approval'
                                                 )
                                             );
                                             setVisionTracker(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Under Approval'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Under Approval'
                                                 )[0] || null
                                             );
                                         } else {
@@ -402,7 +403,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                     <i className="flex items-center text-[1rem] text-sky-500 fi fi-rs-memo-circle-check"></i>
                                     Under Approval (
                                     {Object.values(invoiceMap).filter(
-                                        (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Under Approval'
+                                        (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Under Approval'
                                     ).length}
                                     )
                                 </button>
@@ -433,12 +434,12 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                         if (visionIds.length < 1 || visionTracker?.invoice?.approvalStatus !== 'Invoice Generation') {
                                             setVisionIds(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Invoice Generation'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Invoice Generation'
                                                 )
                                             );
                                             setVisionTracker(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Invoice Generation'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Invoice Generation'
                                                 )[0] || null
                                             );
                                         } else {
@@ -452,7 +453,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                     <FcClock className="!text-primary-500" size={22} />
                                     Waiting for Invoice Generation (
                                     {Object.values(invoiceMap).filter(
-                                        (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'Invoice Generation'
+                                        (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'Invoice Generation'
                                     ).length}
                                     )
                                 </button>
@@ -483,12 +484,12 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                         if (visionIds.length < 1 || visionTracker?.invoice?.approvalStatus !== 'completed') {
                                             setVisionIds(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'completed'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'completed'
                                                 )
                                             );
                                             setVisionTracker(
                                                 Object.values(invoiceMap).filter(
-                                                    (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'completed'
+                                                    (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'completed'
                                                 )[0] || null
                                             );
                                         } else {
@@ -502,7 +503,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                                     <BsCheckCircleFill className="text-green-600 text-xl" />
                                     Invoice Generated (
                                     {Object.values(invoiceMap).filter(
-                                        (inv) => inv.matchedCsv && inv?.invoice.approvalStatus === 'completed'
+                                        (inv) => inv.matchedCsv && inv?.invoice?.approvalStatus === 'completed'
                                     ).length}
                                     )
                                 </button>

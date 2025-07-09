@@ -44,6 +44,8 @@ const ManageSummary = () => {
     const [csvData, setCsvData] = useState([])
     const [currentInvoice, setCurrentInvoice] = useState(null)
     const [selectedInvoices, setSelectedInvoices] = useState([]);
+    const [loading, setLoading] = useState(false)
+
     const originalMilesRef = useRef(null);
     const originalServiceRef = useRef(null);
     const events = useSelector((state) => state.sse.events);
@@ -103,6 +105,7 @@ const ManageSummary = () => {
             // }
             fetchInvoices()
         }
+        setSelectedInvoices([])
         setVisionIds([])
         setVisionTracker('')
 
@@ -335,10 +338,12 @@ const ManageSummary = () => {
             }];
 
         try {
+            setLoading(true)
             const response = await axios.put(`${API_BASE_URL}/api/dayInvoice/updateApprovalStatusBatch`, {
                 updates: updatedInvoice,
                 site: selectedSite
             });
+            setLoading(false)
             const updatedInvoices = response.data.updated;
 
             setInvoices(prev =>
@@ -441,6 +446,7 @@ const ManageSummary = () => {
                 setters={setters}
                 tableData={tableData}
                 invoiceMap={invoiceMap}
+                manageSummaryLoading={loading}
                 handleFileChange={handleFileChange}
                 selectedInvoices={selectedInvoices}
                 handleSelectAll={handleSelectAll}
