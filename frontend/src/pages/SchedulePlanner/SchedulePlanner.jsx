@@ -146,7 +146,12 @@ const SchedulePlanner = () => {
 
             // let loadingTimeout = setTimeout(() => setLoading(true), 350);
             let loadingTimeout;
+            // Check if driversList has changed by comparing with previous value
+            const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
+            prevDriversList.current = driversList;
+
             const shouldLoad =
+                driversListChanged ||
                 !cacheRangeOption ||
                 !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
                 Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
@@ -177,9 +182,7 @@ const SchedulePlanner = () => {
             }
         };
 
-        // Check if driversList has changed by comparing with previous value
-        const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
-        prevDriversList.current = driversList;
+
 
         const debouncedFetchSchedules = debounce(fetchSchedules, 20);
         // Check if rangeOptions change requires a fetch
