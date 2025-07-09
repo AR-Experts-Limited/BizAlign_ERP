@@ -620,7 +620,7 @@ const Rota = () => {
 
         const renderStandbyCell = ({ showSite = true }) => (
             <div className="relative flex justify-center h-full w-full">
-                <div className="relative max-w-40 w-full h-full">
+                <div className="relative w-40 max-w-40 w-full h-full">
                     <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
                         <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">
                             On Stand-By
@@ -634,7 +634,7 @@ const Rota = () => {
             const borderColor = getBorderColor(streak);
             return (
                 <div className="relative flex justify-center h-full w-full">
-                    <div className="relative max-w-40 group">
+                    <div className="relative w-40 max-w-40 group">
                         <div
                             onClick={() => { if (!isLocked && scheduleBelongtoSite) handleShowDetails(schedule, driver, invoice) }}
                             className={`relative z-6 w-full h-full  flex gap-2 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5
