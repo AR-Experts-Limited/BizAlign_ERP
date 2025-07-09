@@ -305,7 +305,7 @@ const SchedulePlanner = () => {
             const borderColor = getBorderColor(streak);
             return (
                 <div className="relative flex justify-center h-full w-full group">
-                    <div className="relative max-w-40">
+                    <div className="relative w-40 max-w-40">
                         <div className={`relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border border-gray-200 dark:border-dark-5 border-l-4 ${borderColor} rounded-md text-sm p-2 transition-all duration-300 ${scheduleBelongtoSite ? 'group-hover:w-[82%]' : ''}`}>
                             <div className="overflow-auto max-h-[6rem]">
                                 {schedule.service} {showSite && !scheduleBelongtoSite ? <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{schedule.site}</span> : ''}
@@ -325,7 +325,7 @@ const SchedulePlanner = () => {
 
         const renderStandbyCell = (driver, dateObj) => (
             <div className="relative flex justify-center h-full w-full group">
-                <div className="relative max-w-40 w-full">
+                <div className="relative w-40 max-w-40 w-full">
                     <div className="relative z-6 w-full h-full flex gap-1 items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-50 border border-amber-100 dark:border-dark-5 rounded-md text-sm p-2 transition-all duration-300 group-hover:w-[82%] bg-[repeating-linear-gradient(-45deg,#ffb9008f_0px,#ffb9008f_2px,transparent_2px,transparent_6px)]">
                         <div className="overflow-auto max-h-[4rem] bg-amber-400/50 rounded-md px-2 py-1 text-amber-700">On Stand-By</div>
                     </div>
