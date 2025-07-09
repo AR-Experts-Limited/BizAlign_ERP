@@ -17,7 +17,7 @@ const VehicleTypeCal = ({
     const [calendarOpen, setCalendarOpen] = useState(false);
     const flatpickrRef = useRef(null);
 
-    const formatDateKey = (date) => moment(date).format('D/M/YYYY')
+    const formatDateKey = (date) => moment(date).format('M/D/YYYY')
 
     const parseDate = (str) => {
         const [day, month, year] = str?.split('/');
