@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import InputGroup from '../../components/InputGroup/InputGroup';
@@ -20,7 +20,7 @@ import moment from 'moment';
 import SuccessTick from '../../components/UIElements/SuccessTick';
 import Spinner from '../../components/UIElements/Spinner';
 import TrashBin from '../../components/UIElements/TrashBin';
-
+import DatePicker from '../../components/Datepicker/Datepicker';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -31,13 +31,15 @@ const Incentives = () => {
     const { userDetails } = useSelector((state) => state.auth);
     const [toastOpen, setToastOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [newIncentive, setNewIncentive] = useState({
+    const clearIncentive = {
         site: userDetails?.site || '',
         service: '',
-        month: '',
+        startDate: '',
+        endDate: '',
         type: '',
         rate: 0,
-    });
+    }
+    const [newIncentive, setNewIncentive] = useState(clearIncentive);
 
     const [incentives, setIncentives] = useState([]);
     const [errors, setErrors] = useState({
@@ -80,7 +82,8 @@ const Incentives = () => {
         const newErrors = {
             site: !newIncentive.site,
             service: !newIncentive.service,
-            month: !newIncentive.month,
+            startDate: !newIncentive.startDate,
+            endDate: !newIncentive.endDate,
             type: !newIncentive.type,
             rate: !newIncentive.rate || newIncentive.rate <= 0,
         };
@@ -107,13 +110,7 @@ const Incentives = () => {
             setIncentives([...incentives, response.data]);
 
             // Reset form
-            setNewIncentive({
-                site: userDetails?.site || '',
-                service: '',
-                month: '',
-                type: '',
-                rate: 0,
-            });
+            setNewIncentive(clearIncentive);
 
             setToastOpen({
                 content: <>
@@ -138,7 +135,7 @@ const Incentives = () => {
             setToastOpen({
                 content: <>
                     <TrashBin width={20} height={20} />
-                    <p className='text-sm font-bold text-green-500'>Incentive deleted successfully</p>
+                    <p className='text-sm font-bold text-red-500'>Incentive deleted successfully</p>
                 </>
             })
             setTimeout(() => setToastOpen(null), 3000);
@@ -163,6 +160,15 @@ const Incentives = () => {
         }));
         setErrors({ ...errors, month: false });
     };
+
+    const maxEndDate = useMemo(() => {
+        if (!newIncentive.startDate) return null;
+
+        const start = new Date(newIncentive.startDate);
+        const max = new Date(start);
+        max.setDate(start.getDate() + 10); // example: max end date is 30 days after start
+        return max;
+    }, [newIncentive.startDate]);
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
@@ -240,7 +246,7 @@ const Incentives = () => {
                                 </div>
 
                                 {/* Month selection */}
-                                <div>
+                                {/* <div>
                                     <label className="text-sm font-medium block mb-3">Month <span className="text-red-400">*</span></label>
                                     <div className={`relative [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5`}>
                                         <Flatpickr
@@ -267,21 +273,36 @@ const Incentives = () => {
                                         )}
                                     </div>
                                     {errors.month && <p className="text-red-400 text-sm mt-1">* Month is required</p>}
+                                </div> */}
+
+                                <div>
+                                    <DatePicker error={errors.startDate} iconPosition='left' value={newIncentive.startDate} label="Start date" onChange={(e) => { setErrors(prev => ({ ...prev, startDate: false })); setNewIncentive(prev => ({ ...prev, startDate: e })); }} />
+                                    {errors.startDate && <p className="text-red-400 text-sm mt-1">* Start date is required</p>}
+                                </div>
+                                <div>
+                                    <DatePicker error={errors.endDate} iconPosition='left' value={newIncentive.endDate} label="End date" disabled={!newIncentive.startDate} maxDate={maxEndDate} onChange={(e) => { setErrors(prev => ({ ...prev, endDate: false })); setNewIncentive(prev => ({ ...prev, endDate: e })) }} />
+                                    {errors.endDate && <p className="text-red-400 text-sm mt-1">* End date is required</p>}
                                 </div>
 
                                 {/* Incentive type */}
                                 <div>
                                     <InputGroup
-                                        type="text"
+                                        type="dropdown"
                                         label="Incentive Type"
                                         required={true}
                                         value={newIncentive.type}
-                                        disabled={true}
-                                        placeholder="Select month to determine type"
+                                        onChange={(e) => { setErrors(prev => ({ ...prev, type: false })); setNewIncentive(prev => ({ ...prev, type: e.target.value })) }}
                                         error={errors.type}
                                         icon={<i class="absolute top-3.5 left-4.5 fi fi-rr-handshake-deal-loan text-neutral-300 text-[1.2rem]"></i>}
                                         iconPosition="left"
-                                    />
+                                        className={`${newIncentive.type === '' && 'text-gray-400'}`}
+                                    >
+                                        <option value=''>-Select Type-</option>
+                                        <option value='Prime'>Prime</option>
+                                        <option value='Normal'>Normal</option>
+                                        <option value='Peak'>Peak</option>
+
+                                    </InputGroup>
                                     {errors.type && <p className="text-red-400 text-sm mt-1">* Incentive type is required</p>}
                                 </div>
 
@@ -328,7 +349,8 @@ const Incentives = () => {
                                         <th>#</th>
                                         <th>Site</th>
                                         <th>Service Title</th>
-                                        <th>Month</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
                                         <th>Incentive Type</th>
                                         <th>Rate</th>
                                         {/* <th>Added By</th>
@@ -342,7 +364,8 @@ const Incentives = () => {
                                             <td>{String(incentive._id).slice(-4)}</td>
                                             <td>{incentive.site}</td>
                                             <td>{incentive.service}</td>
-                                            <td>{new Date(incentive.month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</td>
+                                            <td>{new Date(incentive.startDate).toLocaleDateString()}</td>
+                                            <td>{new Date(incentive.endDate).toLocaleDateString()}</td>
                                             <td>{incentive.type}</td>
                                             <td>£ {incentive.rate}</td>
                                             {/* <td>

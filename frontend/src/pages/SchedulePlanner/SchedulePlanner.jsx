@@ -38,8 +38,7 @@ const rateCardFinder = (date, ratecards, week, service, driver) => {
 
 const getDriverTypeForDate = (driver, date) => {
 
-    const dateKey = new Date(date).toLocaleDateString('en-UK');
-
+    const dateKey = moment(date).format('M/D/YYYY');
     // 1. Custom override
     if (driver?.customTypeOfDriver?.[dateKey]) {
         return driver.customTypeOfDriver[dateKey];
@@ -272,7 +271,6 @@ const SchedulePlanner = () => {
     }
 
     const tableData = (driver, day, disabledDriver, standbyDriver) => {
-
         const getBorderColor = (streak) => {
             if (streak < 3) return 'border-l-green-500/60';
             if (streak < 5) return 'border-l-yellow-500/60';

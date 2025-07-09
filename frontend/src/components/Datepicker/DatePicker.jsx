@@ -27,6 +27,7 @@ const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, re
         if (onChange) onChange("");
     };
 
+
     useEffect(() => {
         if (flatpickrRef.current) {
             flatpickrInstance.current = flatpickr(flatpickrRef.current, {
@@ -44,6 +45,16 @@ const DatePicker = ({ id, label, iconPosition, name, value, minDate, maxDate, re
             };
         }
     }, []);
+
+    useEffect(() => {
+        if (flatpickrRef.current) {
+            flatpickrInstance.current?.set({
+                minDate: minDate,
+                maxDate: maxDate,
+            });
+        }
+
+    }, [minDate, maxDate])
 
     useEffect(() => {
         setDate(value);

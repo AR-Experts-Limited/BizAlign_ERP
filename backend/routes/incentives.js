@@ -39,20 +39,21 @@ router.get('/driver', async (req, res) => {
 
 // // Add a new Service
 router.post('/', async (req, res) => {
-  const { service, site, month, type, rate, addedBy } = req.body;
+  const { service, site, startDate, endDate, type, rate, addedBy } = req.body;
 
   try {
     const { Incentive, DayInvoice, WeeklyInvoice, Installment, Driver } = getModels(req);
 
-    if (!moment(month, 'YYYY-MM', true).isValid()) {
-      return res.status(400).json({ message: 'Invalid month format. Use YYYY-MM' });
-    }
+    // if (!moment(month, 'YYYY-MM', true).isValid()) {
+    //   return res.status(400).json({ message: 'Invalid month format. Use YYYY-MM' });
+    // }
 
     // Step 1: Create and save Incentive
     const newIncentive = new Incentive({
       service,
       site,
-      month,
+      startDate,
+      endDate,
       type,
       rate: +parseFloat(rate).toFixed(2),
       addedBy,
@@ -60,13 +61,13 @@ router.post('/', async (req, res) => {
     await newIncentive.save();
 
     // Step 2: Find affected DayInvoices
-    const startOfMonth = moment(month, 'YYYY-MM').startOf('month').toDate();
-    const endOfMonth = moment(month, 'YYYY-MM').endOf('month').toDate();
+    // const startDate = moment(month, 'YYYY-MM').startOf('month').toDate();
+    // const endOfMonth = moment(month, 'YYYY-MM').endOf('month').toDate();
 
     const dayInvoices = await DayInvoice.find({
       serviceWeek: {
-        $gte: moment(startOfMonth).format('GGGG-[W]WW'),
-        $lte: moment(endOfMonth).format('GGGG-[W]WW'),
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
       },
       site,
       $or: [{ mainService: service }, { 'additionalServiceDetails.service': service }],

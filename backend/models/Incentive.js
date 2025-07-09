@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const incentiveSchema = new mongoose.Schema({
   site: String,
   service: String,
-  month: String,
+  startDate: Date,
+  endDate: Date,
   type: String,
   rate: Number,
   addedBy: Object,

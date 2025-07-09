@@ -45,7 +45,7 @@ const rateCardFinder = (date, ratecards, week, service, driver) => {
 
 const getDriverTypeForDate = (driver, date) => {
 
-    const dateKey = new Date(date).toLocaleDateString('en-UK');
+    const dateKey = moment(date).format('M/D/YYYY');
 
     // 1. Custom override
     if (driver?.customTypeOfDriver?.[dateKey]) {

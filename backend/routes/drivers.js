@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 const s3 = require('./aws');
+const moment = require('moment')
 const { sendToClients } = require('../utils/sseService');
 
 // Multer S3 configuration
@@ -447,7 +448,7 @@ router.post('/delete-additional-version', asyncHandler(async (req, res) => {
 
 // Server-side implementation of getDriverTypeForDate from Rota.jsx
 const getDriverTypeForDate = (driver, date) => {
-  const dateKey = new Date(date).toLocaleDateString('en-UK');
+  const dateKey = moment(date).format('M/D/YYYY');
 
   // 1. Custom override
   if (driver?.customTypeOfDriver?.[dateKey]) {
