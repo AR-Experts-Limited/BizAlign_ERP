@@ -112,7 +112,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                         : isHeader
                             ? <div className='flex flex-col gap-1 items-center p-2'>
                                 <div>{day.date}</div>
-                                {rangeType === 'biweekly' && <div className='font-medium text-gray-600 w-fit px-1 py-0.5 text-[0.55rem] bg-stone-100 rounded-sm'>
+                                {(rangeType === 'biweekly' || rangeType === 'monthly') && <div className='font-medium text-gray-600 w-fit px-1 py-0.5 text-[0.55rem] bg-stone-100 rounded-sm'>
                                     {day.week}
                                 </div>}
                             </div>
