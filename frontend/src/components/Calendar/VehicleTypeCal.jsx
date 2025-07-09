@@ -3,6 +3,7 @@ import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import { FaCalendarAlt } from 'react-icons/fa';
 import './Calendar.css';
+import moment from 'moment';
 
 const VehicleTypeCal = ({
     typeOfDriver,
@@ -16,7 +17,7 @@ const VehicleTypeCal = ({
     const [calendarOpen, setCalendarOpen] = useState(false);
     const flatpickrRef = useRef(null);
 
-    const formatDateKey = (date) => date.toLocaleString().split(',')[0];
+    const formatDateKey = (date) => moment(date).format('D/M/YYYY')
 
     const parseDate = (str) => {
         const [day, month, year] = str?.split('/');
