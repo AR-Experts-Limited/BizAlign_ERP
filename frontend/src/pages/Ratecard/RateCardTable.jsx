@@ -244,10 +244,11 @@ const RateCardTable = ({ rateCard, toastOpen, ratecards, onDelete, onUpdate, onU
                                                         <button
                                                             disabled={toastOpen || loading || selectedWeeks[group._id]?.length > 1}
                                                             onClick={() => {
+                                                                setIsFilterOpen(true)
                                                                 setSelectedGroupUpdate(group._id);
                                                                 const selectedIdsList = selectedIds.length > 0 ? selectedIds : Array(group.weekIdMap[group.serviceWeeks[0]]);
                                                                 const selectedWeekList = selectedWeeks[group._id]?.length > 0 ? selectedWeeks[group._id] : Array(group.serviceWeeks[0]);
-
+                                                                setFilterWeek(selectedWeekList[0])
                                                                 onUpdate({
                                                                     selectedIds: selectedIdsList,
                                                                     hourlyRate: group.hourlyRate,

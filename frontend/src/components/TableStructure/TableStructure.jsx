@@ -11,7 +11,7 @@ import { FaChevronLeft, FaChevronRight, FaEye } from "react-icons/fa";
 import { BsCheckCircleFill } from "react-icons/bs";
 
 
-const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus, visionIds, setVisionIds, visionTracker, setVisionTracker }) => {
+const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFileChange, selectedInvoices, handleSelectAll, updateInvoiceApprovalStatus, visionIds, setVisionIds, visionTracker, setVisionTracker, manageSummaryLoading }) => {
     const dispatch = useDispatch();
     const gridRef = useRef(null);
     const { driverStatus } = useSelector((state) => state.drivers);
@@ -220,6 +220,7 @@ const TableStructure = ({ title, state, setters, tableData, invoiceMap, handleFi
                             title={title}
                             state={state}
                             setters={setters}
+                            manageSummaryLoading={manageSummaryLoading}
                             invoiceMap={invoiceMap}
                             handleFileChange={handleFileChange}
                             selectedInvoices={selectedInvoices}
