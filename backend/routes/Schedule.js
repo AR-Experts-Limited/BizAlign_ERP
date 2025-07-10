@@ -197,53 +197,95 @@ router.get('/combined-invoice', async (req, res) => {
   try {
     const { Schedule, DayInvoice } = getModels(req);
 
-    const [schedules, invoices] = await Promise.all([
-      Schedule.find({
-        driverId: { $in: driverId },
-        day: {
-          $gte: new Date(startDay),
-          $lte: new Date(endDay),
+    // Convert driverId to array if it's a single string
+    const driverIds = Array.isArray(driverId) ? driverId : [driverId];
+
+    // Perform aggregation using $unionWith to combine collections
+    const combinedData = await Schedule.aggregate([
+      // Match schedules for driverIds and date range
+      {
+        $match: {
+          driverId: { $in: driverIds },
+          day: {
+            $gte: new Date(startDay),
+            $lte: new Date(endDay),
+          },
         },
-      }),
-      DayInvoice.find({
-        driverId: { $in: driverId },
-        date: {
-          $gte: new Date(startDay),
-          $lte: new Date(endDay),
+      },
+      // Add type field for Schedule
+      { $addFields: { __t: 'Schedule' } },
+      // Union with DayInvoice collection
+      {
+        $unionWith: {
+          coll: DayInvoice.collection.name,
+          pipeline: [
+            // Match invoices for driverIds and date range
+            {
+              $match: {
+                driverId: { $in: driverIds },
+                date: {
+                  $gte: new Date(startDay),
+                  $lte: new Date(endDay),
+                },
+              },
+            },
+            // Add type field for Invoice
+            { $addFields: { __t: 'DayInvoice' } },
+          ],
         },
-      }),
+      },
+      // Group by driverId and day
+      {
+        $group: {
+          _id: {
+            driverId: '$driverId',
+            day: {
+              $cond: {
+                if: { $eq: ['$__t', 'Schedule'] },
+                then: '$day',
+                else: '$date',
+              },
+            },
+          },
+          schedule: {
+            $max: {
+              $cond: { if: { $eq: ['$__t', 'Schedule'] }, then: '$$ROOT', else: null },
+            },
+          },
+          invoice: {
+            $max: {
+              $cond: { if: { $eq: ['$__t', 'DayInvoice'] }, then: '$$ROOT', else: null },
+            },
+          },
+        },
+      },
+      // Project the final shape
+      {
+        $project: {
+          _id: 0,
+          driverId: '$_id.driverId',
+          day: '$_id.day',
+          schedule: {
+            $cond: {
+              if: { $ne: ['$schedule', null] },
+              then: { $unsetField: { field: '__t', input: '$schedule' } },
+              else: null,
+            },
+          },
+          invoice: {
+            $cond: {
+              if: { $ne: ['$invoice', null] },
+              then: { $unsetField: { field: '__t', input: '$invoice' } },
+              else: null,
+            },
+          },
+        },
+      },
+      // Sort by day
+      { $sort: { day: 1 } },
     ]);
 
-    // Add a type flag for grouping logic
-    schedules.forEach(s => s.__t = 'Schedule');
-    invoices.forEach(i => i.__t = 'DayInvoice');
-
-    // Group data by driverId and day
-    const groupByDriverDay = (data) => {
-      const map = {};
-      for (const item of data) {
-        const key = `${item.driverId}_${(item.day || item.date).toISOString().split('T')[0]}`;
-        if (!map[key]) {
-          map[key] = {
-            driverId: item.driverId,
-            day: item.day || item.date,
-            schedule: null,
-            invoice: null,
-          };
-        }
-        if (item.__t === 'Schedule') map[key].schedule = item;
-        else map[key].invoice = item;
-      }
-      return map;
-    };
-
-    const combinedMap = groupByDriverDay([...schedules, ...invoices]);
-
-    const combinedArray = Object.values(combinedMap).sort((a, b) => {
-      return new Date(a.day) - new Date(b.day);
-    });
-
-    res.status(200).json(combinedArray);
+    res.status(200).json(combinedData);
   } catch (error) {
     res.status(500).json({ message: 'Error combining schedule and invoice data', error: error.message });
   }
