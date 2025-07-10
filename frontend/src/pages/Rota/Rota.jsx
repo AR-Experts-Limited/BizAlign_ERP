@@ -142,7 +142,8 @@ const Rota = () => {
     const [errors, setErrors] = useState({});
     const [openTotalBreakdown, setOpenTotalBreakdown] = useState(false);
     const [loading, setLoading] = useState(false)
-
+    const loadingTimeoutRef = useRef(null);
+    const prevDriversList = useRef(driversList);
 
     // Consolidated state objects
     const state = {
@@ -207,21 +208,31 @@ const Rota = () => {
         setScheduleMap(scheduleMap);
     }, [schedules]);
 
-    const prevDriversList = useRef(driversList);
 
     useEffect(() => {
         const fetchSchedules = async () => {
             if (driversList.length === 0 || !rangeOptions) return;
 
-            let loadingTimeout;
+            // Check if driversList has changed by comparing with previous value
+            const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
+            prevDriversList.current = driversList;
+
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+            }
+
             const shouldLoad =
+                driversListChanged ||
                 !cacheRangeOption ||
                 !Object.keys(cacheRangeOption).includes(selectedRangeIndex) ||
                 Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === 0 ||
                 Object.keys(cacheRangeOption).indexOf(selectedRangeIndex) === Object.keys(cacheRangeOption).length - 1;
 
             if (shouldLoad) {
-                loadingTimeout = setTimeout(() => setLoading(true), 350);
+                loadingTimeoutRef.current = setTimeout(() => {
+                    setLoading(true);
+                }, 350);
             }
 
             try {
@@ -233,11 +244,13 @@ const Rota = () => {
                         endDay: new Date(moment(rangeOptionsVal[rangeOptionsVal.length - 1]?.end).format('YYYY-MM-DD')),
                     },
                 });
-                clearTimeout(loadingTimeout);
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
                 setSchedules(response.data);
                 setCacheRangeOption(rangeOptions);
             } catch (error) {
-                clearTimeout(loadingTimeout);
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
                 console.error(error);
             } finally {
                 setLoading(false);
