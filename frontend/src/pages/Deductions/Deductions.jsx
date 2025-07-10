@@ -89,6 +89,7 @@ const Deductions = () => {
             serviceType: !newDeduction.serviceType,
             rate: !newDeduction.rate || newDeduction.rate <= 0,
             date: !newDeduction.date,
+            deductionDocument: !['image/jpeg', 'image/jpg', 'image/png'].includes(newDeduction?.deductionDocument?.type)
         };
         setErrors(newErrors);
         return !Object.values(newErrors).some(error => error);
@@ -394,6 +395,7 @@ const Deductions = () => {
                                             icon={<FaPoundSign className="text-neutral-300" />}
                                             value={(newDeduction.rate * 1.2).toFixed(2)}
                                         />
+
                                     </div>
                                 )}
 
@@ -404,12 +406,14 @@ const Deductions = () => {
                                     <div className="relative mt-1">
                                         <InputGroup
                                             type="file"
+                                            error={errors.deductionDocument}
                                             ref={deductionFileRef}
                                             fileStyleVariant="style1"
                                             accept=".jpg,.jpeg,.png"
                                             onChange={handleFileChange}
                                         />
                                     </div>
+                                    {errors.deductionDocument && <p className="text-red-400 text-sm mt-1">* Invalid file format</p>}
                                 </div>
 
                                 <button
