@@ -75,6 +75,8 @@ const Instalments = () => {
             installmentType: !newInstalment.installmentType,
             installmentRate: !newInstalment.installmentRate || newInstalment.installmentRate <= 0,
             tenure: !newInstalment.tenure || newInstalment.tenure <= 0,
+            installmentDocument: !['image/jpeg', 'image/jpg', 'image/png'].includes(newInstalment?.installmentDocument?.type)
+
         };
         setErrors(newErrors);
         return !Object.values(newErrors).some(error => error);
@@ -372,10 +374,13 @@ const Instalments = () => {
                                         <InputGroup
                                             type="file"
                                             ref={installmentFileRef}
+                                            error={errors.installmentDocument}
                                             fileStyleVariant="style1"
                                             accept=".jpg,.jpeg,.png"
                                             onChange={handleFileChange}
                                         />
+                                        {errors.installmentDocument && <p className="text-red-400 text-sm mt-1">* Invalid file format</p>}
+
                                     </div>
                                 </div>
 

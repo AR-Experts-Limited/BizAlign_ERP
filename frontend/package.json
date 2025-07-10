@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "production_build": "vite build && git add . && git commit -m 'build files'"
+    "production_build": "vite build && git add . && git commit -m 'build files'",
+    "ec2:deploy": "osascript -e 'tell app \"Terminal\" to do script \" ssh -i ~/.ssh/my-ec2-key.pem ec2-user@107.21.83.215 \\\"cd mern-crm && git pull origin master_dev\\\"\"'"
   },
   "dependencies": {
     "@flaticon/flaticon-uicons": "^3.3.1",
