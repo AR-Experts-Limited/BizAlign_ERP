@@ -44,7 +44,7 @@ const menuItems = [
 
 
 
-const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
+const Navbar = ({ sidebarLock, setSidebarLock }) => {
     const [userOptionsOpen, setUserOptionsOpen] = useState(false)
     const navigate = useNavigate()
     const dispatch = useDispatch()
@@ -52,8 +52,8 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
 
     return (
         <div className="navbar z-500 p-2 md:p-5 flex items-center justify-between h-18 bg-neutral-50 w-screen border-b border-stone-400/40 dark:bg-dark dark:text-white">
-            <div className="flex-1 "><button className={`rounded-lg p-2 hover:bg-neutral-200 hover:text-white`} onClick={() => setSidebarIsOpen(prev => !prev)} ><IoChevronForward
-                className={`transform transition duration-500 ${sidebarIsOpen ? 'rotate-180' : ''}`}
+            <div className="flex-1 "><button className={` ${sidebarLock ? 'bg-neutral-200 text-white' : ''} rounded-lg p-2 hover:bg-neutral-200 hover:text-white`} onClick={() => setSidebarLock(prev => !prev)} ><IoChevronForward
+                className={`transform transition duration-500 ${sidebarLock ? 'rotate-180' : ''}`}
                 size={20}
             /></button></div>
             <div className="justify-self-start">
@@ -76,7 +76,7 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
                     <div className="flex gap-1 items-center justify-between">
                         <span className="hidden md:block text-xs bg-primary-500 text-white rounded-md px-1.5 py-0.5">{userDetails?.role}</span>
                         <button onClick={() => setUserOptionsOpen(prev => !prev)} className={`rounded-md p-1 hover:bg-neutral-200 hover:text-white`}>
-                            <IoChevronDown className={`transform transition duration-500 ${userOptionsOpen ? 'rotate-180' : ''}`} size={15} />
+                            <IoChevronDown className={`transform transition duration-500 ${userOptionsOpen ? 'rotate-180 ' : ''}`} size={15} />
                         </button>
                     </div>
 

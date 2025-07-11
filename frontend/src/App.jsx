@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   BrowserRouter as Router,
   Route,
@@ -36,12 +36,14 @@ import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
+  const [sidebarLock, setSidebarLock] = useState(false);
   const location = useLocation();
   const hideLayout = location.pathname === '/login' || location.pathname === '/';
   const dispatch = useDispatch();
   const driversLoading = useSelector((state) => state.drivers.driverStatus);
   const sitesLoading = useSelector((state) => state.sites.siteStatus);
   const ratecardsLoading = useSelector((state) => state.ratecards.ratecardStatus);
+  const timeoutRefOpener = useRef(null);
 
   const isLoading = driversLoading === 'loading' || sitesLoading === 'loading' || ratecardsLoading === 'loading';
 
@@ -77,17 +79,41 @@ function App() {
 
   ];
 
+  const handleMouseEnterOpener = () => {
+    if (!sidebarIsOpen) {
+      timeoutRefOpener.current = setTimeout(() => {
+        setSidebarIsOpen(true);
+      }, 800);
+    }
+  };
 
+  const handleMouseLeaveOpener = () => {
+    if (timeoutRefOpener.current) {
+      clearTimeout(timeoutRefOpener.current);
+      timeoutRefOpener.current = null;
+    }
+  };
+
+  useEffect(() => {
+    setSidebarIsOpen(sidebarLock)
+  }, [sidebarLock])
 
   return (
     <div className="app fixed bg-stone-100 dark:bg-dark-4 w-screen h-screen flex flex-col">
-      {!hideLayout && <Navbar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} />}
+      {!hideLayout && <Navbar sidebarLock={sidebarLock} setSidebarLock={setSidebarLock} />}
 
       <div className="flex flex-1 overflow-hidden">
-        {!hideLayout && (
+        {!hideLayout && (<>
           <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-45 md:w-60' : 'w-0 md:w-18'}`}>
-            <Sidebar sidebarIsOpen={sidebarIsOpen} />
+            <Sidebar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} sidebarLock={sidebarLock} />
           </div>
+          <div
+            className='h-full absolute top-0 left-0 w-0.5'
+            onMouseEnter={handleMouseEnterOpener}
+            onMouseLeave={handleMouseLeaveOpener}
+          >
+          </div>
+        </>
         )}
 
         <div className={`flex-1 overflow-auto ${sidebarIsOpen && 'max-sm:blur-xs max-sm:pointer-events-none '}`} >
