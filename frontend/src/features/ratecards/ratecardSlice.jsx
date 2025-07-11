@@ -14,9 +14,14 @@ export const addRatecard = createAsyncThunk('Ratecards/addRatecard', async ({ ra
     return response.data;
 });
 
-export const updateRatecard = createAsyncThunk('Ratecards/updateRatecard', async (Ratecard) => {
-    const response = await axios.put(`${API_BASE_URL}/api/ratecards`, Ratecard);
-    return response.data;
+export const updateRatecard = createAsyncThunk('Ratecards/updateRatecard', async (Ratecard, { rejectWithValue }) => {
+    try {
+        const response = await axios.put(`${API_BASE_URL}/api/ratecards`, Ratecard);
+        return response.data;
+    }
+    catch (err) {
+        return rejectWithValue(err.response?.data || { message: 'An unexpected error occurred' });
+    }
 });
 
 export const updateRatecardActive = createAsyncThunk('Ratecards/updateRatecardActive', async (Ratecard) => {
@@ -87,6 +92,11 @@ const RatecardSlice = createSlice({
                         }
                     });
                 }
+            })
+
+            .addCase(updateRatecard.rejected, (state, action) => {
+                state.addStatus = 'failed';
+                state.error = action.error.message;
             })
 
             // Update Ratecard Active

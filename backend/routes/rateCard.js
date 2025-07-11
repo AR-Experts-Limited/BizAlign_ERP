@@ -411,6 +411,7 @@ router.put('/', async (req, res) => {
       modifiedBy,
     } = req.body;
 
+    // Input validations
     if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
       return res.status(400).json({ message: 'selectedIds must be a non-empty array' });
     }
@@ -423,20 +424,28 @@ router.put('/', async (req, res) => {
       return res.status(400).json({ message: 'serviceWeek must be a non-empty array' });
     }
 
-
-    const updatedRateCards = [];
-
     // ----------------------------------
-    // PHASE 1: Update RateCards & mileage
+    // PHASE 1: Validate RateCards and Invoices
     // ----------------------------------
-    console.time('Phase 1: Update RateCards & Mileage');
+    console.time('Phase 1: Validate RateCards and Invoices');
 
+    const negativeInvoices = [];
+    const rateCardUpdates = [];
+    const dayInvoiceUpdates = [];
+
+    // Fetch all relevant RateCards
+    const rateCards = await RateCard.find({
+      _id: { $in: selectedIds },
+      serviceWeek: { $in: serviceWeek }
+    }).lean();
+
+    // Prepare RateCard updates (but don't apply yet)
     for (const week of serviceWeek) {
-      // Update specific RateCards by selectedIds
       for (const id of selectedIds) {
-        const updatedRateCard = await RateCard.findOneAndUpdate(
-          { _id: id, serviceWeek: week },
-          {
+        rateCardUpdates.push({
+          _id: id,
+          serviceWeek: week,
+          update: {
             serviceTitle,
             serviceRate: round2(serviceRate),
             vehicleType,
@@ -446,48 +455,28 @@ router.put('/', async (req, res) => {
             hourlyRate: round2(hourlyRate),
             byodRate: round2(byodRate),
             mileage: round2(mileage),
-            serviceWeek: week,
             modifiedBy,
             active
-          },
-          { new: true }
-        );
-
-        if (updatedRateCard) {
-          updatedRateCards.push(updatedRateCard);
-        }
+          }
+        });
       }
     }
 
-    // Update mileage for all RateCards in existingWeeks
-    await RateCard.updateMany(
-      { serviceWeek: { $in: serviceWeek } },
-      { $set: { mileage: round2(mileage) } }
-    );
-
-    // Fetch updated rate cards for affected weeks
-    const affectedUpdated = await RateCard.find({ serviceWeek: { $in: serviceWeek } });
-    updatedRateCards.push(...affectedUpdated);
-    console.timeEnd('Phase 1: Update RateCards & Mileage');
-
-    // ----------------------------------
-    // PHASE 2: Update DayInvoices & WeeklyInvoices
-    // ----------------------------------
-    console.time('Phase 2: Populate DayInvoices');
+    // Fetch and validate DayInvoices
     const invoices = await DayInvoice.find({ serviceWeek: { $in: serviceWeek } })
       .populate('rateCardIdforMain')
-      .populate('rateCardIdforAdditional').lean();
-
-    const updateOps = [];
-    console.timeEnd('Phase 2: Populate DayInvoices');
-
-    console.time('Phase 2: Process DayInvoices');
+      .populate('rateCardIdforAdditional')
+      .populate('driverId')
+      .lean();
 
     for (const invoice of invoices) {
-      // ----------- MAIN Service Logic -------------
       if (invoice.rateCardIdforMain) {
-        const rc = invoice.rateCardIdforMain;
-        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
+        const rc = rateCardUpdates.find(update =>
+          update._id.toString() === invoice.rateCardIdforMain._id.toString() &&
+          update.serviceWeek === invoice.serviceWeek
+        )?.update || invoice.rateCardIdforMain;
+
+        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate;
         const newDeductionTotal = oldDeductionTotal;
@@ -509,8 +498,13 @@ router.put('/', async (req, res) => {
           - newDeductionTotal
         );
 
-        updateOps.push({
-          updateOne: {
+        if (total < 0) {
+          negativeInvoices.push({
+            driverName: invoice.driverName || 'Unknown Driver',
+            date: invoice.date,
+          });
+        } else {
+          dayInvoiceUpdates.push({
             filter: { _id: invoice._id },
             update: {
               $set: {
@@ -521,24 +515,24 @@ router.put('/', async (req, res) => {
                 total
               }
             }
-          }
-        });
+          });
+        }
       }
 
-      // ----------- ADDITIONAL Service Logic -------------
       if (invoice.rateCardIdforAdditional && invoice.additionalServiceDetails) {
-        const rc = invoice.rateCardIdforAdditional;
-        const addDetail = invoice.additionalServiceDetails;
+        const rc = rateCardUpdates.find(update =>
+          update._id.toString() === invoice.rateCardIdforAdditional._id.toString() &&
+          update.serviceWeek === invoice.serviceWeek
+        )?.update || invoice.rateCardIdforAdditional;
 
-        const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
+        const addDetail = invoice.additionalServiceDetails;
+        const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate;
         const newDeductionTotal = oldDeductionTotal;
 
         const newMileage = round2(rc.mileage);
         const newCalcMileage = round2(addDetail.miles * newMileage);
-
-        const serviceRateforAdditional = round2(rc.serviceRate + rc.byodRate + newCalcMileage + newIncentiveRate);
 
         const total = round2(
           invoice.total
@@ -554,8 +548,13 @@ router.put('/', async (req, res) => {
           - newDeductionTotal
         );
 
-        updateOps.push({
-          updateOne: {
+        if (total < 0) {
+          negativeInvoices.push({
+            driverName: invoice.driverName || 'Unknown Driver',
+            date: invoice.date,
+          });
+        } else {
+          dayInvoiceUpdates.push({
             filter: { _id: invoice._id },
             update: {
               $set: {
@@ -563,17 +562,70 @@ router.put('/', async (req, res) => {
                 'additionalServiceDetails.byodRate': round2(rc.byodRate),
                 'additionalServiceDetails.mileage': newMileage,
                 'additionalServiceDetails.calculatedMileage': newCalcMileage,
-                serviceRateforAdditional,
+                serviceRateforAdditional: round2(rc.serviceRate + rc.byodRate + newCalcMileage + newIncentiveRate),
                 total
               }
             }
-          }
-        });
+          });
+        }
       }
     }
 
-    console.timeEnd('Phase 2: Process DayInvoices');
-    console.time('Phase 2: Write DayInvoices');
+    // Terminate if any negative totals are found
+    if (negativeInvoices.length > 0) {
+      console.warn('Update rejected due to negative invoice totals:', negativeInvoices);
+      return res.status(400).json({
+        message: 'Update would cause negative totals for the following DayInvoices',
+        negativeInvoices,
+      });
+    }
+
+    console.timeEnd('Phase 1: Validate RateCards and Invoices');
+
+    // ----------------------------------
+    // PHASE 2: Apply RateCard Updates
+    // ----------------------------------
+    console.time('Phase 2: Update RateCards');
+    const updatedRateCards = [];
+
+    // Prepare bulkWrite operations for RateCards
+    const rateCardBulkOps = rateCardUpdates.map(update => ({
+      updateOne: {
+        filter: { _id: update._id, serviceWeek: update.serviceWeek },
+        update: { $set: update.update },
+        returnDocument: 'after'
+      }
+    }));
+
+    // Execute bulkWrite for RateCards
+    if (rateCardBulkOps.length > 0) {
+      const bulkResult = await RateCard.bulkWrite(rateCardBulkOps, { ordered: false });
+      const modifiedDocs = bulkResult.getRawResponse()?.modifiedCount || 0;
+      console.log(`Bulk updated ${modifiedDocs} RateCards`);
+
+      // Fetch updated RateCards to include in response
+      const updatedIds = rateCardUpdates.map(update => update._id);
+      const updatedDocs = await RateCard.find({
+        _id: { $in: updatedIds },
+        serviceWeek: { $in: serviceWeek }
+      }).lean();
+      updatedRateCards.push(...updatedDocs);
+    }
+
+    // Update mileage for all RateCards in serviceWeek
+    await RateCard.updateMany(
+      { serviceWeek: { $in: serviceWeek } },
+      { $set: { mileage: round2(mileage) } }
+    );
+
+    const affectedUpdated = await RateCard.find({ serviceWeek: { $in: serviceWeek } });
+    updatedRateCards.push(...affectedUpdated);
+    console.timeEnd('Phase 2: Update RateCards');
+
+    // ----------------------------------
+    // PHASE 3: Apply DayInvoice Updates
+    // ----------------------------------
+    console.time('Phase 3: Write DayInvoices');
 
     async function parallelBulkWrite(chunks, maxConcurrency = 5) {
       let index = 0;
@@ -597,14 +649,17 @@ router.put('/', async (req, res) => {
       await Promise.all(workers);
     }
 
-    if (updateOps.length) {
-      const chunks = chunkArray(updateOps, CHUNK_SIZE);
+    if (dayInvoiceUpdates.length) {
+      const chunks = chunkArray(dayInvoiceUpdates.map(op => ({ updateOne: op })), CHUNK_SIZE);
       await parallelBulkWrite(chunks, MAX_CONCURRENCY);
     }
 
-    console.timeEnd('Phase 2: Write DayInvoices');
+    console.timeEnd('Phase 3: Write DayInvoices');
 
-    console.time('Phase 2: Write WeeklyInvoices');
+    // ----------------------------------
+    // PHASE 4: Update WeeklyInvoices
+    // ----------------------------------
+    console.time('Phase 4: Write WeeklyInvoices');
 
     const weeklyInvoices = await WeeklyInvoice.find({
       serviceWeek: { $in: serviceWeek }
@@ -650,13 +705,11 @@ router.put('/', async (req, res) => {
       weeklyVatTotal = round2(weeklyVatTotal);
       const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
 
-      // Create shallow copies of installments for calculations
       const installmentCopies = (weeklyInvoice.installments || []).map(inst => ({
         ...inst.toObject(),
         installmentPending: round2(inst.installmentPending)
       }));
 
-      // First pass: Apply weeklyInvoice.installmentDetail deductions to copies
       for (const detail of weeklyInvoice.installmentDetail || []) {
         const inst = installmentCopies.find(i => i._id.toString() === detail._id?.toString());
         if (inst && detail.deductionAmount > 0) {
@@ -667,7 +720,6 @@ router.put('/', async (req, res) => {
       const installmentMap = new Map();
       let remainingTotal = weeklyTotalBeforeInstallments;
 
-      // Second pass: Calculate new deductions
       for (const inst of installmentCopies) {
         const instId = inst._id.toString();
         if (inst.installmentPending <= 0) continue;
@@ -701,7 +753,6 @@ router.put('/', async (req, res) => {
 
       const finalWeeklyTotal = round2(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction));
 
-      // Collect installment update operations
       for (const inst of mergedInstallments) {
         bulkInstallmentOps.push({
           updateOne: {
@@ -711,7 +762,6 @@ router.put('/', async (req, res) => {
         });
       }
 
-      // Store update operation for weekly invoice
       updatedWeeklyInvoices.push({
         updateOne: {
           filter: { _id: weeklyInvoice._id },
@@ -727,18 +777,15 @@ router.put('/', async (req, res) => {
       });
     }
 
-    // Execute bulk write for installments
     if (bulkInstallmentOps.length > 0) {
       await Installment.bulkWrite(bulkInstallmentOps);
     }
 
-    // Execute bulk write for weekly invoices
     if (updatedWeeklyInvoices.length > 0) {
       await WeeklyInvoice.bulkWrite(updatedWeeklyInvoices);
     }
-    console.timeEnd('Phase 2: Write WeeklyInvoices');
+    console.timeEnd('Phase 4: Write WeeklyInvoices');
 
-    // Remove duplicates from updatedRateCards
     const uniqueUpdated = Array.from(
       new Map(updatedRateCards.filter(card => card).map(card => [card._id.toString(), card])).values()
     );

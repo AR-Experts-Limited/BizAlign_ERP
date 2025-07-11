@@ -11,6 +11,7 @@ import SuccessTick from '../../components/UIElements/SuccessTick'
 import Spinner from '../../components/UIElements/Spinner'
 import Modal from '../../components/Modal/Modal'
 import InputGroup from '../../components/InputGroup/InputGroup'
+import moment from 'moment'
 
 const Ratecard = () => {
     const dispatch = useDispatch();
@@ -42,6 +43,32 @@ const Ratecard = () => {
         if (ratecardStatus === 'idle') dispatch(fetchRatecards());
         if (serviceStatus === 'idle') dispatch(fetchServices());
     }, [ratecardStatus, serviceStatus, dispatch]);
+
+    const convertToCSV = (invoices) => {
+        const headers = ['Driver Name', 'Date'];
+        const rows = invoices.map((invoice) => [
+            `"${invoice.driverName}"`, // Wrap in quotes to handle commas or special characters
+            moment(invoice.date).format('DD/MM/YYYY'),
+        ]);
+        return [
+            headers.join(','),
+            ...rows.map((row) => row.join(',')),
+        ].join('\n');
+    };
+
+    // Helper function to trigger CSV download
+    const downloadCSV = (invoices, filename = 'affected_invoices.csv') => {
+        const csvContent = convertToCSV(invoices);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     const handleDeleteRatecard = async (ids, confirm = false) => {
         setLoading(true)
@@ -87,21 +114,52 @@ const Ratecard = () => {
     }
 
     const handleUpdateRateCard = async () => {
-        setLoading(true)
-        setConfirmModal(null)
-        await dispatch(updateRatecard(rateCard))
-        setLoading(false)
+        setLoading(true);
+        setConfirmModal(null);
 
-        setMode('create')
-        setRateCard(clearRateCard)
-        setToastOpen({
-            content: <>
-                <SuccessTick width={20} height={20} />
-                <p className='text-sm font-bold text-green-500'>{rateCard.serviceWeek.length > 1 ? 'Rate cards ' : 'Rate card '}updated successfully</p>
-            </>
-        })
-        setTimeout(() => setToastOpen(null), 3000);
-    }
+        try {
+            await dispatch(updateRatecard(rateCard)).unwrap(); // unwrap to catch the actual error thrown by createAsyncThunk
+            setMode('create');
+            setRateCard(clearRateCard);
+            setToastOpen({
+                content: (
+                    <>
+                        <SuccessTick width={20} height={20} />
+                        <p className='text-sm font-bold text-green-500'>
+                            {rateCard.serviceWeek.length > 1 ? 'Rate cards ' : 'Rate card '}updated successfully
+                        </p>
+                    </>
+                )
+            });
+            setTimeout(() => setToastOpen(null), 3000);
+        } catch (error) {
+            console.log(error)
+            setToastOpen({
+                content: <>
+                    <div className='flex gap-3 items-center'>
+                        <p className='flex gap-1 text-sm font-bold text-red-600 whitespace-nowrap'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.message}</p>
+                        <div className="flex gap-2 mt-2">
+                            <button
+                                className="px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs whitespace-nowrap"
+                                onClick={() => downloadCSV(error?.negativeInvoices)}
+                            >
+                                Download CSV
+                            </button>
+                            <button
+                                className="px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 text-xs"
+                                onClick={() => setToastOpen(null)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </>
+            })
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     const handleUpdateActiveStatus = async (ratecard) => {
         dispatch(updateRatecardActive(ratecard))
@@ -109,17 +167,17 @@ const Ratecard = () => {
 
     return (
         <div className='flex flex-col relative h-full w-full p-4 overflow-hidden'>
-            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
-                <div className='flex gap-4 justify-around items-center'>
-                    {toastOpen?.content}
-                </div>
-            </div>
-            <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
-                <div className='flex gap-2 text-gray-500 justify-around items-center'>
-                    <Spinner /> Processing...
-                </div>
-            </div>
             <div className='flex flex-col w-full h-full dark:bg-dark-3'>
+                <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                    <div className='flex gap-4 justify-around items-center'>
+                        {toastOpen?.content}
+                    </div>
+                </div>
+                <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                    <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                        <Spinner /> Processing...
+                    </div>
+                </div>
                 <div className='text-xl font-bold dark:text-white'>Rate Card</div>
                 <div className='flex-1 flex overflow-auto gap-3'>
 

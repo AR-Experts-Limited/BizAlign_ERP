@@ -147,7 +147,7 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
                     newErrors.Email = "Enter a valid email";
 
                 }
-                else if (driversList.some((driver) => driver.Email === newDriver.Email)) {
+                else if (personnelMode === 'create' && driversList.some((driver) => driver.Email === newDriver.Email)) {
                     newErrors.Email = "Email already exists";
                 }
             }
@@ -238,7 +238,7 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
             newErrors.Email = "Enter a valid email";
 
         }
-        else if (newDriver.Email && driversList.some((driver) => driver.Email === newDriver.Email)) {
+        else if (newDriver.Email && personnelMode === 'create' && driversList.some((driver) => driver.Email === newDriver.Email)) {
             newErrors.Email = "Email already exists";
         }
 
