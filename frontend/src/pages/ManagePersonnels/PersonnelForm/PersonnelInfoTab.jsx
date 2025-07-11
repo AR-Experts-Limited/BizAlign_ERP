@@ -35,7 +35,11 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
 
     const handleChangeOfTypeOfDriver = (e) => {
         const nextType = e.target.value;
-        const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString(); // same format used in trace
+        const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'numeric',
+            year: 'numeric'
+        }).split('/').join('/');
 
         let updatedTypeOfDriverTrace = [...(newDriver.typeOfDriverTrace || [])];
 
