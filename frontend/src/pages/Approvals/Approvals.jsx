@@ -62,7 +62,7 @@ const Approvals = () => {
                             additionalServiceDetails.serviceRate +
                             additionalServiceDetails.byodRate +
                             additionalServiceDetails.calculatedMileage +
-                            (dayInvoice.incentiveDetailforAdditional?.rate ?? 0))
+                            (dayInvoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0))
                     };
                 }
                 await axios.put(`${API_BASE_URL}/api/dayInvoice/${dayInvoice._id}`, { ...dayInvoice, additionalServiceDetails, additionalServiceApproval });

@@ -15,7 +15,7 @@ import { addDriver, updateDriver } from '../../../features/drivers/driverSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, sites, personnelMode, setPersonnelMode, setToastOpen }) => {
+const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, sites, personnelMode, setPersonnelMode, setToastOpen, driversList }) => {
     const dispatch = useDispatch();
 
     const [errors, setErrors] = useState({});
@@ -142,7 +142,16 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
         const currentTabFields = requiredFields[selectedTab] || [];
 
         currentTabFields.forEach((key) => {
-            if (key === 'vatEffectiveDate') {
+            if (key === 'Email') {
+                if (!/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(newDriver.Email)) {
+                    newErrors.Email = "Enter a valid email";
+
+                }
+                else if (driversList.some((driver) => driver.Email === newDriver.Email)) {
+                    newErrors.Email = "Email already exists";
+                }
+            }
+            else if (key === 'vatEffectiveDate') {
                 if (!newDriver.vatDetails?.vatEffectiveDate) {
                     newErrors.vatEffectiveDate = true;
                 }
@@ -226,7 +235,11 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
 
         // Validate email format
         if (newDriver.Email && !/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(newDriver.Email)) {
-            newErrors.Email = true;
+            newErrors.Email = "Enter a valid email";
+
+        }
+        else if (newDriver.Email && driversList.some((driver) => driver.Email === newDriver.Email)) {
+            newErrors.Email = "Email already exists";
         }
 
         // Validate sort code format
@@ -367,8 +380,15 @@ const PersonnelForm = ({ clearDriver, userDetails, newDriver, setNewDriver, site
                 }, 2000);
                 setNewDriver(clearDriver)
             } catch (error) {
-                alert('Error adding driver');
                 console.log(error)
+                const errorMessage =
+                    error?.response?.data?.message || error?.message || "Unexpected error occurred.";
+                setToastOpen({
+                    content: <>
+                        <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{errorMessage}</p>
+                    </>
+                })
+                setTimeout(() => setToastOpen(null), 3000);
             }
         }
         else if (personnelMode === 'edit') {

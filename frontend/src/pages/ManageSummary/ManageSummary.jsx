@@ -16,6 +16,7 @@ import { AiOutlineClockCircle } from "react-icons/ai";
 import { compareServiceStrings } from './similarity'
 import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
 import { fetchServices } from '../../features/services/serviceSlice';
+import { getIncentiveDetails } from '../Rota/supportFunctions';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -329,6 +330,7 @@ const ManageSummary = () => {
                     byodRate: invoice.byodRate,
                     mileage: invoice.mileage,
                     miles: invoice.miles,
+                    incentiveDetailforMain: invoice.incentiveDetailforMain,
                     calculatedMileage: Number((invoice.miles * invoice.mileage).toFixed(2)),
                     total: (invoice.total - (prevRateOnlyTotal || 0)) + invoice.serviceRateforMain + invoice.byodRate + Number((invoice.miles * invoice.mileage).toFixed(2)),
                     approvalStatus: stages[nextStatusIndex],
@@ -428,11 +430,17 @@ const ManageSummary = () => {
         )
     }
 
-    const handleServiceTypeChange = (e) => {
+    const handleServiceTypeChange = async (e) => {
         if (e.target.value !== originalServiceRef.current) {
             const isMatchingService = services.find((service) => compareServiceStrings(service.title, e.target.value).isSimilar)
+            console.log(isMatchingService)
+            console.log(ratecards)
             const matchingRatecard = isMatchingService ? ratecards.find((rc) => rc.serviceTitle === isMatchingService.title && rc.serviceWeek === currentInvoice?.invoice.serviceWeek && rc.vehicleType === currentInvoice?.invoice.driverVehicleType) : null
-            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService }, restrictEdit: (!isMatchingService || !matchingRatecard) && originalServiceRef.current !== e.target.value }))
+            const incentives = matchingRatecard ? await getIncentiveDetails(isMatchingService.title, currentInvoice?.invoice?.site, currentInvoice?.invoice.date) : []
+            const oldIncentiveRate = currentInvoice?.invoice?.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0
+            const newIncentiveRate = incentives?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0
+
+            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, incentiveDetailforMain: incentives, mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService, total: prev.invoice.total - oldIncentiveRate + newIncentiveRate }, restrictEdit: (!isMatchingService || !matchingRatecard) && originalServiceRef.current !== e.target.value }))
         }
         else {
             setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, mainService: e.target.value }, restrictEdit: null }))

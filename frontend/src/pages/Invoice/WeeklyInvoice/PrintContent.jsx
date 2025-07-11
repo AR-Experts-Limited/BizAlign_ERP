@@ -93,7 +93,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                     </>
                                 )}
                                 {invoice.invoices.some(
-                                    (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (<th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Incentive Rate</th>)}
+                                    (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) && (<th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Incentive Rate</th>)}
                                 {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
                                     <th className="text-[10px] px-1 pb-3 border-r border-[#4B0082] text-center font-bold">Total Deductions</th>
                                 )}
@@ -147,7 +147,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                                 </>
                                             )}
                                             {invoice.invoices.some(
-                                                (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (<td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{((item.incentiveDetailforMain?.rate || 0) + (item.incentiveDetailforAdditional?.rate || 0)).toFixed(2) || '0.00'}</td>
+                                                (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) && (<td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">£{((item.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0) + (invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2) || '0.00'}</td>
                                                 )}
 
                                             {invoice.invoices.some((inv) => inv.deductionDetail.length > 0) && (
@@ -169,7 +169,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                     colSpan={
                                         6 +
                                         (invoice.invoices.some(
-                                            (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) ? 1 : 0) +
+                                            (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) ? 1 : 0) +
                                         (invoice.invoices.some((inv) => inv.deductionDetail.length > 0) ? 1 : 0) +
                                         (invoice.invoices.some((inv) => inv.additionalServiceDetails?.service || inv.additionalServiceApproval === 'Requested') ? 2 : 0)
                                     }

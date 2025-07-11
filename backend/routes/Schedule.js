@@ -281,7 +281,11 @@ router.get('/combined-invoice', async (req, res) => {
           },
         },
       },
-
+      {
+        $sort: {
+          day: 1
+        },
+      }
     ]);
 
     res.status(200).json(combinedData);

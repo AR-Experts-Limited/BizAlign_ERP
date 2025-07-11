@@ -366,7 +366,7 @@ const DailyInvoice = () => {
                                     currentInvoice.byodRate +
                                     currentInvoice.calculatedMileage +
                                     (currentInvoice.serviceRateforAdditional || 0) +
-                                    (currentInvoice.incentiveDetail?.rate || 0)}</p>
+                                    (currentInvoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)}</p>
                             </div>
 
                         </div>

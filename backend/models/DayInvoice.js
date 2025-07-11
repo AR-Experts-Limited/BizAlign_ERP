@@ -26,12 +26,12 @@ const dayInvoiceSchema = new mongoose.Schema({
     ref: 'RateCard',
   },
   incentiveDetailforMain: {
-    type: IncentiveSchema,
-    default: null
+    type: Array,
+    default: []
   },
   incentiveDetailforAdditional: {
-    type: IncentiveSchema,
-    default: null
+    type: Array,
+    default: []
   },
   deductionDetail: {
     type: [DeductionSchema],

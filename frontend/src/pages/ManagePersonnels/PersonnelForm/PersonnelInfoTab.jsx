@@ -248,7 +248,7 @@ const PersonnelInfoTab = ({ sites, newDriver, setNewDriver, onInputChange, error
                         value={newDriver.Email}
                         onChange={(e) => onInputChange(e)}
                     />
-                    <p className={`${errors.Email ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* Please provide a valid email address</p>
+                    <p className={`${errors.Email ? 'visible' : 'invisible'} my-1 text-sm font-light text-red`}>* {errors.Email}</p>
                 </div>
 
                 {/* Vehicle Type */}
