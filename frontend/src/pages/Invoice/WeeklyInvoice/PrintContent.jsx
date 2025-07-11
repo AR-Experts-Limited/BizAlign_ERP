@@ -141,7 +141,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                                         {item.additionalServiceApproval === 'Requested' ? (
                                                             <div className="bg-[#FEE2E2] text-[#EF4444] text-[10px] px-2 py-1 rounded">Waiting for approval</div>
                                                         ) : (
-                                                            item.serviceRateforAdditional ? `£ ${(item.serviceRateforAdditional - item.incentiveDetailforAdditional?.rate).toFixed(2)}` : '-'
+                                                            item.serviceRateforAdditional ? `£ ${(Number(item.serviceRateforAdditional) - Number(item.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)}` : '-'
                                                         )}
                                                     </td>
                                                 </>

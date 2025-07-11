@@ -996,7 +996,7 @@ const WeeklyInvoice = () => {
                                                                         ) : (
                                                                             invoice.serviceRateforAdditional ? (
                                                                                 <p className="text-sm font-medium text-green-600">
-                                                                                    £{(invoice.serviceRateforAdditional - invoice.incentiveDetailforAdditional?.rate).toFixed(2)}
+                                                                                    £{(Number(invoice.serviceRateforAdditional) - Number(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)}
                                                                                 </p>
                                                                             ) : '-'
                                                                         )}
