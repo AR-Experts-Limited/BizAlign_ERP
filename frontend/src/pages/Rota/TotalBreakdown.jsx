@@ -59,7 +59,7 @@ const TotalBreakdown = ({
                     <span>£</span>
                     <span className="text-right">{additionalServiceTotal}</span>
                 </div>}
-                {(incentiveDetailforMain || incentiveDetailforAdditional) &&
+                {(incentiveDetailforMain?.length > 0 || incentiveDetailforAdditional?.length > 0) &&
                     <div className="grid grid-cols-[6fr_1fr_1fr] text-green-600">
                         <span>Incentives:</span>
                         <span>+£</span>
