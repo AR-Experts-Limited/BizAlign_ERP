@@ -1,24 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { BiStation } from "react-icons/bi";
 
-const Sidebar = ({ sidebarIsOpen }) => {
-    const [delayedPointerEnabled, setDelayedPointerEnabled] = useState(false);
+const Sidebar = ({ sidebarIsOpen, setSidebarIsOpen, sidebarLock }) => {
     const location = useLocation();
     const itemRefs = useRef({});
     const containerRef = useRef(null);
+    const timeoutRef = useRef(null);
+
     const { accessDetails } = useSelector((state) => state.auth);
 
-    useEffect(() => {
-        let timeout;
-        setDelayedPointerEnabled(true);
-        timeout = setTimeout(() => {
-            setDelayedPointerEnabled(false);
-        }, 300);
-        return () => clearTimeout(timeout);
-    }, [sidebarIsOpen]);
 
     useEffect(() => {
         const activeItem = itemRefs.current[location.pathname];
@@ -41,45 +34,68 @@ const Sidebar = ({ sidebarIsOpen }) => {
         }
     }, [location.pathname, sidebarIsOpen]);
 
+    const handleMouseLeave = () => {
+        if (sidebarIsOpen && !sidebarLock) { // Only close if not over opener
+            timeoutRef.current = setTimeout(() => {
+                setSidebarIsOpen(false);
+            }, 500);
+        }
+    };
+
+
+    const handleMouseEnter = () => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+    };
+
+
+
     const menuItems = [
-        { path: "/dashboard", name: "Dashboard", icon: <i className="fi fi-rr-dashboard-panel hover:text-primary-800 text-[1.6rem]"></i> },
-        { path: "/manage-personnels", name: "Manage Personnels", icon: <i className="fi fi-rr-users-alt hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/rate-card", name: "Rate Cards", icon: <i className="fi fi-rr-calculator hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/notifications", name: "Notifications", icon: <i className="fi fi-rr-bell-notification-social-media hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/approvals", name: "Approvals", icon: <i className="fi fi-rr-checkbox hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/planner", name: "Schedule Planner", icon: <i className="fi fi-rr-calendar-clock hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/live-operations", name: "Live Operations", icon: <BiStation className='hover:text-primary-800' size={25} /> },
-        { path: "/rota", name: "Rota", icon: <i className="fi fi-rr-payroll-calendar hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/working-hours", name: "Working Hours", icon: <i className="fi fi-rr-time-half-past hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/installments", name: "Installments", icon: <i className="fi fi-rr-money-check-edit hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/deductions", name: "Deductions", icon: <i className="fi fi-rs-cheap-dollar hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/incentives", name: "Incentives", icon: <i className="fi fi-rr-handshake-deal-loan hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/manage-summary", name: "Manage Summary", icon: <i className="fi fi-rr-clip-file hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/manage-payments", name: "Manage Payments", icon: <i className="fi fi-rr-money-bill-wave hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/add-ons", name: "Additional Charges", icon: <i className="fi fi-rr-plus-hexagon hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/print-invoices", name: "Print Invoices", icon: <i className="fi fi-rr-print hover:text-primary-800 text-[1.5rem]"></i> },
-        // { path: "/profit-loss", name: "Profit / Loss", icon: <i className="fi fi-rr-chart-histogram hover:text-primary-800 text-[1.5rem]"></i> },
-        { path: "/manage-users", name: "Manage Users", icon: <i className="fi fi-rr-id-card-clip-alt hover:text-primary-800 text-[1.5rem]"></i> },
+        { path: "/dashboard", name: "Dashboard", icon: <i className="fi fi-rr-dashboard-panel text-[1.6rem]"></i> },
+        { path: "/manage-personnels", name: "Manage Personnels", icon: <i className="fi fi-rr-users-alt text-[1.5rem]"></i> },
+        { path: "/rate-card", name: "Rate Cards", icon: <i className="fi fi-rr-calculator text-[1.5rem]"></i> },
+        { path: "/notifications", name: "Notifications", icon: <i className="fi fi-rr-bell-notification-social-media text-[1.5rem]"></i> },
+        { path: "/approvals", name: "Approvals", icon: <i className="fi fi-rr-checkbox text-[1.5rem]"></i> },
+        { path: "/planner", name: "Schedule Planner", icon: <i className="fi fi-rr-calendar-clock text-[1.5rem]"></i> },
+        { path: "/live-operations", name: "Live Operations", icon: <BiStation className="text-[1.5rem]" /> },
+        { path: "/rota", name: "Rota", icon: <i className="fi fi-rr-payroll-calendar text-[1.5rem]"></i> },
+        { path: "/working-hours", name: "Working Hours", icon: <i className="fi fi-rr-time-half-past text-[1.5rem]"></i> },
+        { path: "/installments", name: "Installments", icon: <i className="fi fi-rr-money-check-edit text-[1.5rem]"></i> },
+        { path: "/deductions", name: "Deductions", icon: <i className="fi fi-rs-cheap-dollar text-[1.5rem]"></i> },
+        { path: "/incentives", name: "Incentives", icon: <i className="fi fi-rr-handshake-deal-loan text-[1.5rem]"></i> },
+        { path: "/manage-summary", name: "Manage Summary", icon: <i className="fi fi-rr-clip-file text-[1.5rem]"></i> },
+        { path: "/manage-payments", name: "Manage Payments", icon: <i className="fi fi-rr-money-bill-wave text-[1.5rem]"></i> },
+        { path: "/add-ons", name: "Additional Charges", icon: <i className="fi fi-rr-plus-hexagon text-[1.5rem]"></i> },
+        { path: "/print-invoices", name: "Print Invoices", icon: <i className="fi fi-rr-print text-[1.5rem]"></i> },
+        { path: "/manage-users", name: "Manage Users", icon: <i className="fi fi-rr-id-card-clip-alt text-[1.5rem]"></i> },
     ];
 
     return (
         <div
             ref={containerRef}
             className={`
-                sidebar h-full bg-neutral-200/50 dark:bg-dark-3 border-r border-stone-400/40 overflow-auto
+                relative sidebar h-full bg-neutral-200/50 dark:bg-dark-3 border-r border-stone-400/40 overflow-auto
                 scrollbar-none hover:scrollbar  scrollbar-thin scrollbar-thumb-gray-600/40 scrollbar-track-transparent
                 transition-all duration-300 origin-left
                 ${sidebarIsOpen ? 'w-45 md:w-60' : 'w-0 md:w-18'}
-                ${delayedPointerEnabled ? 'pointer-events-none' : ''}
-                `}
+            `}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
-            <div className='mb-12'>
+
+            <div className="mb-12">
                 <div className="flex flex-col justify-center gap-5 m-2">
                     <Tooltip.Provider delayDuration={500}>
-                        {menuItems.filter(item => accessDetails?.includes(item.name)).map((item) => (
-                            <Tooltip.Root key={item.path}>
-                                <Tooltip.Trigger asChild>
-                                    <div ref={(el) => (itemRefs.current[item.path] = el)}>
+                        {menuItems
+                            .filter(item => accessDetails?.includes(item.name))
+                            .map((item) => {
+                                const navLink = (
+                                    <div
+                                        key={item.path}
+                                        ref={(el) => (itemRefs.current[item.path] = el)}
+                                    >
                                         <NavLink
                                             to={item.path}
                                             className={({ isActive }) =>
@@ -88,27 +104,34 @@ const Sidebar = ({ sidebarIsOpen }) => {
                                                 ${isActive ? "bg-primary-300/30 text-primary-800 shadow-md" : ""}`
                                             }
                                         >
-                                            <div className='flex gap-2 md:gap-4 items-center'>
-                                                <div className='w-7 h-7'>{item.icon}</div>
+                                            <div className="flex gap-2 md:gap-4 items-center">
+                                                <div className="w-7 h-7">{item.icon}</div>
                                                 <div>{item.name}</div>
                                             </div>
                                         </NavLink>
                                     </div>
-                                </Tooltip.Trigger>
-                                {!sidebarIsOpen && !delayedPointerEnabled && (
-                                    <Tooltip.Portal>
-                                        <Tooltip.Content
-                                            side="right"
-                                            sideOffset={0}
-                                            className="hidden md:block z-50 rounded bg-gray-600 text-white text-xs px-2 py-1 animate-fade-in"
-                                        >
-                                            {item.name}
-                                            <Tooltip.Arrow className="fill-gray-600" />
-                                        </Tooltip.Content>
-                                    </Tooltip.Portal>
-                                )}
-                            </Tooltip.Root>
-                        ))}
+                                );
+
+                                if (sidebarIsOpen) {
+                                    return navLink;
+                                }
+
+                                return (
+                                    <Tooltip.Root key={item.path}>
+                                        <Tooltip.Trigger asChild>{navLink}</Tooltip.Trigger>
+                                        <Tooltip.Portal>
+                                            <Tooltip.Content
+                                                side="right"
+                                                sideOffset={0}
+                                                className="hidden md:block z-50 rounded bg-gray-600 text-white text-xs px-2 py-1 animate-fade-in"
+                                            >
+                                                {item.name}
+                                                <Tooltip.Arrow className="fill-gray-600" />
+                                            </Tooltip.Content>
+                                        </Tooltip.Portal>
+                                    </Tooltip.Root>
+                                );
+                            })}
                     </Tooltip.Provider>
                 </div>
             </div>
