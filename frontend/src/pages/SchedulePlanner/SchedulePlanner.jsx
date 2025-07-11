@@ -38,7 +38,7 @@ const rateCardFinder = (date, ratecards, week, service, driver) => {
 
 const getDriverTypeForDate = (driver, date) => {
 
-    const dateKey = moment(date).format('M/D/YYYY');
+    const dateKey = moment(date).format('D/M/YYYY');
     // 1. Custom override
     if (driver?.customTypeOfDriver?.[dateKey]) {
         return driver.customTypeOfDriver[dateKey];
@@ -150,11 +150,6 @@ const SchedulePlanner = () => {
             // Check if driversList has changed by comparing with previous value
             const driversListChanged = JSON.stringify(driversList) !== JSON.stringify(prevDriversList.current);
             prevDriversList.current = driversList;
-
-            if (loadingTimeoutRef.current) {
-                clearTimeout(loadingTimeoutRef.current);
-                loadingTimeoutRef.current = null;
-            }
 
             const shouldLoad =
                 driversListChanged ||

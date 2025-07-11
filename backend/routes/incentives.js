@@ -27,9 +27,9 @@ router.get('/', async (req, res) => {
 
 router.get('/driver', async (req, res) => {
   const Incentive = req.db.model('Incentive', require('../models/Incentive').schema);
-  const { service, site, month } = req.query
+  const { service, site, date } = req.query
   try {
-    const incentiveDetail = await Incentive.find({ service, site, month })
+    const incentiveDetail = await Incentive.find({ service, site, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
     res.status(200).json(incentiveDetail)
   }
   catch (error) {
@@ -65,13 +65,14 @@ router.post('/', async (req, res) => {
     // const endOfMonth = moment(month, 'YYYY-MM').endOf('month').toDate();
 
     const dayInvoices = await DayInvoice.find({
-      serviceWeek: {
+      date: {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       },
       site,
       $or: [{ mainService: service }, { 'additionalServiceDetails.service': service }],
     });
+
 
     const affectedWeeklyInvoices = new Set();
     const bulkDayInvoiceOps = [];
@@ -84,13 +85,18 @@ router.post('/', async (req, res) => {
       if (dayInvoice.mainService === service) {
         update = {
           ...update,
-          $set: {
+          $push: {
             incentiveDetailforMain: {
-              _id: newIncentive._id,
+              _id: String(newIncentive._id),
               service: newIncentive.service,
               type: newIncentive.type,
               rate: newIncentive.rate,
+              startDate: String(newIncentive.startDate),
+              endDate: String(newIncentive.endDate),
             },
+          },
+          $set: {
+            ...(update.$set || {}),
             total: +parseFloat(dayInvoice.total + newIncentive.rate).toFixed(2),
           },
         };
@@ -100,14 +106,19 @@ router.post('/', async (req, res) => {
       if (dayInvoice.additionalServiceDetails?.service === service) {
         update = {
           ...update,
-          $set: {
-            ...update.$set,
+          $push: {
+            ...(update.$push || {}),
             incentiveDetailforAdditional: {
-              _id: newIncentive._id,
+              _id: String(newIncentive._id),
               service: newIncentive.service,
               type: newIncentive.type,
               rate: newIncentive.rate,
+              startDate: String(newIncentive.startDate),
+              endDate: String(newIncentive.endDate),
             },
+          },
+          $set: {
+            ...(update.$set || {}),
             total: +parseFloat(dayInvoice.total + newIncentive.rate).toFixed(2),
           },
         };
@@ -124,6 +135,7 @@ router.post('/', async (req, res) => {
         affectedWeeklyInvoices.add(`${dayInvoice.driverId}_${dayInvoice.serviceWeek}`);
       }
     }
+
 
     if (bulkDayInvoiceOps.length > 0) {
       await DayInvoice.bulkWrite(bulkDayInvoiceOps);
@@ -277,20 +289,21 @@ router.delete('/:id', async (req, res) => {
     const { Incentive, DayInvoice, WeeklyInvoice, Installment, Driver } = getModels(req);
     const incentiveId = req.params.id;
 
-    // Step 1: Find and validate Incentive
+    // Find the incentive
     const incentive = await Incentive.findById(incentiveId);
     if (!incentive) {
       return res.status(404).json({ message: 'Incentive not found' });
     }
 
-    // Step 2: Find affected DayInvoices
+    // Find DayInvoices that reference the incentive
     const dayInvoices = await DayInvoice.find({
       $or: [
         { 'incentiveDetailforMain._id': incentiveId },
         { 'incentiveDetailforAdditional._id': incentiveId },
       ],
-    });
+    }).populate('driverId'); // Populate driverId to get driverName
 
+    // If no DayInvoices are found, delete the incentive and return
     if (!dayInvoices.length) {
       await Incentive.findByIdAndDelete(incentiveId);
       return res.status(200).json({ message: 'Incentive deleted, no DayInvoices found' });
@@ -298,51 +311,78 @@ router.delete('/:id', async (req, res) => {
 
     const affectedWeeklyInvoices = new Set();
     const bulkDayInvoiceOps = [];
+    const negativeTotalInvoices = [];
 
-    // Step 3: Update DayInvoices
+    // Check for negative totals and prepare updates
     for (const dayInvoice of dayInvoices) {
-      let update = {};
+      const update = {};
       let updated = false;
+      let total = dayInvoice.total;
 
-      if (dayInvoice.incentiveDetailforMain?._id.toString() === incentiveId) {
-        update = {
-          ...update,
-          $set: {
-            incentiveDetailforMain: null,
-            total: +Math.max(0, parseFloat(dayInvoice.total - incentive.rate).toFixed(2)),
-          },
-        };
+      const mainMatch = dayInvoice.incentiveDetailforMain?.find?.((i) => i._id.toString() === incentiveId);
+      const additionalMatch = dayInvoice.incentiveDetailforAdditional?.find?.((i) => i._id.toString() === incentiveId);
+
+      if (mainMatch) {
+        total -= mainMatch.rate || 0;
         updated = true;
       }
 
-      if (dayInvoice.incentiveDetailforAdditional?._id.toString() === incentiveId) {
-        update = {
-          ...update,
-          $set: {
-            ...update.$set,
-            incentiveDetailforAdditional: null,
-            total: +Math.max(0, parseFloat(dayInvoice.total - incentive.rate).toFixed(2)),
-          },
-        };
+      if (additionalMatch) {
+        total -= additionalMatch.rate || 0;
         updated = true;
       }
 
-      if (updated) {
+      // Check if the new total would be negative
+      if (updated && total < 0) {
+        negativeTotalInvoices.push({
+          driverName: dayInvoice.driverName || 'Unknown Driver',
+          date: dayInvoice.date,
+        });
+      } else if (updated) {
+        // Proceed with update only if total is not negative
+        if (mainMatch) {
+          update.$pull = {
+            ...update.$pull,
+            incentiveDetailforMain: { _id: mainMatch._id },
+          };
+        }
+
+        if (additionalMatch) {
+          update.$pull = {
+            ...update.$pull,
+            incentiveDetailforAdditional: { _id: additionalMatch._id },
+          };
+        }
+
+        update.$set = {
+          total: +Math.max(0, parseFloat(total).toFixed(2)),
+        };
+
         bulkDayInvoiceOps.push({
           updateOne: {
             filter: { _id: dayInvoice._id },
             update,
           },
         });
+
         affectedWeeklyInvoices.add(`${dayInvoice.driverId}_${dayInvoice.serviceWeek}`);
       }
     }
 
+    // If any invoice would have a negative total, return 400 with affected invoices
+    if (negativeTotalInvoices.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete incentive: some invoices would have negative totals',
+        affectedInvoices: negativeTotalInvoices,
+      });
+    }
+
+    // Perform bulk updates for DayInvoices
     if (bulkDayInvoiceOps.length > 0) {
       await DayInvoice.bulkWrite(bulkDayInvoiceOps);
     }
 
-    // Step 4: Update affected WeeklyInvoices
+    // --- WeeklyInvoice and Installment recalculation ---
     const bulkWeeklyInvoiceOps = [];
     const bulkInstallmentOps = [];
 
@@ -366,7 +406,6 @@ router.delete('/:id', async (req, res) => {
         );
       };
 
-      // Sum DayInvoice totals
       for (const inv of allDayInvoices) {
         const invBaseTotal = +parseFloat(inv.total || 0).toFixed(2);
         weeklyBaseTotal += invBaseTotal;
@@ -375,7 +414,6 @@ router.delete('/:id', async (req, res) => {
         }
       }
 
-      // Add existing AdditionalCharges contributions
       let additionalChargesTotal = 0;
       for (const charge of weeklyInvoice.additionalChargesDetail || []) {
         let rateAdjustment = charge.rate;
@@ -384,7 +422,7 @@ router.delete('/:id', async (req, res) => {
         }
         additionalChargesTotal += +parseFloat(rateAdjustment).toFixed(2);
         if (isVatApplicable(new Date(charge.week))) {
-          weeklyVatTotal += +parseFloat(rateAdjustment * 0.2).toFixed(2);
+          weeklyVatTotal += +parseFloat(rateAdjustment * 0.2).toFixed(2); // Fixed syntax error
         }
       }
 
@@ -392,13 +430,11 @@ router.delete('/:id', async (req, res) => {
       weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
       const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
-      // Create temporary copy of installments for recalculation
       const tempInstallments = (weeklyInvoice.installments || []).map((inst) => ({
         ...inst,
         installmentPending: inst.installmentPending,
       }));
 
-      // Restore previous installment deductions temporarily
       const installmentPendingUpdates = new Map();
       for (const detail of weeklyInvoice.installmentDetail || []) {
         const inst = tempInstallments.find((i) => i._id.toString() === detail._id?.toString());
@@ -408,7 +444,6 @@ router.delete('/:id', async (req, res) => {
         }
       }
 
-      // Recalculate installment deductions
       const installmentMap = new Map();
       let remainingTotal = weeklyTotalBeforeInstallments;
 
@@ -425,7 +460,6 @@ router.delete('/:id', async (req, res) => {
 
         inst.installmentPending = +parseFloat(inst.installmentPending - deduction).toFixed(2);
 
-        // Prepare bulk update for Installment
         bulkInstallmentOps.push({
           updateOne: {
             filter: { _id: inst._id },
@@ -453,7 +487,6 @@ router.delete('/:id', async (req, res) => {
 
       const finalWeeklyTotal = +Math.max(0, parseFloat(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
 
-      // Prepare bulk update for WeeklyInvoice
       bulkWeeklyInvoiceOps.push({
         updateOne: {
           filter: { _id: weeklyInvoice._id },
@@ -469,7 +502,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    // Execute bulk writes for DayInvoices, Installments, and WeeklyInvoices
+    // Perform bulk updates for Installments and WeeklyInvoices
     if (bulkInstallmentOps.length > 0) {
       await Installment.bulkWrite(bulkInstallmentOps);
     }
@@ -477,9 +510,8 @@ router.delete('/:id', async (req, res) => {
       await WeeklyInvoice.bulkWrite(bulkWeeklyInvoiceOps);
     }
 
-    // Step 5: Delete the Incentive
+    // Delete the incentive
     await Incentive.findByIdAndDelete(incentiveId);
-
     sendToClients(req.db, { type: 'incentivesUpdated' });
 
     res.status(200).json({ message: 'Incentive deleted and invoices updated' });
@@ -488,6 +520,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ message: 'Error deleting incentive', error: error.message });
   }
 });
+
 
 
 

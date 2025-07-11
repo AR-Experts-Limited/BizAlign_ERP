@@ -127,7 +127,7 @@ router.post('/', async (req, res) => {
       // ----------- MAIN Service Logic -------------
       if (invoice.rateCardIdforMain) {
         const rc = invoice.rateCardIdforMain;
-        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.rate || 0);
+        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate; // same as current
         const newDeductionTotal = oldDeductionTotal;
@@ -170,7 +170,7 @@ router.post('/', async (req, res) => {
         const rc = invoice.rateCardIdforAdditional;
         const addDetail = invoice.additionalServiceDetails;
 
-        const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.rate || 0);
+        const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate;
         const newDeductionTotal = oldDeductionTotal;
@@ -487,7 +487,7 @@ router.put('/', async (req, res) => {
       // ----------- MAIN Service Logic -------------
       if (invoice.rateCardIdforMain) {
         const rc = invoice.rateCardIdforMain;
-        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.rate || 0);
+        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate;
         const newDeductionTotal = oldDeductionTotal;
@@ -530,7 +530,7 @@ router.put('/', async (req, res) => {
         const rc = invoice.rateCardIdforAdditional;
         const addDetail = invoice.additionalServiceDetails;
 
-        const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.rate || 0);
+        const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate;
         const newDeductionTotal = oldDeductionTotal;
@@ -538,7 +538,7 @@ router.put('/', async (req, res) => {
         const newMileage = round2(rc.mileage);
         const newCalcMileage = round2(addDetail.miles * newMileage);
 
-        const serviceRateForAdditional = round2(rc.serviceRate + rc.byodRate + newCalcMileage + newIncentiveRate);
+        const serviceRateforAdditional = round2(rc.serviceRate + rc.byodRate + newCalcMileage + newIncentiveRate);
 
         const total = round2(
           invoice.total
@@ -896,8 +896,8 @@ router.delete('/', async (req, res) => {
     const updateOperations = invoicesToUpdate.map(invoice => {
       // Calculate deductions
       let totalDeduction = round2(invoice.serviceRateforAdditional || 0);
-      if (invoice.incentiveDetailforAdditional?.rate) {
-        totalDeduction += round2(invoice.incentiveDetailforAdditional.rate);
+      if (invoice.incentiveDetailforAdditional?.length > 0) {
+        totalDeduction += round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
       }
 
       return {

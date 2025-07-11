@@ -45,7 +45,7 @@ const rateCardFinder = (date, ratecards, week, service, driver) => {
 
 const getDriverTypeForDate = (driver, date) => {
 
-    const dateKey = moment(date).format('M/D/YYYY');
+    const dateKey = moment(date).format('D/M/YYYY');
 
     // 1. Custom override
     if (driver?.customTypeOfDriver?.[dateKey]) {
@@ -294,11 +294,10 @@ const Rota = () => {
         const rateCard = rateCardFinder(day, ratecards, week, service, driver);
         const deductions = await getDeductionDetails(_id, day);
         const incentives = await getIncentiveDetails(service, site, new Date(day));
-
         if (invoice) {
             setRotaDetail({
                 dayInvoice: { driver, ...invoice },
-                deductions: invoice.deductionDetail ? invoice.deductionDetail : deductions,
+                deductions: deductions,
                 incentiveDetailforMain: invoice.incentiveDetail ? invoice.incentiveDetail : incentives,
                 existingInvoice: true
             });
@@ -323,13 +322,14 @@ const Rota = () => {
             additionalServiceApproval: '',
             deductionDetail: deductions,
             rateCardIdforMain: rateCard?._id,
-            incentiveDetailforMain: incentives[0],
+            incentiveDetailforMain: incentives,
             total: 0,
         };
 
         setRotaDetail({
             dayInvoice,
             deductions,
+            incentives,
             existingInvoice: false
         });
     };
@@ -339,7 +339,7 @@ const Rota = () => {
 
         const { serviceWeek, driverVehicleType, date, site, driver } = rotaDetail.dayInvoice;
         const isAdmin = hasAdminPrivileges(userDetails.role);
-        let rateCardIdforAdditional = '';
+        let rateCardIdforAdditional = null;
         const incentiveDetailforAdditional = await getIncentiveDetails(additionalService, site, new Date(date));
 
         setRotaDetail((prev) => {
@@ -348,7 +348,7 @@ const Rota = () => {
                 (Number(prevAdditionalServiceDetails.serviceRate || 0) +
                     Number(prevAdditionalServiceDetails.byodRate || 0) +
                     Number(prevAdditionalServiceDetails.calculatedMileage || 0) +
-                    Number(prev.dayInvoice.incentiveDetailforAdditional?.rate || 0)
+                    Number(prev.dayInvoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
                 ).toFixed(2)
             );
 
@@ -377,7 +377,7 @@ const Rota = () => {
                     (Number(additionalServiceDetails.serviceRate || 0) +
                         Number(additionalServiceDetails.byodRate || 0) +
                         Number(additionalServiceDetails.calculatedMileage || 0) +
-                        Number(incentiveDetailforAdditional[0]?.rate || 0)).toFixed(2)
+                        Number(incentiveDetailforAdditional.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)
 
                 )
                 : 0;
@@ -387,7 +387,7 @@ const Rota = () => {
                 dayInvoice: {
                     ...prev.dayInvoice,
                     rateCardIdforAdditional,
-                    incentiveDetailforAdditional: incentiveDetailforAdditional[0],
+                    incentiveDetailforAdditional: incentiveDetailforAdditional,
                     additionalServiceApproval: additionalService ? getApprovalStatus('', isAdmin) : '',
                     serviceRateforAdditional: isAdmin ? newAdditionalServiceTotal : 0,
                     total: isAdmin || prev.dayInvoice.additionalServiceApproval === 'Approved'
@@ -411,8 +411,8 @@ const Rota = () => {
                 (Number(prevAdditionalServiceDetails.serviceRate || 0) +
                     Number(prevAdditionalServiceDetails.byodRate || 0) +
                     Number(prevAdditionalServiceDetails.calculatedMileage || 0) +
-                    Number(prev.dayInvoice.incentiveDetailforAdditional?.rate || 0)).toFixed(2)
-            );
+                    Number(prev.dayInvoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)
+            )
 
             const updatedAdditionalServiceDetails = {
                 ...prevAdditionalServiceDetails,
@@ -429,7 +429,7 @@ const Rota = () => {
                 (Number(updatedAdditionalServiceDetails.serviceRate || 0) +
                     Number(updatedAdditionalServiceDetails.byodRate || 0) +
                     Number(updatedAdditionalServiceDetails.calculatedMileage || 0) +
-                    Number(prev.dayInvoice.incentiveDetailforAdditional?.rate || 0)).toFixed(2)
+                    Number(prev.dayInvoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)
 
             );
 
@@ -569,7 +569,12 @@ const Rota = () => {
             0
         );
 
-        const incentiveDetailforMain = dayInvoice.incentiveDetailforMain ? dayInvoice.incentiveDetailforMain.rate : 0;
+        const totalIncentiveforMain = dayInvoice.incentiveDetailforMain?.reduce(
+            (sum, inc) => sum + Number(inc.rate || 0),
+            0
+        );
+
+        // const incentiveDetailforMain = dayInvoice.incentiveDetailforMain ? dayInvoice.incentiveDetailforMain.rate : 0;
 
         const additionalServiceTotal = dayInvoice.additionalServiceDetails && dayInvoice.additionalServiceApproval === 'Approved'
             ? Number(
@@ -590,7 +595,7 @@ const Rota = () => {
                     dayInvoice.byodRate +
                     calculatedMileage +
                     additionalServiceTotal +
-                    incentiveDetailforMain -
+                    totalIncentiveforMain -
                     totalDeductions).toFixed(2)
             ),
             approvalStatus: "Access Requested",
@@ -854,26 +859,37 @@ const Rota = () => {
                         </InputWrapper>
 
                         {/* Incentives Section */}
-                        {rotaDetail?.dayInvoice?.incentiveDetailforMain && (
-                            <div className='incentive-detail'>
-                                <label></label>
-                                <InputGroup
-                                    type="text"
-                                    icon={<FaPoundSign className="text-neutral-300" size={20} />}
-                                    iconPosition="left"
-                                    label={`${rotaDetail?.dayInvoice?.incentiveDetailforMain.type} Incentive for Main Service`}
-                                    value={rotaDetail?.dayInvoice?.incentiveDetailforMain.rate}
-                                    disabled
-                                />
-                            </div>
-                        )}
+
+                        {rotaDetail?.dayInvoice?.incentiveDetailforMain?.length > 0 && (
+                            <InputWrapper title="Incentives">
+                                {rotaDetail?.dayInvoice?.incentiveDetailforMain.map((inc) => (
+                                    <div className='incentive-detail'>
+                                        <InputGroup
+                                            type="text"
+                                            icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                            iconPosition="left"
+                                            label={`${inc.type} Incentive for ${rotaDetail?.dayInvoice?.mainService}`}
+                                            value={inc.rate}
+                                            disabled
+                                        />
+                                    </div>))}
+                            </InputWrapper>)}
 
                         {/* Deductions Section */}
                         {rotaDetail?.deductions?.length > 0 && (
                             <InputWrapper title="Deductions">
+                                {rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0 && <div className='flex gap-1 text-sm text-red-500 bg-red-100/60 rounded-md px-2 py-1 border border-red-500 w-fit'><i class="flex items-center text-[0.8rem] fi fi-ss-triangle-warning"></i>Total deductions cannot reduce the final amount to below zero</div>}
                                 {rotaDetail?.deductions?.map((ded) => (
                                     <div key={ded._id} className="flex items-center gap-5 justify-between">
-                                        <div className="flex-1 grid grid-cols-2 space-x-3">
+                                        <div className="flex-1 grid grid-cols-[1fr_8fr_8fr] space-x-3">
+                                            <div className='flex items-center justify-center mt-6'><input className='h-[50%] w-4 accent-primary-400 rounded focus:ring-primary-400' type="checkbox" checked={rotaDetail?.dayInvoice.deductionDetail?.find((prevded) => prevded._id === ded._id)} disabled={!['super-admin', 'Admin'].includes(userDetails?.role)} onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: [...prev.dayInvoice.deductionDetail, ded], total: prev.dayInvoice.total - ded.rate } }))
+                                                } else {
+                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: prev.dayInvoice.deductionDetail.filter((prevded) => prevded._id !== ded._id), total: prev.dayInvoice.total + ded.rate } }))
+                                                }
+
+                                            }} /></div>
                                             <InputGroup disabled={true} label="Deduction Type" value={ded.serviceType} />
                                             <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Deduction amount" value={ded.rate} />
                                         </div>
@@ -949,18 +965,20 @@ const Rota = () => {
 
 
                                             {/* Incentives Section */}
-                                            {rotaDetail?.dayInvoice?.incentiveDetailforAdditional && (
-                                                <div className='incentive-detail'>
-                                                    <label></label>
-                                                    <InputGroup
-                                                        type="text"
-                                                        icon={<FaPoundSign className="text-neutral-300" size={20} />}
-                                                        iconPosition="left"
-                                                        label={`${rotaDetail?.dayInvoice?.incentiveDetailforAdditional.type} Incentive for Additional Service`}
-                                                        value={rotaDetail?.dayInvoice?.incentiveDetailforAdditional.rate}
-                                                        disabled
-                                                    />
-                                                </div>
+                                            {rotaDetail?.dayInvoice?.incentiveDetailforAdditional?.length > 0 && (
+                                                <InputWrapper title="Incentives">
+                                                    {rotaDetail?.dayInvoice?.incentiveDetailforAdditional.map((inc) => (
+                                                        <div className='incentive-detail'>
+                                                            <InputGroup
+                                                                type="text"
+                                                                icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                                iconPosition="left"
+                                                                label={`${inc.type} Incentive for ${rotaDetail?.dayInvoice?.additionalServiceDetails?.service}`}
+                                                                value={inc.rate}
+                                                                disabled
+                                                            />
+                                                        </div>))}
+                                                </InputWrapper>
                                             )}
 
 
@@ -1078,18 +1096,18 @@ const Rota = () => {
                             <div className='w-full'>
                                 <InputGroup
                                     name="total"
-                                    error={errors.total}
+                                    // error={errors.total}
                                     icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                     iconPosition="left"
                                     type="number"
                                     className='w-full'
                                     disabled={true}
                                     placeholder="Enter miles to calculate total"
-                                    value={(rotaDetail?.dayInvoice?.total > 0) ? rotaDetail?.dayInvoice?.total : ''}
+                                    value={(rotaDetail?.dayInvoice.miles > 0) ? rotaDetail?.dayInvoice?.total : ''}
                                 />
-                                {errors.total && (
+                                {/* {errors.total && (
                                     <p className="text-sm mt-1 text-red-500">*The total cannot be a negative value</p>
-                                )}
+                                )} */}
                             </div>
                         </div>
                         <div className="flex gap-2 items-center">
@@ -1113,16 +1131,18 @@ const Rota = () => {
                                     </button>
                                     <button
                                         name="edit"
+                                        disabled={rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0}
                                         onClick={handleSubmitInvoice}
-                                        className="px-2 h-fit py-1 bg-amber-500 rounded-md text-white hover:bg-amber-600"
+                                        className="px-2 h-fit py-1 bg-amber-500 rounded-md text-white hover:bg-amber-600 disabled:bg-gray-300"
                                     >
                                         Update
                                     </button>
                                 </>
                             ) : (
                                 <button
-                                    className="px-2 py-1 h-fit bg-primary-500 rounded-md text-white hover:bg-primary-600"
+                                    className="px-2 py-1 h-fit bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                                     name="add"
+                                    disabled={rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0}
                                     onClick={handleSubmitInvoice}
                                 >
                                     Initiate Invoice Request

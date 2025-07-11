@@ -924,7 +924,7 @@ const WeeklyInvoice = () => {
                                                 )}
 
                                             {currentInvoice?.invoice.invoices.some(
-                                                (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (
+                                                (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">Incentive Rate</th>)}
 
                                             {currentInvoice?.invoice.invoices.some(
@@ -1004,8 +1004,8 @@ const WeeklyInvoice = () => {
                                                                 </>
                                                             )}
                                                         {currentInvoice?.invoice.invoices.some(
-                                                            (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) && (<td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
-                                                                £{(invoice.incentiveDetailforMain?.rate || 0) + (invoice.incentiveDetailforAdditional?.rate || 0)}
+                                                            (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) && (<td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                                £{Number(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0) + Number(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)}
                                                             </td>)}
                                                         {currentInvoice?.invoice.invoices.some(
                                                             (invoice) => invoice.deductionDetail?.length > 0) && (
@@ -1035,7 +1035,7 @@ const WeeklyInvoice = () => {
                                                 colSpan={
                                                     6 +
                                                     (currentInvoice?.invoice.invoices.some(
-                                                        (invoice) => invoice.incentiveDetailforMain?.rate || invoice.incentiveDetailforAdditional?.rate) ? 1 : 0) +
+                                                        (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(
                                                         (invoice) => invoice.deductionDetail?.length > 0) ? 1 : 0) +
                                                     (currentInvoice?.invoice.invoices.some(

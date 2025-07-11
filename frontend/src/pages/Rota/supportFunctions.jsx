@@ -2,12 +2,11 @@ import axios from "axios"
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const getIncentiveDetails = async (driverService, selectedSite, date) => {
-    const monthandyear = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0')
     const incentiveDetail = await axios.get(`${API_BASE_URL}/api/incentives/driver`, {
         params: {
             service: driverService,
             site: selectedSite,
-            month: monthandyear
+            date: date
         }
     })
     return incentiveDetail.data

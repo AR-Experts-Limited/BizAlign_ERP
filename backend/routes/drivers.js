@@ -335,6 +335,11 @@ router.post('/', upload.any(), asyncHandler(async (req, res) => {
 
     res.status(201).json(savedDriver);
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.email) {
+      return res.status(409).json({
+        message: "Email already exists. Please use a different email."
+      });
+    }
     console.error('Error creating driver user:', error);
     res.status(500).json({ message: 'Error creating driver user', error: error.message });
   }
@@ -448,7 +453,7 @@ router.post('/delete-additional-version', asyncHandler(async (req, res) => {
 
 // Server-side implementation of getDriverTypeForDate from Rota.jsx
 const getDriverTypeForDate = (driver, date) => {
-  const dateKey = moment(date).format('M/D/YYYY');
+  const dateKey = moment(date).format('D/M/YYYY');
 
   // 1. Custom override
   if (driver?.customTypeOfDriver?.[dateKey]) {
@@ -736,9 +741,9 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
         // Update main service
         const mainRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.mainService, updatedDriver);
         if (!mainRateCard) continue
-        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.rate || 0);
+        const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, ded) => sum + round2(ded.rate), 0) || 0;
-        const newIncentiveRate = round2(invoice.incentiveDetailforMain?.rate || 0);
+        const newIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
         const newDeductionTotal = invoice.deductionDetail?.reduce((sum, ded) => sum + round2(ded.rate), 0) || 0;
 
         updateForMain.push({
@@ -773,7 +778,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
         if (invoice.additionalServiceDetails?.service) {
           const additionalRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.additionalServiceDetails.service, updatedDriver);
           if (!additionalRateCard) continue
-          const oldAdditionalIncentiveRate = round2(invoice.incentiveDetailforAdditional?.rate || 0);
+          const oldAdditionalIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
 
           updateForAdditional.push({
             updateOne: {
@@ -788,7 +793,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
                     (additionalRateCard?.serviceRate || 0) +
                     (additionalRateCard?.byodRate || 0) +
                     (invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)) +
-                    (invoice.incentiveDetailforAdditional?.rate || 0)
+                    round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
                   ),
                   total: round2(
                     invoice.total
@@ -799,7 +804,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
                     + round2(additionalRateCard?.serviceRate || 0)
                     + round2(additionalRateCard?.byodRate || 0)
                     + round2(invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0))
-                    + round2(invoice.incentiveDetailforAdditional?.rate || 0)
+                    + round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
                   ),
                 },
               },
@@ -811,13 +816,13 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
           (mainRateCard?.serviceRate || 0) +
           (mainRateCard?.byodRate || 0) +
           (invoice.miles * (mainRateCard?.mileage || 0)) +
-          (invoice.incentiveDetailforMain?.rate || 0) -
+          round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0) -
           newDeductionTotal +
           (invoice.additionalServiceDetails?.service && invoice.additionalServiceApproval === 'Approved'
             ? (additionalRateCard?.serviceRate || 0) +
             (additionalRateCard?.byodRate || 0) +
             (invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)) +
-            (invoice.incentiveDetailforAdditional?.rate || 0)
+            round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
             : 0)
         );
 

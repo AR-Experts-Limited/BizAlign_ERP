@@ -13,6 +13,10 @@ import { FcPlus } from "react-icons/fc";
 import { FaEye, FaUser } from "react-icons/fa";
 import { FaBuildingUser } from "react-icons/fa6";
 import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
+import Spinner from '../../components/UIElements/Spinner'
+import SuccessTick from '../../components/UIElements/SuccessTick'
+import TrashBin from '../../components/UIElements/TrashBin'
+
 
 import DatePicker from '../../components/Datepicker/Datepicker';
 
@@ -39,6 +43,8 @@ const Deductions = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [documentView, setDocumentView] = useState(null)
+    const [toastOpen, setToastOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
     const deductionFileRef = useRef(null)
 
     const [errors, setErrors] = useState({
@@ -89,7 +95,7 @@ const Deductions = () => {
             serviceType: !newDeduction.serviceType,
             rate: !newDeduction.rate || newDeduction.rate <= 0,
             date: !newDeduction.date,
-            deductionDocument: !['image/jpeg', 'image/jpg', 'image/png'].includes(newDeduction?.deductionDocument?.type)
+            deductionDocument: newDeduction?.deductionDocument && !['image/jpeg', 'image/jpg', 'image/png'].includes(newDeduction?.deductionDocument?.type)
         };
         setErrors(newErrors);
         return !Object.values(newErrors).some(error => error);
@@ -106,7 +112,6 @@ const Deductions = () => {
             setVatValue(false);
         }
     };
-
     const handleAddDeduction = async (e) => {
         if (!validateFields()) return;
         e.preventDefault();
@@ -135,8 +140,22 @@ const Deductions = () => {
             setNewDeduction(clearDeduction)
             setSearchTerm('')
             deductionFileRef.current.value = ''
+
+            setToastOpen({
+                content: <>
+                    <SuccessTick width={20} height={20} />
+                    <p className='text-sm font-bold text-green-500'>Deduction added successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error adding deduction:', error);
+            setToastOpen({
+                content: <>
+                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
     };
 
@@ -144,6 +163,15 @@ const Deductions = () => {
         try {
             await axios.delete(`${API_BASE_URL}/api/deductions/${id}`);
             setDeductions(deductions.filter(ded => ded._id !== id));
+
+            setToastOpen({
+                content: <>
+                    <TrashBin width={25} height={25} />
+                    <p className='text-sm font-bold text-red-500'>Deduction deleted successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
+
         } catch (error) {
             console.error('Error deleting deduction:', error);
         }
@@ -227,6 +255,16 @@ const Deductions = () => {
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-4 justify-around items-center'>
+                    {toastOpen?.content}
+                </div>
+            </div>
+            <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
+                </div>
+            </div>
             <div className='flex flex-col w-full h-full'>
                 <h2 className='text-xl mb-3 font-bold dark:text-white'>Deductions</h2>
                 <div className='flex-1 flex overflow-auto gap-3'>

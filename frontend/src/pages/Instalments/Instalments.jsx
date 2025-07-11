@@ -75,7 +75,7 @@ const Instalments = () => {
             installmentType: !newInstalment.installmentType,
             installmentRate: !newInstalment.installmentRate || newInstalment.installmentRate <= 0,
             tenure: !newInstalment.tenure || newInstalment.tenure <= 0,
-            installmentDocument: !['image/jpeg', 'image/jpg', 'image/png'].includes(newInstalment?.installmentDocument?.type)
+            installmentDocument: newInstalment?.installmentDocument && !['image/jpeg', 'image/jpg', 'image/png'].includes(newInstalment?.installmentDocument?.type)
 
         };
         setErrors(newErrors);

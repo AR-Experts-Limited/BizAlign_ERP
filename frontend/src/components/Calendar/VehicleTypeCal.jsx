@@ -17,7 +17,7 @@ const VehicleTypeCal = ({
     const [calendarOpen, setCalendarOpen] = useState(false);
     const flatpickrRef = useRef(null);
 
-    const formatDateKey = (date) => moment(date).format('M/D/YYYY')
+    const formatDateKey = (date) => moment(date).format('D/M/YYYY')
 
     const parseDate = (str) => {
         const [day, month, year] = str?.split('/');
@@ -30,6 +30,8 @@ const VehicleTypeCal = ({
             let typeOfDriverSorted = [...typeOfDriverTrace].sort(
                 (a, b) => parseDate(a.timestamp) - parseDate(b.timestamp)
             );
+
+            console.log('typeOfDriver:', typeOfDriverSorted)
 
             let endDate = parseDate(typeOfDriverSorted[0]?.timestamp);
             result.push({
@@ -52,6 +54,7 @@ const VehicleTypeCal = ({
                 });
             }
         }
+        console.log('result:', result)
         setTaggedRanges(result);
     };
 
@@ -70,7 +73,6 @@ const VehicleTypeCal = ({
     };
 
     const handleDateSelect = (selectedDates) => {
-        console.log(selectedDates)
         if (selectedDates.length === 0) return;
 
         if (selectedDates.length === 1) {
@@ -113,12 +115,8 @@ const VehicleTypeCal = ({
                 delete updated[key];
             }
         }
-        console.log(selection)
 
         setTaggedDates(updated);
-        console.log('inside calendar:', customTypeOfDriver)
-        console.log('updated', updated)
-        console.log(setCustomTypeOfDriver)
         setCustomTypeOfDriver(updated);
         setSelection({ start: null, end: null });
         setCalendarOpen(true)

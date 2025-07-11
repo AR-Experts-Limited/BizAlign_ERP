@@ -47,7 +47,7 @@ const ManagePersonnels = () => {
     const [newDriver, setNewDriver] = useState(clearDriver);
     const { driverStatus } = useSelector((state) => state.drivers);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
-    const driversBySite = useSelector((state) => state.drivers.bySite);
+    const { bySite: driversBySite, error } = useSelector((state) => state.drivers);
     const { userDetails } = useSelector((state) => state.auth);
     const [driversList, setDriversList] = useState(Object.values(driversBySite).flat())
     const colList = { 'First Name': 'firstName', 'Last Name': 'lastName', 'Vehicle Size': 'vehicleSize', 'Transport Id': 'transportId', 'Site': 'siteSelection' }
@@ -144,11 +144,13 @@ const ManagePersonnels = () => {
                         userDetails={userDetails}
                         clearDriver={clearDriver}
                         newDriver={newDriver}
+                        error={error}
                         setNewDriver={setNewDriver}
                         personnelMode={personnelMode}
                         setPersonnelMode={setPersonnelMode}
                         sites={sites}
                         setToastOpen={setToastOpen}
+                        driversList={driversList}
                     />}
             </div>
         </div>
