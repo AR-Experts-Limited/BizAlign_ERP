@@ -35,7 +35,7 @@ import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
 
 
 function App() {
-  const [sidebarIsOpen, setSidebarIsOpen] = useState(false);
+  const [sidebarIsOpen, setSidebarIsOpen] = useState(0);
   const [sidebarLock, setSidebarLock] = useState(false);
   const location = useLocation();
   const hideLayout = location.pathname === '/login' || location.pathname === '/';
@@ -94,18 +94,16 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    setSidebarIsOpen(sidebarLock)
-  }, [sidebarLock])
+
 
   return (
     <div className="app fixed bg-stone-100 dark:bg-dark-4 w-screen h-screen flex flex-col">
-      {!hideLayout && <Navbar sidebarLock={sidebarLock} setSidebarLock={setSidebarLock} />}
+      {!hideLayout && <Navbar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} />}
 
       <div className="flex flex-1 overflow-hidden">
         {!hideLayout && (<>
           <div className={`transition-all duration-300 ${sidebarIsOpen ? 'w-45 md:w-60' : 'w-0 md:w-18'}`}>
-            <Sidebar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} sidebarLock={sidebarLock} />
+            <Sidebar sidebarIsOpen={sidebarIsOpen} setSidebarIsOpen={setSidebarIsOpen} />
           </div>
           <div
             className='h-full absolute top-0 left-0 w-0.5'
@@ -115,7 +113,6 @@ function App() {
           </div>
         </>
         )}
-
         <div className={`flex-1 overflow-auto ${sidebarIsOpen && 'max-sm:blur-xs max-sm:pointer-events-none '}`} >
           {(isLoading)
             ? <div className='h-full w-full flex justify-center items-center '><img className='w-50 h-30' src="/bizalign_loading_loop.gif" /></div> // You can show a spinner here
