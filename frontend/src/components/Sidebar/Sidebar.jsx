@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { BiStation } from "react-icons/bi";
 
-const Sidebar = ({ sidebarIsOpen, setSidebarIsOpen, sidebarLock }) => {
+const Sidebar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
     const location = useLocation();
     const itemRefs = useRef({});
     const containerRef = useRef(null);
@@ -35,7 +35,7 @@ const Sidebar = ({ sidebarIsOpen, setSidebarIsOpen, sidebarLock }) => {
     }, [location.pathname, sidebarIsOpen]);
 
     const handleMouseLeave = () => {
-        if (sidebarIsOpen && !sidebarLock) { // Only close if not over opener
+        if (sidebarIsOpen !== 2) { // Only close if not over opener
             timeoutRef.current = setTimeout(() => {
                 setSidebarIsOpen(false);
             }, 500);
