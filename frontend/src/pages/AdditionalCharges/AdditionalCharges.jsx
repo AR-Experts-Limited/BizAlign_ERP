@@ -94,6 +94,7 @@ const AdditionalCharges = () => {
             }
             const newAddOn = {
                 ...addOn,
+                rate: addOn?.vat ? parseFloat(addOn?.rate * 1.2).toFixed(2) : addOn?.rate,
                 driverName: `${driverDetail.firstName} ${driverDetail.lastName}`,
                 user_ID: driverDetail.user_ID,
                 signed: false,
@@ -121,6 +122,7 @@ const AdditionalCharges = () => {
                     <p className='text-sm font-bold text-green-500'>Additional Charge added successfully</p>
                 </>
             })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error adding charge:', error);
             setToastOpen({
@@ -137,10 +139,11 @@ const AdditionalCharges = () => {
             await axios.delete(`${API_BASE_URL}/api/addons/${id}`);
             setAllAdditionalCharges(allAdditionalCharges.filter((addon) => addon._id !== id));
             setToastOpen({
-                content: <>
-                    <TrashBin width={25} height={25} />
-                    <p className='text-sm font-bold text-red-500'>Additional Charge deleted successfully</p>
-                </>
+                content:
+                    <>
+                        <TrashBin width={25} height={25} />
+                        <p className='text-sm font-bold text-red-500'>Additional Charge deleted successfully</p>
+                    </>
             })
             setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
@@ -227,6 +230,14 @@ const AdditionalCharges = () => {
         } catch {
             return 'Document';
         }
+    };
+
+    const isVatApplicable = () => {
+        const driver = driversBySite[addOn?.site]?.find((driver) => driver._id === addOn?.driverId)
+        return (
+            driver && ((driver?.vatDetails?.vatNo && new Date() >= new Date(driver.vatDetails.vatEffectiveDate)) ||
+                (driver?.companyVatDetails?.vatNo && new Date() >= new Date(driver.companyVatDetails.companyVatEffectiveDate)))
+        );
     };
 
     return (
@@ -340,7 +351,7 @@ const AdditionalCharges = () => {
                                             setAddOn({ ...addOn, week: week });
                                             setErrors({ ...errors, week: false });
                                         }}
-                                        selectedWeeks={addOn.serviceWeek}
+                                        selectedWeeks={addOn.week}
                                     />
                                     {errors.week && <p className="text-red-400 text-sm mt-1">* Week is required</p>}
                                 </div>
@@ -410,6 +421,28 @@ const AdditionalCharges = () => {
                                     {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid amount is required</p>}
                                 </div>
 
+                                {isVatApplicable() && addOn?.type === 'addition' &&
+                                    <div>
+                                        <InputGroup type='toggleswitch' label="Add 20% VAT" onChange={(e) => setAddOn(prev => ({ ...prev, vat: e.target.checked }))} />
+                                    </div>
+                                }
+
+                                {addOn?.vat && addOn?.type === 'addition' && <div>
+                                    <InputGroup
+                                        type="number"
+                                        label={`Rate (£) after VAT 20%`}
+                                        placeholder="Enter Amount"
+                                        disabled={true}
+                                        min={0}
+                                        step="any"
+                                        iconPosition="left"
+                                        icon={<div>{addOn.type === 'deduction' ? <i class="absolute top-4 left-1 flex items-center fi fi-rr-minus-small text-[1.2rem] text-neutral-300"></i> : <i class="absolute top-4 left-1 flex items-center fi fi-rr-plus-small text-[1.2rem] text-neutral-300"></i>}<FaPoundSign className="text-neutral-300" /></div>}
+                                        error={errors.rate}
+                                        value={parseFloat(addOn?.rate * 1.2).toFixed(2)}
+                                    />
+                                </div>}
+
+
                                 {/* Document upload */}
                                 <div>
                                     <label className="text-sm font-medium text-black dark:text-white">Document Upload</label>
@@ -462,7 +495,7 @@ const AdditionalCharges = () => {
                                             <td>{addon.site}</td>
                                             <td>{addon.week}</td>
                                             <td>{addon.title}</td>
-                                            <td>{addon.type === 'addition' ? '+ £' : '- £'}{addon.rate}</td>
+                                            <td>{addon.type === 'addition' ? '+ £ ' : '- £ '}{addon.rate}</td>
                                             <td>
                                                 <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
                                                     {addon.signed ? (

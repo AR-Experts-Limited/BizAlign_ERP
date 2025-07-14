@@ -884,9 +884,9 @@ const Rota = () => {
                                         <div className="flex-1 grid grid-cols-[1fr_8fr_8fr] space-x-3">
                                             <div className='flex items-center justify-center mt-6'><input className='h-[50%] w-4 accent-primary-400 rounded focus:ring-primary-400' type="checkbox" checked={rotaDetail?.dayInvoice.deductionDetail?.find((prevded) => prevded._id === ded._id)} disabled={!['super-admin', 'Admin'].includes(userDetails?.role)} onChange={(e) => {
                                                 if (e.target.checked) {
-                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: [...prev.dayInvoice.deductionDetail, ded], total: prev.dayInvoice.total - ded.rate } }))
+                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: [...prev.dayInvoice.deductionDetail, ded], total: +parseFloat(prev.dayInvoice.total - ded.rate).toFixed(2) } }))
                                                 } else {
-                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: prev.dayInvoice.deductionDetail.filter((prevded) => prevded._id !== ded._id), total: prev.dayInvoice.total + ded.rate } }))
+                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: prev.dayInvoice.deductionDetail.filter((prevded) => prevded._id !== ded._id), total: +parseFloat(prev.dayInvoice.total + ded.rate).toFixed(2) } }))
                                                 }
 
                                             }} /></div>
