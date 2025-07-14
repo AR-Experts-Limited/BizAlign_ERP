@@ -8,8 +8,9 @@ import InputGroup from '../../components/InputGroup/InputGroup';
 import { fetchDrivers } from '../../features/drivers/driverSlice';
 import { fetchSites } from '../../features/sites/siteSlice';
 import WeekInput from '../../components/Calendar/WeekInput';
-
-
+import SuccessTick from '../../components/UIElements/SuccessTick'
+import Spinner from '../../components/UIElements/Spinner'
+import TrashBin from '../../components/UIElements/TrashBin'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -34,6 +35,9 @@ const AdditionalCharges = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isUploadingFile, setIsUploadingFile] = useState({});
+    const [toastOpen, setToastOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
+
     const [errors, setErrors] = useState({
         site: false,
         driverId: false,
@@ -110,8 +114,21 @@ const AdditionalCharges = () => {
             setAllAdditionalCharges([...allAdditionalCharges, response.data.obj]);
             setAddOn(clearAddOn);
             setSearchTerm('');
+
+            setToastOpen({
+                content: <>
+                    <SuccessTick width={20} height={20} />
+                    <p className='text-sm font-bold text-green-500'>Additional Charge added successfully</p>
+                </>
+            })
         } catch (error) {
             console.error('Error adding charge:', error);
+            setToastOpen({
+                content: <>
+                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
     };
 
@@ -119,8 +136,21 @@ const AdditionalCharges = () => {
         try {
             await axios.delete(`${API_BASE_URL}/api/addons/${id}`);
             setAllAdditionalCharges(allAdditionalCharges.filter((addon) => addon._id !== id));
+            setToastOpen({
+                content: <>
+                    <TrashBin width={25} height={25} />
+                    <p className='text-sm font-bold text-red-500'>Additional Charge deleted successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error deleting charge:', error);
+            setToastOpen({
+                content: <>
+                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
     };
 
@@ -202,6 +232,16 @@ const AdditionalCharges = () => {
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
             <div className='flex flex-col w-full h-full'>
+                <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                    <div className='flex gap-4 justify-around items-center'>
+                        {toastOpen?.content}
+                    </div>
+                </div>
+                <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                    <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                        <Spinner /> Processing...
+                    </div>
+                </div>
                 <h2 className='text-xl mb-3 font-bold dark:text-white'>Additional Charges</h2>
                 <div className='flex-1 flex overflow-auto gap-3'>
                     {/* Add new charge section */}

@@ -41,11 +41,29 @@ router.post('/', upload.any(), async (req, res) => {
     const { AdditionalCharges, Driver, DayInvoice, WeeklyInvoice, User, Notification, Installment } = getModels(req);
     const doc = req.files[0]?.location || '';
 
-    // Step 1: Create and save AdditionalCharges
+    // Step 1: Find the WeeklyInvoice
+    const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek: week });
+    if (!weeklyInvoice) {
+      return res.status(404).json({ message: 'WeeklyInvoice not found for the given driver and week' });
+    }
+
+    // Step 2: Calculate potential new total with the additional charge
+    const parsedRate = +parseFloat(rate).toFixed(2);
+    const isDeduction = type === 'deduction';
+    const rateAdjustment = isDeduction ? -parsedRate : parsedRate;
+
+    // Check if deduction would make total negative
+    if (isDeduction && weeklyInvoice.total + rateAdjustment < 0) {
+      return res.status(400).json({
+        message: 'Cannot add deduction: Weekly invoice total would become negative'
+      });
+    }
+
+    // Step 3: Create and save AdditionalCharges
     const newAddOn = new AdditionalCharges({
       driverId,
       driverName,
-      rate: +parseFloat(rate).toFixed(2),
+      rate: parsedRate,
       site,
       type,
       user_ID,
@@ -55,13 +73,7 @@ router.post('/', upload.any(), async (req, res) => {
     });
     await newAddOn.save();
 
-    // Step 2: Find the WeeklyInvoice
-    const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek: week });
-    if (!weeklyInvoice) {
-      return res.status(404).json({ message: 'WeeklyInvoice not found for the given driverId and week' });
-    }
-
-    // Step 3: Calculate base totals from linked DayInvoices
+    // Step 4: Calculate base totals from linked DayInvoices
     const allDayInvoices = await DayInvoice.find({
       _id: { $in: weeklyInvoice.invoices },
     }).lean();
@@ -86,7 +98,7 @@ router.post('/', upload.any(), async (req, res) => {
       }
     }
 
-    // Step 4: Add AdditionalCharges to WeeklyInvoice
+    // Step 5: Add AdditionalCharges to WeeklyInvoice
     weeklyInvoice.additionalChargesDetail = weeklyInvoice.additionalChargesDetail || [];
     weeklyInvoice.additionalChargesDetail.push({
       _id: newAddOn._id,
@@ -99,7 +111,7 @@ router.post('/', upload.any(), async (req, res) => {
       rate: newAddOn.rate,
     });
 
-    // Step 5: Calculate AdditionalCharges total
+    // Step 6: Calculate AdditionalCharges total
     let additionalChargesTotal = 0;
     for (const charge of weeklyInvoice.additionalChargesDetail) {
       let rateAdjustment = charge.rate;
@@ -116,7 +128,7 @@ router.post('/', upload.any(), async (req, res) => {
     weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
     const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
-    // Step 6: Restore previously used installments
+    // Step 7: Restore previously used installments
     const installmentIds = weeklyInvoice.installments || [];
     const allInstallments = await Installment.find({ _id: { $in: installmentIds } });
 
@@ -128,7 +140,7 @@ router.post('/', upload.any(), async (req, res) => {
       }
     }
 
-    // Step 7: Recalculate installment deductions
+    // Step 8: Recalculate installment deductions
     const installmentMap = new Map();
     let remainingTotal = weeklyTotalBeforeInstallments;
 
@@ -167,14 +179,14 @@ router.post('/', upload.any(), async (req, res) => {
     const finalWeeklyTotal = +Math.max(0, parseFloat(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
     const unsigned = mergedInstallments.some((inst) => !inst.signed);
 
-    // Step 8: Update WeeklyInvoice
+    // Step 9: Update WeeklyInvoice
     weeklyInvoice.total = finalWeeklyTotal;
     weeklyInvoice.vatTotal = weeklyVatTotal;
     weeklyInvoice.installmentDetail = mergedInstallments;
     weeklyInvoice.unsigned = unsigned;
     await weeklyInvoice.save();
 
-    // Step 9: Notify user
+    // Step 10: Notify user
     const user = await User.findOne({ user_ID });
     if (user?.expoPushTokens) {
       const expo = new Expo();
@@ -193,7 +205,7 @@ router.post('/', upload.any(), async (req, res) => {
       }
     }
 
-    // Step 10: Save notification
+    // Step 11: Save notification
     const notification = new Notification({
       notification: {
         title: 'New Additional Charge Added',
@@ -206,7 +218,7 @@ router.post('/', upload.any(), async (req, res) => {
     });
     await notification.save();
 
-    // Step 11: Notify frontend
+    // Step 12: Notify frontend
     sendToClients(req.db, { type: 'additionalChargeUpdated' });
 
     res.status(200).json({ obj: newAddOn, message: 'new additional charge added' });
@@ -269,13 +281,11 @@ router.delete('/:id', async (req, res) => {
     const { AdditionalCharges, Driver, DayInvoice, WeeklyInvoice, Installment, User, Notification } = getModels(req);
     const additionalChargeId = req.params.id;
 
-    // Step 1: Find and delete the AdditionalCharges
+    // Step 1: Find the AdditionalCharges
     const additionalCharge = await AdditionalCharges.findById(additionalChargeId);
     if (!additionalCharge) {
       return res.status(404).json({ message: 'Additional Charge not found' });
     }
-
-    await AdditionalCharges.findByIdAndDelete(additionalChargeId);
 
     // Step 2: Find the WeeklyInvoice
     const weeklyInvoice = await WeeklyInvoice.findOne({
@@ -284,15 +294,32 @@ router.delete('/:id', async (req, res) => {
     });
 
     if (!weeklyInvoice) {
+      // If no WeeklyInvoice, we can safely delete the AdditionalCharge
+      await AdditionalCharges.findByIdAndDelete(additionalChargeId);
       return res.status(200).json({ message: 'Additional Charge deleted, no WeeklyInvoice found' });
     }
 
-    // Step 3: Remove AdditionalCharges from WeeklyInvoice
+    // Step 3: Check if removing this addition would make total negative
+    if (additionalCharge.type !== 'deduction') {
+      const currentWeeklyTotal = +parseFloat(weeklyInvoice.total || 0).toFixed(2);
+      const chargeRate = +parseFloat(additionalCharge.rate || 0).toFixed(2);
+      let potentialNewTotal = currentWeeklyTotal - chargeRate;
+      if (potentialNewTotal < 0) {
+        return res.status(400).json({
+          message: 'Cannot delete additional charge: Weekly invoice total would become negative'
+        });
+      }
+    }
+
+    // Step 4: Delete the AdditionalCharges
+    await AdditionalCharges.findByIdAndDelete(additionalChargeId);
+
+    // Step 5: Remove AdditionalCharges from WeeklyInvoice
     weeklyInvoice.additionalChargesDetail = weeklyInvoice.additionalChargesDetail.filter(
       (charge) => charge._id.toString() !== additionalChargeId
     );
 
-    // Step 4: Recalculate WeeklyInvoice totals
+    // Step 6: Recalculate WeeklyInvoice totals
     const allDayInvoices = await DayInvoice.find({
       _id: { $in: weeklyInvoice.invoices },
     }).lean();
@@ -334,7 +361,7 @@ router.delete('/:id', async (req, res) => {
     weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
     const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
-    // Step 5: Restore previously used installments
+    // Step 7: Restore previously used installments
     const installmentIds = weeklyInvoice.installments || [];
     const usedInstallments = await Installment.find({ _id: { $in: installmentIds } });
 
@@ -346,7 +373,7 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // Step 6: Recalculate installment deductions
+    // Step 8: Recalculate installment deductions
     const installmentMap = new Map();
     let remainingTotal = weeklyTotalBeforeInstallments;
 
@@ -385,14 +412,14 @@ router.delete('/:id', async (req, res) => {
     const finalWeeklyTotal = +Math.max(0, parseFloat(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
     const unsigned = mergedInstallments.some((inst) => !inst.signed);
 
-    // Step 7: Update WeeklyInvoice
+    // Step 9: Update WeeklyInvoice
     weeklyInvoice.total = finalWeeklyTotal;
     weeklyInvoice.vatTotal = weeklyVatTotal;
     weeklyInvoice.installmentDetail = mergedInstallments;
     weeklyInvoice.unsigned = unsigned;
     await weeklyInvoice.save();
 
-    // Step 8: Notify user
+    // Step 10: Notify user
     const user = await User.findOne({ user_ID: additionalCharge.user_ID });
     if (user?.expoPushTokens) {
       const expo = new Expo();
@@ -410,7 +437,7 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // Step 9: Save notification
+    // Step 11: Save notification
     const notification = new Notification({
       notification: {
         title: 'Additional Charge Deleted',
@@ -423,7 +450,7 @@ router.delete('/:id', async (req, res) => {
     });
     await notification.save();
 
-    // Step 10: Notify frontend
+    // Step 12: Notify frontend
     sendToClients(req.db, { type: 'additionalChargeUpdated' });
 
     res.status(200).json({ message: 'Additional Charge deleted and WeeklyInvoice updated' });
