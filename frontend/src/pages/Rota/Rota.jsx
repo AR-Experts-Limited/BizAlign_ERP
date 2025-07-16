@@ -8,6 +8,11 @@ import TableStructure from '../../components/TableStructure/TableStructure';
 import Modal from '../../components/Modal/Modal';
 import InputWrapper from '../../components/InputGroup/InputWrapper';
 import InputGroup from '../../components/InputGroup/InputGroup';
+import SuccessTick from '../../components/UIElements/SuccessTick'
+import TrashBin from '../../components/UIElements/TrashBin'
+import Spinner from '../../components/UIElements/Spinner'
+
+
 
 // Icons
 import { FaChevronUp, FaLock, FaUnlock } from "react-icons/fa6";
@@ -144,6 +149,7 @@ const Rota = () => {
     const [loading, setLoading] = useState(false)
     const loadingTimeoutRef = useRef(null);
     const prevDriversList = useRef(driversList);
+    const [toastOpen, setToastOpen] = useState(false)
 
     // Consolidated state objects
     const state = {
@@ -298,7 +304,7 @@ const Rota = () => {
             setRotaDetail({
                 dayInvoice: { driver, ...invoice },
                 deductions: deductions,
-                incentiveDetailforMain: invoice.incentiveDetail ? invoice.incentiveDetail : incentives,
+                incentiveDetailforMain: invoice.incentiveDetailforMain ? invoice.incentiveDetailforMain : incentives,
                 existingInvoice: true
             });
             return;
@@ -529,8 +535,21 @@ const Rota = () => {
                 }
             }));
             setRotaDetail(null);
+            setToastOpen({
+                content: <>
+                    <SuccessTick width={20} height={20} />
+                    <p className='text-sm font-bold text-green-500'>Rota added successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
-            alert(error + "error");
+            setRotaDetail(null);
+            setToastOpen({
+                content: <>
+                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
     };
 
@@ -554,14 +573,28 @@ const Rota = () => {
                 }
             }));
             setRotaDetail(null);
+            setToastOpen({
+                content: <>
+                    <TrashBin width={25} height={25} />
+                    <p className='text-sm font-bold text-red-500'>Rota deleted successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
+
         } catch (error) {
-            alert(error + "error");
+            setRotaDetail(null);
+            setToastOpen({
+                content: <>
+                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
     };
 
     const makeTotal = (mileValue) => {
         const dayInvoice = { ...rotaDetail.dayInvoice };
-        const miles = mileValue ? mileValue : dayInvoice.miles;
+        const miles = mileValue
         const calculatedMileage = Number((miles * dayInvoice.mileage).toFixed(2));
 
         const totalDeductions = dayInvoice.deductionDetail?.reduce(
@@ -574,15 +607,13 @@ const Rota = () => {
             0
         );
 
-        // const incentiveDetailforMain = dayInvoice.incentiveDetailforMain ? dayInvoice.incentiveDetailforMain.rate : 0;
 
         const additionalServiceTotal = dayInvoice.additionalServiceDetails && dayInvoice.additionalServiceApproval === 'Approved'
             ? Number(
                 (Number(dayInvoice.additionalServiceDetails.serviceRate || 0) +
                     Number(dayInvoice.additionalServiceDetails.byodRate || 0) +
-                    Number(dayInvoice.additionalServiceDetails.calculatedMileage || 0)).toFixed(2) +
-                Number(dayInvoice.incentiveDetailforAdditional?.rate || 0)
-
+                    Number(dayInvoice.additionalServiceDetails.calculatedMileage || 0) +
+                    Number(dayInvoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)
             )
             : 0;
 
@@ -770,6 +801,17 @@ const Rota = () => {
 
     return (
         <>
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-4 justify-around items-center'>
+                    {toastOpen?.content}
+                </div>
+            </div>
+            <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
+                </div>
+            </div>
+
             <TableStructure
                 title="Rota"
                 state={state}
@@ -938,7 +980,7 @@ const Rota = () => {
 
                                     {rotaDetail?.dayInvoice?.additionalServiceDetails && (
                                         <div className='flex flex-col gap-3 mt-3'>
-                                            {!hasAdminPrivileges(userDetails.role) && (
+                                            {(!hasAdminPrivileges(userDetails.role) || rotaDetail?.dayInvoice?.additionalServiceApproval !== 'Approved') && (
                                                 <div className='flex justify-start gap-2 items-center'>
                                                     <div
                                                         className={`text-sm w-fit my-4 px-2 py-1 rounded border ${getApprovalStatusStyles(rotaDetail.dayInvoice.additionalServiceApproval)}`}

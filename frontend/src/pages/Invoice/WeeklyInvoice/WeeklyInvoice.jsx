@@ -935,7 +935,7 @@ const WeeklyInvoice = () => {
                                                 (invoice) =>
                                                     (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                         new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate)) ||
-                                                    (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                    (currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatNo !== '' &&
                                                         new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate))
                                             ) && (
                                                     <th className="text-xs dark:text-gray-400 px-4 py-2 border-r border-primary-600 dark:border-dark-5">VAT</th>
@@ -954,7 +954,7 @@ const WeeklyInvoice = () => {
                                                     currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate);
                                                 const hasCompanyVat =
-                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' && currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate &&
+                                                    currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatNo !== '' && currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate &&
                                                     new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate);
                                                 return (
                                                     <tr key={invoice._id} className={index % 2 === 0 ? 'bg-white dark:bg-dark-3' : 'bg-gray-50 dark:bg-dark-4'}>
@@ -1017,7 +1017,7 @@ const WeeklyInvoice = () => {
                                                             (inv) =>
                                                                 (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                                     new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate)) ||
-                                                                (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                                (currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatNo !== '' &&
                                                                     new Date(inv.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate))
                                                         ) && (
                                                                 <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
@@ -1053,7 +1053,7 @@ const WeeklyInvoice = () => {
                                                 (invoice) =>
                                                     (currentInvoice?.invoice.driverId?.vatDetails?.vatNo !== '' &&
                                                         new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.vatDetails?.vatEffectiveDate)) ||
-                                                    (currentInvoice?.invoice.driverId?.companyVatDetails?.vatNo !== '' &&
+                                                    (currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatNo !== '' &&
                                                         new Date(invoice.date) >= new Date(currentInvoice?.invoice.driverId?.companyVatDetails?.companyVatEffectiveDate))
                                             ) && (
                                                     <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">

@@ -41,6 +41,7 @@ const getModels = (req) => ({
   Driver: req.db.model('Driver', require('../models/Driver').schema),
 });
 
+
 router.post('/', upload.any(), async (req, res) => {
   const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, week } = req.body;
   let { addedBy } = req.body;
@@ -49,16 +50,71 @@ router.post('/', upload.any(), async (req, res) => {
     const { Deduction, DayInvoice, WeeklyInvoice, Installment, User, Notification, Driver } = getModels(req);
     const doc = req.files[0]?.location || '';
 
+    // Step 1: Check DayInvoice
     const dayInvoice = await DayInvoice.findOne({ driverId, date });
     if (dayInvoice) {
-      dayInvoice.total = +parseFloat(dayInvoice.total - rate).toFixed(2);
-      if (Number(dayInvoice.total) < 0) {
-        res.status(400).json({ message: 'Cannot apply deduction: resulting invoice total would be negative' });
-        return;
+      const potentialDayTotal = +parseFloat(dayInvoice.total - rate).toFixed(2);
+      if (potentialDayTotal < 0) {
+        return res.status(400).json({ message: 'Cannot apply deduction: resulting day invoice total would be negative' });
       }
     }
 
-    // Step 1: Create and save Deduction
+    // Step 2: Validate WeeklyInvoice using updated DayInvoice totals
+    const serviceWeek = dayInvoice?.serviceWeek || week;
+    const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek })
+      .populate('driverId')
+      .populate('invoices')
+      .populate('installments')
+      .lean();
+
+    if (weeklyInvoice) {
+      const driverData = weeklyInvoice.driverId;
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      const isVatApplicable = (date) => {
+        return (
+          (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
+          (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      // Calculate updated DayInvoice totals
+      const allDayInvoices = weeklyInvoice.invoices || [];
+      for (const inv of allDayInvoices) {
+        let invBaseTotal = +parseFloat(inv.total || 0).toFixed(2);
+        if (inv._id.toString() === dayInvoice?._id.toString()) {
+          invBaseTotal = +parseFloat(inv.total - rate).toFixed(2);
+        }
+        weeklyBaseTotal += invBaseTotal;
+        if (isVatApplicable(new Date(inv.date))) {
+          weeklyVatTotal += +parseFloat(invBaseTotal * 0.2).toFixed(2);
+        }
+      }
+
+      // Add additional charges
+      let additionalChargesTotal = 0;
+      for (const charge of weeklyInvoice.additionalChargesDetail || []) {
+        let rateAdjustment = +parseFloat(charge.rate).toFixed(2);
+        if (charge.type === 'deduction') {
+          rateAdjustment = -rateAdjustment;
+        }
+        additionalChargesTotal += rateAdjustment;
+      }
+
+      weeklyBaseTotal = +parseFloat(weeklyBaseTotal + additionalChargesTotal).toFixed(2);
+      weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
+      const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
+
+      if (weeklyTotalBeforeInstallments < 0) {
+        return res.status(400).json({
+          message: 'Cannot apply deduction: resulting weekly invoice total would be negative',
+          type: 'WeeklyInvoice',
+        });
+      }
+    }
+
+    // Step 3: Create and save Deduction
     const newDeduction = new Deduction({
       site,
       driverId,
@@ -75,7 +131,8 @@ router.post('/', upload.any(), async (req, res) => {
     await newDeduction.save();
 
     if (dayInvoice) {
-      // Step 2: Attach deduction to DayInvoice
+      // Step 4: Attach deduction to DayInvoice
+      dayInvoice.total = +parseFloat(dayInvoice.total - rate).toFixed(2);
       dayInvoice.deductionDetail = dayInvoice.deductionDetail || [];
       dayInvoice.deductionDetail.push({
         _id: newDeduction._id,
@@ -92,8 +149,7 @@ router.post('/', upload.any(), async (req, res) => {
 
       await dayInvoice.save();
 
-      // Step 3: Update WeeklyInvoice
-      const { serviceWeek } = dayInvoice;
+      // Step 5: Update WeeklyInvoice
       const weeklyInvoice = await WeeklyInvoice.findOne({ driverId, serviceWeek })
         .populate('driverId')
         .populate('invoices')
@@ -109,7 +165,7 @@ router.post('/', upload.any(), async (req, res) => {
       const isVatApplicable = (date) => {
         return (
           (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+          (driver?.companyVatDetails?.companyVatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
         );
       };
 
@@ -136,7 +192,7 @@ router.post('/', upload.any(), async (req, res) => {
       weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
       const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
-      // Step 4: Restore previously deducted installmentPending
+      // Step 6: Restore previously deducted installmentPending
       for (const detail of weeklyInvoice.installmentDetail || []) {
         const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
         if (inst && detail.deductionAmount > 0) {
@@ -144,7 +200,7 @@ router.post('/', upload.any(), async (req, res) => {
         }
       }
 
-      // Step 5: Recalculate deductions and track updated pending amounts
+      // Step 7: Recalculate deductions and track updated pending amounts
       const installmentMap = new Map();
       let remainingTotal = weeklyTotalBeforeInstallments;
 
@@ -181,7 +237,7 @@ router.post('/', upload.any(), async (req, res) => {
 
       const finalWeeklyTotal = +parseFloat(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction)).toFixed(2);
 
-      // Step 6: Update WeeklyInvoice
+      // Step 8: Update WeeklyInvoice
       await WeeklyInvoice.findByIdAndUpdate(
         weeklyInvoice._id,
         {
@@ -195,7 +251,7 @@ router.post('/', upload.any(), async (req, res) => {
         { new: true }
       );
 
-      // Step 7: Save updated installmentPending for each Installment
+      // Step 9: Save updated installmentPending for each Installment
       for (const inst of mergedInstallments) {
         await Installment.findByIdAndUpdate(inst._id, {
           $set: {
@@ -205,7 +261,7 @@ router.post('/', upload.any(), async (req, res) => {
       }
     }
 
-    // Step 8: Notify user
+    // Step 10: Notify user
     const user = await User.findOne({ user_ID });
     if (user?.expoPushTokens) {
       const expo = new Expo();
@@ -223,10 +279,10 @@ router.post('/', upload.any(), async (req, res) => {
       }
     }
 
-    // Step 9: Save notification
+    // Step 11: Save notification
     const notification = new Notification({
       notification: {
-        title: 'New Deduction Added',
+        title: 'New Deduction Added Common',
         user_ID,
         body: `A new deduction has been added for ${driverName} at ${site}`,
         data: { deductionId: newDeduction._id },
@@ -236,7 +292,7 @@ router.post('/', upload.any(), async (req, res) => {
     });
     await notification.save();
 
-    // Step 10: Notify frontend
+    // Step 12: Notify frontend
     sendToClients(req.db, { type: 'deductionUpdated' });
 
     res.status(201).json(newDeduction);
@@ -289,7 +345,7 @@ router.delete('/:id', async (req, res) => {
         const isVatApplicable = (date) => {
           return (
             (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-            (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+            (driver?.companyVatDetails?.companyVatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
           );
         };
 

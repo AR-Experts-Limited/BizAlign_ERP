@@ -163,7 +163,7 @@ router.post('/', async (req, res) => {
       const isVatApplicable = (date) => {
         return (
           (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+          (driver?.companyVatDetails?.companyVatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
         );
       };
 
@@ -285,6 +285,8 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const round2 = (num) => +parseFloat(num || 0).toFixed(2);
+
   try {
     const { Incentive, DayInvoice, WeeklyInvoice, Installment, Driver } = getModels(req);
     const incentiveId = req.params.id;
@@ -301,7 +303,7 @@ router.delete('/:id', async (req, res) => {
         { 'incentiveDetailforMain._id': incentiveId },
         { 'incentiveDetailforAdditional._id': incentiveId },
       ],
-    }).populate('driverId'); // Populate driverId to get driverName
+    }).populate('driverId').lean(); // Populate driverId to get driverName
 
     // If no DayInvoices are found, delete the incentive and return
     if (!dayInvoices.length) {
@@ -309,80 +311,153 @@ router.delete('/:id', async (req, res) => {
       return res.status(200).json({ message: 'Incentive deleted, no DayInvoices found' });
     }
 
-    const affectedWeeklyInvoices = new Set();
+    // ----------------------------------
+    // PHASE 1: Validate DayInvoices
+    // ----------------------------------
+    const negativeInvoices = [];
+    const updatedDayInvoiceTotals = new Map(); // Store updated totals for WeeklyInvoice validation
     const bulkDayInvoiceOps = [];
-    const negativeTotalInvoices = [];
 
-    // Check for negative totals and prepare updates
-    for (const dayInvoice of dayInvoices) {
-      const update = {};
+    for (const invoice of dayInvoices) {
+      let total = invoice.total;
       let updated = false;
-      let total = dayInvoice.total;
+      const update = {};
 
-      const mainMatch = dayInvoice.incentiveDetailforMain?.find?.((i) => i._id.toString() === incentiveId);
-      const additionalMatch = dayInvoice.incentiveDetailforAdditional?.find?.((i) => i._id.toString() === incentiveId);
+      const mainMatch = invoice.incentiveDetailforMain?.find?.((i) => i._id.toString() === incentiveId);
+      const additionalMatch = invoice.incentiveDetailforAdditional?.find?.((i) => i._id.toString() === incentiveId);
 
       if (mainMatch) {
         total -= mainMatch.rate || 0;
+        update.$pull = {
+          ...update.$pull,
+          incentiveDetailforMain: { _id: mainMatch._id },
+        };
         updated = true;
       }
 
       if (additionalMatch) {
         total -= additionalMatch.rate || 0;
+        update.$pull = {
+          ...update.$pull,
+          incentiveDetailforAdditional: { _id: additionalMatch._id },
+        };
         updated = true;
       }
 
-      // Check if the new total would be negative
+      // Check if the new DayInvoice total would be negative
       if (updated && total < 0) {
-        negativeTotalInvoices.push({
-          driverName: dayInvoice.driverName || 'Unknown Driver',
-          date: dayInvoice.date,
+        negativeInvoices.push({
+          driverName: invoice.driverName || 'Unknown Driver',
+          date: invoice.date,
+          type: 'DailyInvoice',
         });
       } else if (updated) {
-        // Proceed with update only if total is not negative
-        if (mainMatch) {
-          update.$pull = {
-            ...update.$pull,
-            incentiveDetailforMain: { _id: mainMatch._id },
-          };
-        }
-
-        if (additionalMatch) {
-          update.$pull = {
-            ...update.$pull,
-            incentiveDetailforAdditional: { _id: additionalMatch._id },
-          };
-        }
-
-        update.$set = {
-          total: +Math.max(0, parseFloat(total).toFixed(2)),
-        };
-
+        update.$set = { total: round2(total) };
         bulkDayInvoiceOps.push({
           updateOne: {
-            filter: { _id: dayInvoice._id },
+            filter: { _id: invoice._id },
             update,
           },
         });
-
-        affectedWeeklyInvoices.add(`${dayInvoice.driverId}_${dayInvoice.serviceWeek}`);
+        updatedDayInvoiceTotals.set(invoice._id.toString(), {
+          total: round2(total),
+          driverId: invoice.driverId?._id?.toString(),
+          serviceWeek: invoice.serviceWeek,
+        });
       }
     }
 
-    // If any invoice would have a negative total, return 400 with affected invoices
-    if (negativeTotalInvoices.length > 0) {
+    // Terminate if any negative DayInvoice totals are found
+    if (negativeInvoices.length > 0) {
       return res.status(400).json({
-        message: 'Cannot delete incentive: some invoices would have negative totals',
-        affectedInvoices: negativeTotalInvoices,
+        message: 'Cannot delete incentive: some daily invoices would have negative totals',
+        negativeInvoices,
+        type: 'DailyInvoice',
       });
     }
 
-    // Perform bulk updates for DayInvoices
+    // ----------------------------------
+    // PHASE 2: Validate WeeklyInvoices
+    // ----------------------------------
+    const affectedWeeklyInvoices = new Set();
+    const weeklyInvoices = await WeeklyInvoice.find({
+      serviceWeek: { $in: [...new Set(dayInvoices.map((inv) => inv.serviceWeek))] },
+    })
+      .populate('driverId')
+      .populate('installments')
+      .lean();
+
+    for (const weeklyInvoice of weeklyInvoices) {
+      const driverData = weeklyInvoice.driverId;
+      const driverId = driverData?._id?.toString();
+      const week = weeklyInvoice.serviceWeek;
+
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      const isVatApplicable = (date) => {
+        return (
+          (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
+          (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      // Sum updated DayInvoice totals
+      for (const [invoiceId, { total, driverId: invDriverId, serviceWeek }] of updatedDayInvoiceTotals) {
+        if (invDriverId === driverId && serviceWeek === week) {
+          const invBaseTotal = round2(total);
+          weeklyBaseTotal += invBaseTotal;
+          const invoice = dayInvoices.find((inv) => inv._id.toString() === invoiceId);
+          if (invoice && isVatApplicable(new Date(invoice.date))) {
+            weeklyVatTotal += round2(invBaseTotal * 0.2);
+          }
+        }
+      }
+
+      // Add additional charges
+      let additionalChargesTotal = 0;
+      for (const charge of weeklyInvoice.additionalChargesDetail || []) {
+        let rateAdjustment = round2(charge.rate);
+        if (charge.type === 'deduction') {
+          rateAdjustment = -rateAdjustment;
+        }
+        additionalChargesTotal += rateAdjustment;
+      }
+
+      weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
+      weeklyVatTotal = round2(weeklyVatTotal);
+      const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
+
+      if (weeklyTotalBeforeInstallments < 0) {
+        negativeInvoices.push({
+          driverName: driverData?.firstName + ' ' + driverData?.lastName || 'Unknown Driver',
+          serviceWeek: weeklyInvoice.serviceWeek,
+          type: 'WeeklyInvoice',
+        });
+      } else {
+        affectedWeeklyInvoices.add(`${driverId}_${week}`);
+      }
+    }
+
+    // Terminate if any negative WeeklyInvoice totals are found
+    if (negativeInvoices.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete incentive: some weekly invoices would have negative totals',
+        negativeInvoices,
+        type: 'WeeklyInvoice',
+      });
+    }
+
+    // ----------------------------------
+    // PHASE 3: Apply DayInvoice Updates
+    // ----------------------------------
     if (bulkDayInvoiceOps.length > 0) {
       await DayInvoice.bulkWrite(bulkDayInvoiceOps);
     }
 
-    // --- WeeklyInvoice and Installment recalculation ---
+    // ----------------------------------
+    // PHASE 4: Recalculate WeeklyInvoices and Installments
+    // ----------------------------------
     const bulkWeeklyInvoiceOps = [];
     const bulkInstallmentOps = [];
 
@@ -393,72 +468,73 @@ router.delete('/:id', async (req, res) => {
         .lean();
       if (!weeklyInvoice) continue;
 
-      const allDayInvoices = await DayInvoice.find({ _id: { $in: weeklyInvoice.invoices } }).lean();
-      const driver = await Driver.findById(driverId).lean();
+      const driverData = await Driver.findById(driverId).lean();
 
       let weeklyBaseTotal = 0;
       let weeklyVatTotal = 0;
 
       const isVatApplicable = (date) => {
         return (
-          (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-          (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+          (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
+          (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
         );
       };
 
-      for (const inv of allDayInvoices) {
-        const invBaseTotal = +parseFloat(inv.total || 0).toFixed(2);
-        weeklyBaseTotal += invBaseTotal;
-        if (isVatApplicable(new Date(inv.date))) {
-          weeklyVatTotal += +parseFloat(invBaseTotal * 0.2).toFixed(2);
+      // Use updated DayInvoice totals
+      for (const [invoiceId, { total, driverId: invDriverId, serviceWeek: invServiceWeek }] of updatedDayInvoiceTotals) {
+        if (invDriverId === driverId && invServiceWeek === serviceWeek) {
+          const invBaseTotal = round2(total);
+          weeklyBaseTotal += invBaseTotal;
+          const invoice = dayInvoices.find((inv) => inv._id.toString() === invoiceId);
+          if (invoice && isVatApplicable(new Date(invoice.date))) {
+            weeklyVatTotal += round2(invBaseTotal * 0.2);
+          }
         }
       }
 
+      // Add additional charges
       let additionalChargesTotal = 0;
       for (const charge of weeklyInvoice.additionalChargesDetail || []) {
-        let rateAdjustment = charge.rate;
+        let rateAdjustment = round2(charge.rate);
         if (charge.type === 'deduction') {
           rateAdjustment = -rateAdjustment;
         }
-        additionalChargesTotal += +parseFloat(rateAdjustment).toFixed(2);
-        if (isVatApplicable(new Date(charge.week))) {
-          weeklyVatTotal += +parseFloat(rateAdjustment * 0.2).toFixed(2); // Fixed syntax error
-        }
+        additionalChargesTotal += rateAdjustment;
       }
 
-      weeklyBaseTotal = +parseFloat(weeklyBaseTotal + additionalChargesTotal).toFixed(2);
-      weeklyVatTotal = +parseFloat(weeklyVatTotal).toFixed(2);
-      const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
+      weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
+      weeklyVatTotal = round2(weeklyVatTotal);
+      const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
 
-      const tempInstallments = (weeklyInvoice.installments || []).map((inst) => ({
+      const installmentCopies = (weeklyInvoice.installments || []).map((inst) => ({
         ...inst,
-        installmentPending: inst.installmentPending,
+        installmentPending: round2(inst.installmentPending),
       }));
 
-      const installmentPendingUpdates = new Map();
+      // Restore previous installment deductions
       for (const detail of weeklyInvoice.installmentDetail || []) {
-        const inst = tempInstallments.find((i) => i._id.toString() === detail._id?.toString());
+        const inst = installmentCopies.find((i) => i._id.toString() === detail._id?.toString());
         if (inst && detail.deductionAmount > 0) {
-          inst.installmentPending = +parseFloat(inst.installmentPending + detail.deductionAmount).toFixed(2);
-          installmentPendingUpdates.set(inst._id.toString(), inst.installmentPending);
+          inst.installmentPending = round2(inst.installmentPending + detail.deductionAmount);
         }
       }
 
       const installmentMap = new Map();
       let remainingTotal = weeklyTotalBeforeInstallments;
 
-      for (const inst of tempInstallments) {
+      // Calculate new deductions
+      for (const inst of installmentCopies) {
         const instId = inst._id.toString();
         if (inst.installmentPending <= 0) continue;
 
         const deduction = Math.min(
-          +parseFloat(inst.spreadRate).toFixed(2),
-          +parseFloat(inst.installmentPending).toFixed(2),
+          round2(inst.spreadRate),
+          round2(inst.installmentPending),
           remainingTotal
         );
         if (deduction <= 0) continue;
 
-        inst.installmentPending = +parseFloat(inst.installmentPending - deduction).toFixed(2);
+        inst.installmentPending = round2(inst.installmentPending - deduction);
 
         bulkInstallmentOps.push({
           updateOne: {
@@ -469,23 +545,23 @@ router.delete('/:id', async (req, res) => {
 
         installmentMap.set(instId, {
           _id: inst._id,
-          installmentRate: inst.installmentRate,
+          installmentRate: round2(inst.installmentRate),
           installmentType: inst.installmentType,
           installmentDocument: inst.installmentDocument,
-          installmentPending: inst.installmentPending,
-          deductionAmount: +parseFloat(deduction).toFixed(2),
+          installmentPending: round2(inst.installmentPending),
+          deductionAmount: round2(deduction),
           signed: inst.signed,
         });
 
-        remainingTotal = +parseFloat(remainingTotal - deduction).toFixed(2);
+        remainingTotal = round2(remainingTotal - deduction);
       }
 
       const mergedInstallments = Array.from(installmentMap.values());
-      const totalInstallmentDeduction = +parseFloat(
+      const totalInstallmentDeduction = round2(
         mergedInstallments.reduce((sum, inst) => sum + (inst.deductionAmount || 0), 0)
-      ).toFixed(2);
+      );
 
-      const finalWeeklyTotal = +Math.max(0, parseFloat(weeklyTotalBeforeInstallments - totalInstallmentDeduction).toFixed(2));
+      const finalWeeklyTotal = round2(Math.max(0, weeklyTotalBeforeInstallments - totalInstallmentDeduction));
 
       bulkWeeklyInvoiceOps.push({
         updateOne: {

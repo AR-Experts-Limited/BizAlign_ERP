@@ -19,14 +19,27 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const Approval = req.db.model('Approval', require('../models/Approvals').schema);
     try {
-        const newApproval = new Approval(req.body)
+        // Check if the approval type is additionalService
+        if (req.body.type === 'additionalService') {
+            const existingApproval = await Approval.findOne({
+                type: 'additionalService',
+                'reqData.dayInvoiceId': req.body.reqData.dayInvoiceId
+            });
+
+            // If an existing approval is found, delete it
+            if (existingApproval) {
+                await Approval.deleteOne({ _id: existingApproval._id });
+            }
+        }
+
+        // Create and save the new approval
+        const newApproval = new Approval(req.body);
         await newApproval.save();
         res.json(newApproval);
+    } catch (error) {
+        res.status(500).json({ message: 'Error processing approval', error });
     }
-    catch (error) {
-        res.status(500).json({ message: 'Error fetching approvals', error });
-    }
-})
+});
 
 router.delete('/:id', async (req, res) => {
     const Approval = req.db.model('Approval', require('../models/Approvals').schema);
