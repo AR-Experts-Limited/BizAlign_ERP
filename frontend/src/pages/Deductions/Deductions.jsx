@@ -16,7 +16,8 @@ import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
 import Spinner from '../../components/UIElements/Spinner'
 import SuccessTick from '../../components/UIElements/SuccessTick'
 import TrashBin from '../../components/UIElements/TrashBin'
-
+import moment from 'moment'
+import TableFeatures from '../../components/TableFeatures/TableFeatures'
 
 import DatePicker from '../../components/Datepicker/Datepicker';
 
@@ -46,6 +47,17 @@ const Deductions = () => {
     const [toastOpen, setToastOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const deductionFileRef = useRef(null)
+
+
+    const columns = {
+        'Personnel Name': 'driverName',
+        "Date": 'date',
+        'Site': 'site',
+        'Service': 'serviceType',
+        'Rate': 'rate'
+    };
+    const [displayColumns, setDisplayColumns] = useState(columns);
+
 
     const [errors, setErrors] = useState({
         driverId: false,
@@ -115,49 +127,71 @@ const Deductions = () => {
     const handleAddDeduction = async (e) => {
         if (!validateFields()) return;
         e.preventDefault();
+
         try {
-            const driverDetail = driversBySite[newDeduction.site].filter((driver) => driver._id == newDeduction.driverId)
-            const { firstName: firstName, lastName: lastName } = driverDetail[0]
+            const driverDetail = driversBySite[newDeduction.site].filter(
+                (driver) => driver._id == newDeduction.driverId
+            );
+            const { firstName, lastName, user_ID } = driverDetail[0];
+
             const newDeductionObj = {
                 ...newDeduction,
-                driverName: firstName + ' ' + lastName,
-            }
+                driverName: `${firstName} ${lastName}`,
+                user_ID,
+            };
 
-            const data = new FormData()
+            const data = new FormData();
+
+            // Append non-file fields first
             Object.keys(newDeductionObj).forEach((key) => {
-                if (newDeductionObj[key]) {
-                    if (newDeductionObj[key] instanceof File) {
-                        data.append(key, newDeductionObj[key]);
-                    } else {
-                        data.append(key, newDeductionObj[key]);
-                    }
+                const value = newDeductionObj[key];
+                if (value && !(value instanceof File)) {
+                    data.append(key, value);
                 }
             });
-            data.append('user_ID', driverDetail[0].user_ID)
-            data.append('signed', false)
+
+            // Append file fields last
+            Object.keys(newDeductionObj).forEach((key) => {
+                const value = newDeductionObj[key];
+                if (value instanceof File) {
+                    data.append(key, value);
+                }
+            });
+
+            // Additional fields
+            data.append('signed', false);
+
             const response = await axios.post(`${API_BASE_URL}/api/deductions`, data);
             setDeductions([...deductions, response.data]);
-            setNewDeduction(clearDeduction)
-            setSearchTerm('')
-            deductionFileRef.current.value = ''
+            setNewDeduction(clearDeduction);
+            setSearchTerm('');
+            deductionFileRef.current.value = '';
 
             setToastOpen({
-                content: <>
-                    <SuccessTick width={20} height={20} />
-                    <p className='text-sm font-bold text-green-500'>Deduction added successfully</p>
-                </>
-            })
+                content: (
+                    <>
+                        <SuccessTick width={20} height={20} />
+                        <p className="text-sm font-bold text-green-500">Deduction added successfully</p>
+                    </>
+                ),
+            });
             setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error adding deduction:', error);
             setToastOpen({
-                content: <>
-                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
-                </>
-            })
+                content: (
+                    <>
+                        <p className="flex gap-1 text-sm font-bold text-red-600">
+                            <i className="flex items-center fi fi-ss-triangle-warning"></i>
+                            {error?.response?.data?.message || 'Failed to add deduction'}
+                        </p>
+                    </>
+                ),
+            });
             setTimeout(() => setToastOpen(null), 3000);
         }
     };
+
 
     const handleDeleteDeduction = async (id) => {
         try {
@@ -273,6 +307,7 @@ const Deductions = () => {
                         <div className='relative overflow-auto flex-1 flex flex-col'>
                             <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
                                 <h3>Add new deduction</h3>
+
                             </div>
                             <div className='p-4 pb-8 flex flex-col gap-3'>
                                 {/* Site selection */}
@@ -467,19 +502,28 @@ const Deductions = () => {
 
                     {/* Deductions list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Deductions list</h3>
+                            <TableFeatures
+                                columns={columns}
+                                setColumns={setDisplayColumns}
+                                content={deductions}
+                                setContent={setDeductions}
+                            />
                         </div>
                         <div className='flex-1 flex flex-col p-2 overflow-auto h-full'>
                             <table className="table-general overflow-auto">
                                 <thead>
                                     <tr className="sticky -top-2 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
                                         <th>#</th>
-                                        <th>Personnel Name</th>
+                                        {/* <th>Personnel Name</th>
                                         <th>Date</th>
                                         <th>Site</th>
                                         <th>Service</th>
-                                        <th>Rate</th>
+                                        <th>Rate</th> */}
+                                        {Object.keys(displayColumns).map((col) => (
+                                            <th>{col}</th>
+                                        ))}
                                         <th>Document</th>
                                         <th>Options</th>
                                     </tr>
@@ -488,11 +532,26 @@ const Deductions = () => {
                                     {deductions.map((deduction) => (
                                         <tr key={deduction._id} className={deduction.serviceType === 'Route Support' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
                                             <td>{String(deduction._id).slice(-4)}</td>
-                                            <td>{deduction.driverName}</td>
-                                            <td>{new Date(deduction.date).toLocaleDateString('en-GB')}</td>
+                                            {/* <td>{deduction.driverName}</td>
+                                            <td>
+                                                {new Date(deduction.date).toLocaleDateString('en-GB')}
+                                                <br />
+                                                ({moment(deduction.date).format('GGGG-[W]ww')})
+                                            </td>
                                             <td>{deduction.site}</td>
                                             <td>{deduction.serviceType}</td>
-                                            <td>£ {deduction.rate}</td>
+                                            <td>£ {deduction.rate}</td> */}
+
+                                            {Object.values(displayColumns).map((col) => {
+                                                if (col === 'date')
+                                                    return <td>
+                                                        {new Date(deduction.date).toLocaleDateString('en-GB')}
+                                                        <br />
+                                                        ({moment(deduction.date).format('GGGG-[W]ww')})
+                                                    </td>
+                                                else
+                                                    return <td>{deduction[col]}</td>
+                                            })}
                                             <td>
                                                 <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
                                                     {deduction.signed ? (

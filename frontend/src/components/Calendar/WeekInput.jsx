@@ -28,6 +28,9 @@ function WeekInput({ value, display, onChange, error, filter = false }) {
             const { startOfWeek, endOfWeek } = getWeekRange(date);
             setSelectedWeek({ startOfWeek, endOfWeek });
         }
+        else {
+            setSelectedWeek(null)
+        }
     }, [value]);
 
     const getWeekRange = (date) => {
