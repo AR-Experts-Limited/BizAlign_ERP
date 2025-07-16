@@ -460,7 +460,7 @@ const SchedulePlanner = () => {
                         <InputWrapper title={'Services with ratecard available'} >
                             <div className='flex gap-2 w-full'>
                                 <InputGroup className='w-full' value={addScheduleData ? addScheduleData.service : ''}
-                                    disabled={addScheduleData?.service === "Voluntary-Day-off"}
+                                    disabled={addScheduleData?.service === "Voluntary-Day-off" || addScheduleData?.service === 'standby'}
                                     type='dropdown' onChange={(e) => setAddScheduleData(prev => ({ ...prev, service: e.target.value }))}  >
                                     <option value=''>-Select Service-</option>
                                     {services.map((service) => {

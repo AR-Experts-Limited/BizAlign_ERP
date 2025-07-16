@@ -11,6 +11,7 @@ import WeekInput from '../../components/Calendar/WeekInput';
 import SuccessTick from '../../components/UIElements/SuccessTick'
 import Spinner from '../../components/UIElements/Spinner'
 import TrashBin from '../../components/UIElements/TrashBin'
+import TableFeatures from '../../components/TableFeatures/TableFeatures'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -38,6 +39,7 @@ const AdditionalCharges = () => {
     const [toastOpen, setToastOpen] = useState(false)
     const [loading, setLoading] = useState(false)
 
+    const chargeFileRef = useRef(null)
     const [errors, setErrors] = useState({
         site: false,
         driverId: false,
@@ -45,6 +47,15 @@ const AdditionalCharges = () => {
         title: false,
         rate: false,
     });
+
+    const columns = {
+        'Site': 'site',
+        "Driver Name": 'driverName',
+        'Week': 'week',
+        'Title': 'title',
+        'Rate': 'rate'
+    };
+    const [displayColumns, setDisplayColumns] = useState(columns);
 
     const fileInputRefs = useRef({});
     const uploadButtonsRefs = useRef({});
@@ -74,6 +85,8 @@ const AdditionalCharges = () => {
             week: !addOn.week,
             title: !addOn.title,
             rate: !addOn.rate || addOn.rate <= 0,
+            chargeDocument: addOn?.chargeDocument && !['image/jpeg', 'image/jpg', 'image/png'].includes(addOn?.chargeDocument?.type)
+
         };
         setErrors(newErrors);
         return !Object.values(newErrors).some(error => error);
@@ -87,52 +100,72 @@ const AdditionalCharges = () => {
         if (!validateFields()) return;
         e.preventDefault();
         try {
-            const driverDetail = driversBySite[addOn.site]?.find((driver) => driver._id === addOn.driverId);
+            const driverDetail = driversBySite[addOn.site]?.find(
+                (driver) => driver._id === addOn.driverId
+            );
             if (!driverDetail) {
                 console.error('Driver not found');
                 return;
             }
+
             const newAddOn = {
                 ...addOn,
                 rate: addOn?.vat ? parseFloat(addOn?.rate * 1.2).toFixed(2) : addOn?.rate,
                 driverName: `${driverDetail.firstName} ${driverDetail.lastName}`,
-                user_ID: driverDetail.user_ID,
-                signed: false,
+                user_ID: driverDetail?.user_ID,
             };
 
             const data = new FormData();
+
+            // Append non-file fields first
             Object.keys(newAddOn).forEach((key) => {
-                if (newAddOn[key]) {
-                    if (key === 'chargeDocument' && newAddOn[key] instanceof File) {
-                        data.append('chargeDocument', newAddOn[key]);
-                    } else {
-                        data.append(key, newAddOn[key]);
-                    }
+                const value = newAddOn[key];
+                if (value && !(value instanceof File)) {
+                    data.append(key, value);
                 }
             });
+
+            // Append file fields last
+            if (newAddOn.chargeDocument instanceof File) {
+                data.append('chargeDocument', newAddOn.chargeDocument);
+            }
+
+            // Extra field
+            data.append('signed', false);
 
             const response = await axios.post(`${API_BASE_URL}/api/addons`, data);
             setAllAdditionalCharges([...allAdditionalCharges, response.data.obj]);
             setAddOn(clearAddOn);
             setSearchTerm('');
+            chargeFileRef.current.value = '';
 
             setToastOpen({
-                content: <>
-                    <SuccessTick width={20} height={20} />
-                    <p className='text-sm font-bold text-green-500'>Additional Charge added successfully</p>
-                </>
-            })
+                content: (
+                    <>
+                        <SuccessTick width={20} height={20} />
+                        <p className="text-sm font-bold text-green-500">
+                            Additional Charge added successfully
+                        </p>
+                    </>
+                ),
+            });
             setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error adding charge:', error);
             setToastOpen({
-                content: <>
-                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
-                </>
-            })
+                content: (
+                    <>
+                        <p className="flex gap-1 text-sm font-bold text-red-600">
+                            <i className="flex items-center fi fi-ss-triangle-warning"></i>
+                            {error?.response?.data?.message || 'Failed to add charge'}
+                        </p>
+                    </>
+                ),
+            });
             setTimeout(() => setToastOpen(null), 3000);
         }
     };
+
 
     const handleDelete = async (id) => {
         try {
@@ -450,11 +483,13 @@ const AdditionalCharges = () => {
                                     <div className="relative mt-1">
                                         <InputGroup
                                             type="file"
+                                            ref={chargeFileRef}
                                             fileStyleVariant="style1"
                                             accept=".jpg,.jpeg,.png"
                                             onChange={handleFileChange}
                                         />
                                     </div>
+                                    {errors.chargeDocument && <p className="text-red-400 text-sm mt-1">* Invalid file format</p>}
                                 </div>
 
                                 <button
@@ -470,19 +505,23 @@ const AdditionalCharges = () => {
 
                     {/* Additional charges list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Additional Charges list</h3>
+                            <TableFeatures
+                                columns={columns}
+                                setColumns={setDisplayColumns}
+                                content={allAdditionalCharges}
+                                setContent={setAllAdditionalCharges}
+                            />
                         </div>
                         <div className='flex-1 flex flex-col p-2 overflow-auto h-full'>
                             <table className="table-general overflow-auto">
                                 <thead>
                                     <tr className="sticky -top-2 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
                                         <th>#</th>
-                                        <th>Personnel Name</th>
-                                        <th>Site</th>
-                                        <th>Week</th>
-                                        <th>Title</th>
-                                        <th>Rate</th>
+                                        {Object.keys(displayColumns).map((col) => (
+                                            <th>{col}</th>
+                                        ))}
                                         <th>Document</th>
                                         <th>Options</th>
                                     </tr>
@@ -491,11 +530,13 @@ const AdditionalCharges = () => {
                                     {allAdditionalCharges.map((addon, index) => (
                                         <tr key={addon._id}>
                                             <td>{index + 1}</td>
-                                            <td>{addon.driverName}</td>
-                                            <td>{addon.site}</td>
-                                            <td>{addon.week}</td>
-                                            <td>{addon.title}</td>
-                                            <td>{addon.type === 'addition' ? '+ £ ' : '- £ '}{addon.rate}</td>
+                                            {Object.values(displayColumns).map((col) => {
+                                                if (col === 'rate')
+                                                    return <td>{addon.type === 'addition' ? '+ £ ' : '- £ '}{addon.rate}</td>
+
+                                                return <td>{addon[col]}</td>
+
+                                            })}
                                             <td>
                                                 <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
                                                     {addon.signed ? (

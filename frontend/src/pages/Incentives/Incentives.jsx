@@ -21,6 +21,7 @@ import SuccessTick from '../../components/UIElements/SuccessTick';
 import Spinner from '../../components/UIElements/Spinner';
 import TrashBin from '../../components/UIElements/TrashBin';
 import DatePicker from '../../components/Datepicker/Datepicker';
+import TableFeatures from '../../components/TableFeatures/TableFeatures'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -49,6 +50,16 @@ const Incentives = () => {
         type: false,
         rate: false,
     });
+
+    const columns = {
+        'Site': 'site',
+        "Service": 'service',
+        'Start Date': 'startDate',
+        'End Date': 'endDate',
+        'Type': 'type',
+        'Rate': 'rate'
+    };
+    const [displayColumns, setDisplayColumns] = useState(columns);
 
     const incentiveTypes = ['Normal', 'Prime', 'Peak'];
 
@@ -387,20 +398,23 @@ const Incentives = () => {
 
                     {/* Incentives list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Incentives list</h3>
+                            <TableFeatures
+                                columns={columns}
+                                setColumns={setDisplayColumns}
+                                content={incentives}
+                                setContent={setIncentives}
+                            />
                         </div>
                         <div className='flex-1 flex flex-col p-2 overflow-auto h-full'>
                             <table className="table-general overflow-auto">
                                 <thead>
                                     <tr className="sticky -top-2 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
                                         <th>#</th>
-                                        <th>Site</th>
-                                        <th>Service Title</th>
-                                        <th>Start Date</th>
-                                        <th>End Date</th>
-                                        <th>Incentive Type</th>
-                                        <th>Rate</th>
+                                        {Object.keys(displayColumns).map((col) => (
+                                            <th>{col}</th>
+                                        ))}
                                         {/* <th>Added By</th>
                                     <th>Added On</th> */}
                                         <th>Options</th>
@@ -410,12 +424,15 @@ const Incentives = () => {
                                     {incentives.map((incentive) => (
                                         <tr key={incentive._id}>
                                             <td>{String(incentive._id).slice(-4)}</td>
-                                            <td>{incentive.site}</td>
-                                            <td>{incentive.service}</td>
-                                            <td>{new Date(incentive.startDate).toLocaleDateString()}</td>
-                                            <td>{new Date(incentive.endDate).toLocaleDateString()}</td>
-                                            <td>{incentive.type}</td>
-                                            <td>£ {incentive.rate}</td>
+                                            {Object.values(displayColumns).map((col) => {
+                                                if (['startDate', 'endDate'].includes(col))
+                                                    return <td>{new Date(incentive[col]).toLocaleDateString()}</td>
+                                                if (col === 'rate')
+                                                    return <td>£ {incentive.rate}</td>
+
+                                                return <td>{incentive[col]}</td>
+
+                                            })}
                                             {/* <td>
                                             {incentive.addedBy?.name}<br />
                                             {incentive.addedBy?.email}

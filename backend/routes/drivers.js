@@ -664,19 +664,19 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
 
   if (vatChanged || customTypeChanged || traceChanged) {
     // Determine the date range for affected invoices
-    const vatDates = [
+    const vatDates = vatChanged ? [
       originalVatDetails?.vatEffectiveDate ? new Date(originalVatDetails?.vatEffectiveDate) : null,
       updatedDriver?.vatDetails?.vatEffectiveDate ? new Date(updatedDriver?.vatDetails?.vatEffectiveDate) : null,
       originalCompanyVatDetails?.companyVatEffectiveDate ? new Date(originalCompanyVatDetails?.companyVatEffectiveDate) : null,
       updatedDriver?.companyVatDetails?.companyVatEffectiveDate ? new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate) : null,
-    ].filter(Boolean);
+    ].filter(Boolean) : [];
 
-    const customTypeDates = [
+    const customTypeDates = customTypeChanged ? [
       ...Object.keys(originalCustomTypeOfDriver || {}).map((d) => new Date(d.split('/').reverse().join('-'))),
       ...Object.keys(updatedDriver.customTypeOfDriver || {}).map((d) => new Date(d.split('/').reverse().join('-'))),
-    ].filter(Boolean);
+    ].filter(Boolean) : [];
 
-    const traceDates = [
+    const traceDates = traceChanged ? [
       ...originalTypeOfDriverTrace.map((t) => {
         const [day, month, year] = t.timestamp.split('/');
         return new Date(`${year}-${month}-${day}`);
@@ -685,7 +685,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
         const [day, month, year] = t.timestamp.split('/');
         return new Date(`${year}-${month}-${day}`);
       }),
-    ].filter(Boolean);
+    ].filter(Boolean) : [];
 
 
     const allDates = [...vatDates, ...customTypeDates, ...traceDates];
@@ -700,7 +700,6 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
     } else {
       dateFilter = {};
     }
-
     // Fetch affected DayInvoices
     const affectedDayInvoices = await DayInvoice.find({
       driverId: req.params.id,
@@ -774,9 +773,10 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
           },
         });
 
+        let additionalRateCard = null
         // Update additional service if applicable
         if (invoice.additionalServiceDetails?.service) {
-          const additionalRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.additionalServiceDetails.service, updatedDriver);
+          additionalRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.additionalServiceDetails.service, updatedDriver);
           if (!additionalRateCard) continue
           const oldAdditionalIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
 

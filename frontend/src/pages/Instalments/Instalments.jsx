@@ -13,6 +13,7 @@ import axios from 'axios'
 import { FcPlus } from "react-icons/fc";
 import { FaEye } from "react-icons/fa";
 import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
+import TableFeatures from '../../components/TableFeatures/TableFeatures'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -36,6 +37,17 @@ const Instalments = () => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [documentView, setDocumentView] = useState(null)
     const installmentFileRef = useRef(null)
+
+
+    const columns = {
+        'Personnel Name': 'driverName',
+        'Site': 'site',
+        'Type': 'installmentType',
+        "Rate": 'installmentRate',
+        'Tenure': 'tenure',
+
+    };
+    const [displayColumns, setDisplayColumns] = useState(columns);
 
     const [errors, setErrors] = useState({
         driverId: false,
@@ -89,35 +101,53 @@ const Instalments = () => {
     const handleAddInstalment = async (e) => {
         if (!validateFields()) return;
         e.preventDefault();
-        try {
-            const driverDetail = driversBySite[newInstalment.site].filter((driver) => driver._id == newInstalment.driverId)
-            const { firstName: firstName, lastName: lastName } = driverDetail[0]
-            const { installmentRate, tenure } = newInstalment
-            const newInstallmentObj = {
-                ...newInstalment, installmentPending: installmentRate, spreadRate: (installmentRate / tenure).toFixed(3), driverName: firstName + ' ' + lastName,
-            }
-            const data = new FormData()
 
+        try {
+            const driverDetail = driversBySite[newInstalment.site].filter(
+                (driver) => driver._id == newInstalment.driverId
+            );
+            const { firstName, lastName, user_ID } = driverDetail[0];
+            const { installmentRate, tenure } = newInstalment;
+
+            const newInstallmentObj = {
+                ...newInstalment,
+                installmentPending: installmentRate,
+                spreadRate: (installmentRate / tenure).toFixed(3),
+                driverName: `${firstName} ${lastName}`,
+                user_ID,
+            };
+
+            const data = new FormData();
+
+            // Append non-file fields first
             Object.keys(newInstallmentObj).forEach((key) => {
-                if (newInstallmentObj[key]) {
-                    if (newInstallmentObj[key] instanceof File) {
-                        data.append(key, newInstallmentObj[key]);
-                    } else {
-                        data.append(key, newInstallmentObj[key]);
-                    }
+                const value = newInstallmentObj[key];
+                if (value && !(value instanceof File)) {
+                    data.append(key, value);
                 }
             });
-            data.append('user_ID', driverDetail[0].user_ID)
-            data.append('signed', false)
+
+            // Append files last
+            Object.keys(newInstallmentObj).forEach((key) => {
+                const value = newInstallmentObj[key];
+                if (value instanceof File) {
+                    data.append(key, value);
+                }
+            });
+
+            // Append additional fields after all others
+            data.append('signed', false);
+
             const response = await axios.post(`${API_BASE_URL}/api/installments`, data);
             setInstalments([...instalments, response.data.installment]);
-            setNewInstalment(clearInstalment)
-            installmentFileRef.current.value = ''
-            setSearchTerm('')
+            setNewInstalment(clearInstalment);
+            installmentFileRef.current.value = '';
+            setSearchTerm('');
         } catch (error) {
             console.error('Error adding deduction:', error);
         }
     };
+
 
     const handleDeleteInstallment = async (id) => {
         try {
@@ -397,19 +427,23 @@ const Instalments = () => {
 
                     {/* Instalments list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Instalments list</h3>
+                            <TableFeatures
+                                columns={columns}
+                                setColumns={setDisplayColumns}
+                                content={instalments}
+                                setContent={setInstalments}
+                            />
                         </div>
                         <div className='flex-1 flex flex-col p-2 overflow-auto h-full'>
                             <table className="table-general overflow-auto">
                                 <thead>
                                     <tr className="sticky -top-2 z-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white text-neutral-400">
                                         <th>#</th>
-                                        <th>Personnel Name</th>
-                                        <th>Site</th>
-                                        <th>Type</th>
-                                        <th>Rate</th>
-                                        <th>Tenure</th>
+                                        {Object.keys(displayColumns).map((col) => (
+                                            <th>{col}</th>
+                                        ))}
                                         <th>Balance</th>
                                         <th>Document</th>
                                         <th>Options</th>
@@ -419,11 +453,19 @@ const Instalments = () => {
                                     {instalments.map((instalment) => (
                                         <tr key={instalment._id}>
                                             <td>{String(instalment._id).slice(-4)}</td>
-                                            <td>{instalment.driverName}</td>
+                                            {/* <td>{instalment.driverName}</td>
                                             <td>{instalment.site}</td>
                                             <td>{instalment.installmentType}</td>
-                                            <td>£ {instalment.installmentRate}</td>
-                                            <td>{instalment.tenure} week{instalment.tenure > 1 && 's'}</td>
+                                            <td>£ {instalment.installmentRate}</td> */}
+                                            {Object.values(displayColumns).map((col) => {
+                                                if (col === 'tenure')
+                                                    return <td>{instalment.tenure} week{instalment.tenure > 1 && 's'}</td>
+                                                else if (col === 'installmentRate')
+                                                    return <td>£ {instalment.installmentRate}</td>
+                                                else
+                                                    return <td>{instalment[col]}</td>
+                                            })}
+                                            {/* <td>{instalment.tenure} week{instalment.tenure > 1 && 's'}</td> */}
                                             <td className={instalment.installmentPending > 0 ? 'text-red-500' : 'text-green-500'}>
                                                 £ {instalment.installmentPending}
                                             </td>
@@ -484,13 +526,15 @@ const Instalments = () => {
                                                             ) : (
                                                                 <div className='flex flex-col items-center gap-2 rounded bg-white border border border-neutral-200 py-2 px-1'>
                                                                     <div className='relative group w-full'>
-                                                                        <div className=' truncate max-w-[150px]'></div>
-                                                                        <span id={`fileName-${instalment._id}`} className="text-sm text-gray-700 truncate max-w-[100px]">
-                                                                            {decodeURIComponent(instalment.installmentDocument.split(`/`)[7])}
-                                                                        </span>
+                                                                        <div className=' truncate max-w-[150px]'>
+                                                                            <span id={`fileName-${instalment._id}`} className="text-sm text-gray-700 truncate max-w-[100px]">
+                                                                                {decodeURIComponent(instalment.installmentDocument.split(`/`)[7])}
+                                                                            </span>
+                                                                        </div>
                                                                         <div className='absolute top-1/2 left-1/2 -translate-x-1/2  -translate-y-1/2 hidden group-hover:block bg-gray-700 text-white px-2 py-1 text-xs rounded whitespace-nowrap'>
                                                                             {decodeURIComponent(instalment.installmentDocument.split(`/`)[7])}
                                                                         </div>
+
                                                                     </div>
                                                                     <div className='flex gap-1'>
                                                                         <span className="flex w-fit items-center gap-1 text-xs px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full">

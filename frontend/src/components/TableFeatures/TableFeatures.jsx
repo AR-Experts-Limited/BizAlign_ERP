@@ -39,6 +39,13 @@ const TableFeatures = ({ columns, setColumns, content, setContent, repopulate, s
       if (Array.isArray(itemValue)) {
         return itemValue.length === parseInt(value, 10);
       }
+      // Handle Date objects or date strings
+      const dateValue = new Date(itemValue);
+      if (!isNaN(dateValue.getTime())) {
+        // It's a valid date
+        const formattedDate = dateValue.toLocaleDateString("en-GB");
+        return formattedDate.includes(value);
+      }
       return String(itemValue || "").toLowerCase().includes(value.toLowerCase());
     });
     setContent(filteredContent);

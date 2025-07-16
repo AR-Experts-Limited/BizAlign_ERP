@@ -18,8 +18,12 @@ const upload = multer({
     key: (req, file, cb) => {
       const user_ID = req.body.user_ID;
       const databaseName = req.db.db.databaseName;
-      const deductionDate = String(new Date(req.body.date).toLocaleDateString());
-      cb(null, `${databaseName}/AdditionalCharges/${user_ID}/${deductionDate}/${file.originalname}`);
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const folderName = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_` +
+        `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+      cb(null, `${databaseName}/AdditionalCharges/${user_ID}/AddedOn_${folderName}/${file.originalname}`);
     },
   }),
 });

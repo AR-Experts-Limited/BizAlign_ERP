@@ -32,6 +32,7 @@ const Notifications = () => {
             _id: driver._id,
             driver,
             siteSelection: driver.siteSelection,
+            typeOfDriver: driver.typeOfDriver,
             driverName: `${driver.firstName} ${driver.lastName}`,
             dlExpiry: driver.dlExpiry?.$date || driver.dlExpiry,
             ecsExpiry: driver.ecsExpiry?.$date || driver.ecsExpiry,
@@ -53,6 +54,7 @@ const Notifications = () => {
 
     const columns = {
         'Site': 'siteSelection',
+        'Vehicle Type': 'typeOfDriver',
         'Personnel Name': 'driverName',
         "Driver's License Expiry": 'dlExpiry',
         'Passport Expiry': 'passportExpiry',

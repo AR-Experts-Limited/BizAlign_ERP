@@ -433,14 +433,12 @@ const ManageSummary = () => {
     const handleServiceTypeChange = async (e) => {
         if (e.target.value !== originalServiceRef.current) {
             const isMatchingService = services.find((service) => compareServiceStrings(service.title, e.target.value).isSimilar)
-            console.log(isMatchingService)
-            console.log(ratecards)
             const matchingRatecard = isMatchingService ? ratecards.find((rc) => rc.serviceTitle === isMatchingService.title && rc.serviceWeek === currentInvoice?.invoice.serviceWeek && rc.vehicleType === currentInvoice?.invoice.driverVehicleType) : null
             const incentives = matchingRatecard ? await getIncentiveDetails(isMatchingService.title, currentInvoice?.invoice?.site, currentInvoice?.invoice.date) : []
             const oldIncentiveRate = currentInvoice?.invoice?.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0
             const newIncentiveRate = incentives?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0
 
-            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, incentiveDetailforMain: incentives, mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService, total: prev.invoice.total - oldIncentiveRate + newIncentiveRate }, restrictEdit: (!isMatchingService || !matchingRatecard) && originalServiceRef.current !== e.target.value }))
+            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, incentiveDetailforMain: incentives, mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService, total: parseFloat((prev.invoice.total - oldIncentiveRate + newIncentiveRate).toFixed(2)) }, restrictEdit: (!isMatchingService || !matchingRatecard) && originalServiceRef.current !== e.target.value }))
         }
         else {
             setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, mainService: e.target.value }, restrictEdit: null }))
