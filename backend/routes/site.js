@@ -5,7 +5,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     const Site = req.db.model('Site', require('../models/Site').schema);
     try {
-        const sites = await Site.find().sort({ sitekeyword: 1 });
+        const sites = await Site.find().sort({ siteName: 1 });
         res.status(200).json(sites);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching sites' });
