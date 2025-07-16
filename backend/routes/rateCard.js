@@ -262,7 +262,7 @@ router.post('/', async (req, res) => {
       const isVatApplicable = (date) => {
         return (
           (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
-          (driverData?.companyVatDetails?.vatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+          (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
         );
       };
 
@@ -413,33 +413,34 @@ router.put('/', async (req, res) => {
 
     // Input validations
     if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
-      return res.status(400).json({ message: 'selectedIds must be a non-empty array' });
+      return res.status(400).json({ message: 'selectedIds must be a non-empty array', type: 'InputValidation' });
     }
 
     if (!selectedIds.every(id => mongoose.Types.ObjectId.isValid(id))) {
-      return res.status(400).json({ message: 'Invalid RateCard IDs provided' });
+      return res.status(400).json({ message: 'Invalid RateCard IDs provided', type: 'InputValidation' });
     }
 
     if (!Array.isArray(serviceWeek) || serviceWeek.length === 0) {
-      return res.status(400).json({ message: 'serviceWeek must be a non-empty array' });
+      return res.status(400).json({ message: 'serviceWeek must be a non-empty array', type: 'InputValidation' });
     }
 
     // ----------------------------------
-    // PHASE 1: Validate RateCards and Invoices
+    // PHASE 1: Validate RateCards and DayInvoices
     // ----------------------------------
-    console.time('Phase 1: Validate RateCards and Invoices');
+    console.time('Phase 1: Validate RateCards and DayInvoices');
 
     const negativeInvoices = [];
     const rateCardUpdates = [];
     const dayInvoiceUpdates = [];
 
-    // Fetch all relevant RateCards
-    const rateCards = await RateCard.find({
-      _id: { $in: selectedIds },
-      serviceWeek: { $in: serviceWeek }
-    }).lean();
+    // Fetch RateCards and DayInvoices in parallel
+    const dayInvoices = await DayInvoice.find({ serviceWeek: { $in: serviceWeek } })
+      .populate('rateCardIdforMain')
+      .populate('rateCardIdforAdditional')
+      .populate('driverId')
+      .lean()
 
-    // Prepare RateCard updates (but don't apply yet)
+    // Prepare RateCard updates
     for (const week of serviceWeek) {
       for (const id of selectedIds) {
         rateCardUpdates.push({
@@ -461,15 +462,9 @@ router.put('/', async (req, res) => {
         });
       }
     }
-
-    // Fetch and validate DayInvoices
-    const invoices = await DayInvoice.find({ serviceWeek: { $in: serviceWeek } })
-      .populate('rateCardIdforMain')
-      .populate('rateCardIdforAdditional')
-      .populate('driverId')
-      .lean();
-
-    for (const invoice of invoices) {
+    // Validate DayInvoices and calculate updated totals
+    const updatedDayInvoiceTotals = new Map(); // Store updated totals for WeeklyInvoice validation
+    for (const invoice of dayInvoices) {
       if (invoice.rateCardIdforMain) {
         const rc = rateCardUpdates.find(update =>
           update._id.toString() === invoice.rateCardIdforMain._id.toString() &&
@@ -502,9 +497,10 @@ router.put('/', async (req, res) => {
           negativeInvoices.push({
             driverName: invoice.driverName || 'Unknown Driver',
             date: invoice.date,
+            type: 'DayInvoice'
           });
         } else {
-          dayInvoiceUpdates.push({
+          const updateOp = {
             filter: { _id: invoice._id },
             update: {
               $set: {
@@ -515,7 +511,9 @@ router.put('/', async (req, res) => {
                 total
               }
             }
-          });
+          };
+          dayInvoiceUpdates.push(updateOp);
+          updatedDayInvoiceTotals.set(invoice._id.toString(), { total, driverId: invoice.driverId?._id?.toString(), serviceWeek: invoice.serviceWeek });
         }
       }
 
@@ -550,11 +548,12 @@ router.put('/', async (req, res) => {
 
         if (total < 0) {
           negativeInvoices.push({
-            driverName: invoice.driverName || 'Unknown Driver',
+            driverName: invoice?.driverName || 'Unknown Driver',
             date: invoice.date,
+            type: 'DayInvoice'
           });
         } else {
-          dayInvoiceUpdates.push({
+          const updateOp = {
             filter: { _id: invoice._id },
             update: {
               $set: {
@@ -566,26 +565,101 @@ router.put('/', async (req, res) => {
                 total
               }
             }
-          });
+          };
+          dayInvoiceUpdates.push(updateOp);
+          updatedDayInvoiceTotals.set(invoice._id.toString(), { total, driverId: invoice.driverId?._id?.toString(), serviceWeek: invoice.serviceWeek });
         }
       }
     }
 
-    // Terminate if any negative totals are found
+    // Terminate if any negative DayInvoice totals are found
     if (negativeInvoices.length > 0) {
-      console.warn('Update rejected due to negative invoice totals:', negativeInvoices);
+      console.warn('Update rejected due to negative DayInvoice totals:', negativeInvoices);
       return res.status(400).json({
-        message: 'Update would cause negative totals for the following DayInvoices',
+        message: 'Update would cause negative totals for the following invoices',
         negativeInvoices,
+        type: 'DailyInvoice'
       });
     }
 
-    console.timeEnd('Phase 1: Validate RateCards and Invoices');
+    console.timeEnd('Phase 1: Validate RateCards and DayInvoices');
 
     // ----------------------------------
-    // PHASE 2: Apply RateCard Updates
+    // PHASE 2: Validate WeeklyInvoices
     // ----------------------------------
-    console.time('Phase 2: Update RateCards');
+    console.time('Phase 2: Validate WeeklyInvoices');
+
+    // Fetch WeeklyInvoices
+    const weeklyInvoices = await WeeklyInvoice.find({
+      serviceWeek: { $in: serviceWeek }
+    }).populate('driverId').populate('installments').lean();
+
+    // Validate WeeklyInvoices using updated DayInvoice totals
+    for (const weeklyInvoice of weeklyInvoices) {
+      const driverData = weeklyInvoice.driverId;
+      const driverId = driverData?._id?.toString();
+      const week = weeklyInvoice.serviceWeek;
+
+      // Use updated DayInvoice totals for this weekly invoice
+      let weeklyBaseTotal = 0;
+      let weeklyVatTotal = 0;
+
+      const isVatApplicable = (date) => {
+        return (
+          (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
+          (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+        );
+      };
+
+      for (const [invoiceId, { total, driverId: invDriverId, serviceWeek }] of updatedDayInvoiceTotals) {
+        if (invDriverId === driverId && serviceWeek === week) {
+          const invBaseTotal = round2(total);
+          weeklyBaseTotal += invBaseTotal;
+          const invoice = dayInvoices.find(inv => inv._id.toString() === invoiceId);
+          if (invoice && isVatApplicable(new Date(invoice.date))) {
+            weeklyVatTotal += round2(invBaseTotal * 0.2);
+          }
+        }
+      }
+
+      let additionalChargesTotal = 0;
+      for (const charge of weeklyInvoice.additionalChargesDetail || []) {
+        let rateAdjustment = round2(charge.rate);
+        if (charge.type === 'deduction') {
+          rateAdjustment = -rateAdjustment;
+        }
+        additionalChargesTotal += rateAdjustment;
+      }
+
+      weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
+      weeklyVatTotal = round2(weeklyVatTotal);
+      const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
+
+      if (weeklyTotalBeforeInstallments < 0) {
+        negativeInvoices.push({
+          driverName: driverData?.firstName + ' ' + driverData?.lastName || 'Unknown Driver',
+          serviceWeek: weeklyInvoice.serviceWeek,
+          type: 'WeeklyInvoice'
+        });
+      }
+    }
+
+    // Terminate if any negative WeeklyInvoice totals are found
+    if (negativeInvoices.length > 0) {
+      console.warn('Update rejected due to negative WeeklyInvoice totals:', negativeInvoices);
+      return res.status(400).json({
+        message: 'Update would cause negative totals for the following invoices',
+        negativeInvoices,
+        type: 'WeeklyInvoice'
+      });
+    }
+
+    console.timeEnd('Phase 2: Validate WeeklyInvoices');
+
+    // ----------------------------------
+    // PHASE 3: Apply RateCard Updates
+    // ----------------------------------
+    console.time('Phase 3: Update RateCards');
     const updatedRateCards = [];
 
     // Prepare bulkWrite operations for RateCards
@@ -620,12 +694,12 @@ router.put('/', async (req, res) => {
 
     const affectedUpdated = await RateCard.find({ serviceWeek: { $in: serviceWeek } });
     updatedRateCards.push(...affectedUpdated);
-    console.timeEnd('Phase 2: Update RateCards');
+    console.timeEnd('Phase 3: Update RateCards');
 
     // ----------------------------------
-    // PHASE 3: Apply DayInvoice Updates
+    // PHASE 4: Apply DayInvoice Updates
     // ----------------------------------
-    console.time('Phase 3: Write DayInvoices');
+    console.time('Phase 4: Write DayInvoices');
 
     async function parallelBulkWrite(chunks, maxConcurrency = 5) {
       let index = 0;
@@ -654,41 +728,40 @@ router.put('/', async (req, res) => {
       await parallelBulkWrite(chunks, MAX_CONCURRENCY);
     }
 
-    console.timeEnd('Phase 3: Write DayInvoices');
+    console.timeEnd('Phase 4: Write DayInvoices');
 
     // ----------------------------------
-    // PHASE 4: Update WeeklyInvoices
+    // PHASE 5: Apply WeeklyInvoice Updates
     // ----------------------------------
-    console.time('Phase 4: Write WeeklyInvoices');
-
-    const weeklyInvoices = await WeeklyInvoice.find({
-      serviceWeek: { $in: serviceWeek }
-    }).populate('driverId').populate('installments');
+    console.time('Phase 5: Write WeeklyInvoices');
 
     const updatedWeeklyInvoices = [];
     const bulkInstallmentOps = [];
 
     for (const weeklyInvoice of weeklyInvoices) {
       const driverData = weeklyInvoice.driverId;
-      const driverId = driverData?._id;
+      const driverId = driverData?._id?.toString();
       const week = weeklyInvoice.serviceWeek;
 
-      const allInvoices = await DayInvoice.find({ driverId, serviceWeek: week }).lean();
+      // Use updated DayInvoice totals
       let weeklyBaseTotal = 0;
       let weeklyVatTotal = 0;
 
       const isVatApplicable = (date) => {
         return (
           (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
-          (driverData?.companyVatDetails?.vatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+          (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
         );
       };
 
-      for (const inv of allInvoices) {
-        const invBaseTotal = round2(inv.total);
-        weeklyBaseTotal += invBaseTotal;
-        if (isVatApplicable(new Date(inv.date))) {
-          weeklyVatTotal += round2(invBaseTotal * 0.2);
+      for (const [invoiceId, { total, driverId: invDriverId, serviceWeek }] of updatedDayInvoiceTotals) {
+        if (invDriverId === driverId && serviceWeek === week) {
+          const invBaseTotal = round2(total);
+          weeklyBaseTotal += invBaseTotal;
+          const invoice = dayInvoices.find(inv => inv._id.toString() === invoiceId);
+          if (invoice && isVatApplicable(new Date(invoice.date))) {
+            weeklyVatTotal += round2(invBaseTotal * 0.2);
+          }
         }
       }
 
@@ -784,7 +857,7 @@ router.put('/', async (req, res) => {
     if (updatedWeeklyInvoices.length > 0) {
       await WeeklyInvoice.bulkWrite(updatedWeeklyInvoices);
     }
-    console.timeEnd('Phase 4: Write WeeklyInvoices');
+    console.timeEnd('Phase 5: Write WeeklyInvoices');
 
     const uniqueUpdated = Array.from(
       new Map(updatedRateCards.filter(card => card).map(card => [card._id.toString(), card])).values()
@@ -799,7 +872,7 @@ router.put('/', async (req, res) => {
 
   } catch (error) {
     console.error('Error in PUT /rateCard:', error.stack);
-    res.status(500).json({ message: 'Error updating rate card', error: error.message });
+    res.status(500).json({ message: 'Error updating rate card', error: error.message, type: 'ServerError' });
   }
 });
 
@@ -1017,7 +1090,7 @@ router.delete('/', async (req, res) => {
         const isVatApplicable = (date) => {
           return (
             (driverData?.vatDetails?.vatNo && date >= new Date(driverData.vatDetails.vatEffectiveDate)) ||
-            (driverData?.companyVatDetails?.vatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
+            (driverData?.companyVatDetails?.companyVatNo && date >= new Date(driverData.companyVatDetails.companyVatEffectiveDate))
           );
         };
 

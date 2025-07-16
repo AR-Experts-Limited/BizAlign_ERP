@@ -126,11 +126,11 @@ const Incentives = () => {
     };
 
     // Helper function to convert affectedInvoices to CSV
-    const convertToCSV = (invoices) => {
-        const headers = ['Driver Name', 'Date'];
+    const convertToCSV = (type, invoices) => {
+        const headers = ['Driver Name', `${type === 'WeeklyInvoice' ? 'Week' : 'Date'}`];
         const rows = invoices.map((invoice) => [
             `"${invoice.driverName}"`, // Wrap in quotes to handle commas or special characters
-            moment(invoice.date).format('DD/MM/YYYY'),
+            `${type === 'WeeklyInvoice' ? moment(invoice.serviceWeek).format('GGGG-[W]WW') : moment(invoice.date).format('DD/MM/YYYY')}`,
         ]);
         return [
             headers.join(','),
@@ -139,8 +139,8 @@ const Incentives = () => {
     };
 
     // Helper function to trigger CSV download
-    const downloadCSV = (invoices, filename = 'affected_invoices.csv') => {
-        const csvContent = convertToCSV(invoices);
+    const downloadCSV = (type, invoices, filename = `affected_${type === 'WeeklyInvoice' ? 'weekly' : 'daily'}_invoices.csv`) => {
+        const csvContent = convertToCSV(type, invoices);
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -176,7 +176,7 @@ const Incentives = () => {
                         <div className="flex gap-2 mt-2">
                             <button
                                 className="px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs whitespace-nowrap"
-                                onClick={() => downloadCSV(error?.response?.data?.affectedInvoices)}
+                                onClick={() => downloadCSV(error?.response?.data?.type, error?.response?.data?.negativeInvoices)}
                             >
                                 Download CSV
                             </button>

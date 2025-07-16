@@ -236,7 +236,7 @@ const AdditionalCharges = () => {
         const driver = driversBySite[addOn?.site]?.find((driver) => driver._id === addOn?.driverId)
         return (
             driver && ((driver?.vatDetails?.vatNo && new Date() >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-                (driver?.companyVatDetails?.vatNo && new Date() >= new Date(driver.companyVatDetails.companyVatEffectiveDate)))
+                (driver?.companyVatDetails?.companyVatNo && new Date() >= new Date(driver.companyVatDetails.companyVatEffectiveDate)))
         );
     };
 
@@ -423,7 +423,7 @@ const AdditionalCharges = () => {
 
                                 {isVatApplicable() && addOn?.type === 'addition' &&
                                     <div>
-                                        <InputGroup type='toggleswitch' label="Add 20% VAT" onChange={(e) => setAddOn(prev => ({ ...prev, vat: e.target.checked }))} />
+                                        <InputGroup checked={addOn?.vat} type='toggleswitch' label="Add 20% VAT" onChange={(e) => setAddOn(prev => ({ ...prev, vat: e.target.checked }))} />
                                     </div>
                                 }
 

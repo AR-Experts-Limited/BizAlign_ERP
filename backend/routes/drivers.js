@@ -656,7 +656,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
   const vatChanged =
     (originalVatDetails?.vatNo !== updatedDriver.vatDetails?.vatNo ||
       originalVatDetails?.vatEffectiveDate !== updatedDriver.vatDetails?.vatEffectiveDate) ||
-    (originalCompanyVatDetails?.vatNo !== updatedDriver.companyVatDetails?.vatNo ||
+    (originalCompanyVatDetails?.companyVatNo !== updatedDriver.companyVatDetails?.companyVatNo ||
       originalCompanyVatDetails?.companyVatEffectiveDate !== updatedDriver?.companyVatDetails?.companyVatEffectiveDate);
 
   const customTypeChanged = JSON.stringify(originalCustomTypeOfDriver) !== JSON.stringify(updatedDriver.customTypeOfDriver);
@@ -726,7 +726,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
       const isVatApplicable = (date) => {
         return (
           (updatedDriver.vatDetails?.vatNo && date >= new Date(updatedDriver.vatDetails.vatEffectiveDate)) ||
-          (updatedDriver.companyVatDetails?.vatNo && date >= new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate))
+          (updatedDriver.companyVatDetails?.companyVatNo && date >= new Date(updatedDriver.companyVatDetails.companyVatEffectiveDate))
         );
       };
 

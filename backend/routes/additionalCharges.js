@@ -85,7 +85,7 @@ router.post('/', upload.any(), async (req, res) => {
     const isVatApplicable = (date) => {
       return (
         (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-        (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+        (driver?.companyVatDetails?.companyVatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
       );
     };
 
@@ -331,7 +331,7 @@ router.delete('/:id', async (req, res) => {
     const isVatApplicable = (date) => {
       return (
         (driver?.vatDetails?.vatNo && date >= new Date(driver.vatDetails.vatEffectiveDate)) ||
-        (driver?.companyVatDetails?.vatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
+        (driver?.companyVatDetails?.companyVatNo && date >= new Date(driver.companyVatDetails.companyVatEffectiveDate))
       );
     };
 
