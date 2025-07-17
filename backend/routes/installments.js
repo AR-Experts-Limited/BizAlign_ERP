@@ -62,6 +62,7 @@ const getModels = (req) => ({
 //  }
 //});
 
+// POST new installment
 router.post('/', upload.any(), async (req, res) => {
   const {
     driverId, driverName, user_ID, installmentRate,
@@ -216,7 +217,24 @@ router.post('/', upload.any(), async (req, res) => {
       pending = newInstallment.installmentPending;
     }
 
-    // Step 4: Notify user
+    // Step 4: Build weeklyInvoicesMap for affected installments
+    const affectedInstallments = await Installment.find({ driverId });
+    const weeklyInvoices = await WeeklyInvoice.find({
+      driverId,
+      installments: { $in: affectedInstallments.map((ins) => ins._id) }
+    });
+    const weeklyInvoicesMap = weeklyInvoices.reduce((acc, inv) => {
+      inv.installmentDetail.forEach((insDet) => {
+        if (!acc[insDet._id]) {
+          acc[insDet._id] = { [inv.serviceWeek]: insDet.deductionAmount };
+        } else {
+          acc[insDet._id][inv.serviceWeek] = insDet.deductionAmount;
+        }
+      });
+      return acc;
+    }, {});
+
+    // Step 5: Notify user
     const user = await User.findOne({ user_ID });
     if (user?.expoPushTokens) {
       const expo = new Expo();
@@ -234,7 +252,7 @@ router.post('/', upload.any(), async (req, res) => {
       }
     }
 
-    // Step 5: Save in-app notification
+    // Step 6: Save in-app notification
     const notification = new Notification({
       notification: {
         title: 'New Installment Added',
@@ -247,16 +265,21 @@ router.post('/', upload.any(), async (req, res) => {
     });
     await notification.save();
 
-    // Step 6: Notify clients
+    // Step 7: Notify clients
     sendToClients(req.db, { type: 'installmentUpdated' });
 
-    res.status(201).json({ message: 'Installment added and distributed', installment: newInstallment });
+    res.status(201).json({
+      message: 'Installment added and distributed',
+      installments: affectedInstallments,
+      weeklyInvoicesMap
+    });
   } catch (error) {
     console.error('Error adding installment:', error);
     res.status(500).json({ message: 'Error adding installment', error: error.message });
   }
 });
 
+// DELETE installment by ID
 router.delete('/:id', async (req, res) => {
   try {
     const { Installment, WeeklyInvoice, DayInvoice, Driver } = getModels(req);
@@ -270,7 +293,7 @@ router.delete('/:id', async (req, res) => {
     await Installment.findByIdAndDelete(installmentId);
 
     // Step 2: Get WeeklyInvoices that included this installment
-    const weeklyInvoices = await WeeklyInvoice.find({ installments: installmentId });
+    const weeklyInvoices = await WeeklyInvoice.find({ installments: installmentId }).populate('installments');
 
     // Step 3: Process each WeeklyInvoice
     for (const weekly of weeklyInvoices) {
@@ -321,7 +344,7 @@ router.delete('/:id', async (req, res) => {
       const weeklyTotalBeforeInstallments = +parseFloat(weeklyBaseTotal + weeklyVatTotal).toFixed(2);
 
       // Restore pending amounts for previous installment deductions
-      const allInstallments = await Installment.find({ driverId: weekly.driverId });
+      const allInstallments = weekly.installments;
       for (const detail of weekly.installmentDetail || []) {
         const inst = allInstallments.find((i) => i._id.toString() === detail._id?.toString());
         if (inst && detail.deductionAmount > 0) {
@@ -383,11 +406,39 @@ router.delete('/:id', async (req, res) => {
       );
     }
 
+    // Step 4: Build weeklyInvoicesMap for affected installments
+    const affectedInstallments = await Installment.find({ driverId: installment.driverId });
+    const weeklyInvoicesForMap = await WeeklyInvoice.find({
+      driverId: installment.driverId,
+      installments: { $in: affectedInstallments.map((ins) => ins._id) }
+    });
+    const weeklyInvoicesMap = weeklyInvoicesForMap.reduce((acc, inv) => {
+      inv.installmentDetail.forEach((insDet) => {
+        if (!acc[insDet._id]) {
+          acc[insDet._id] = { [inv.serviceWeek]: insDet.deductionAmount };
+        } else {
+          acc[insDet._id][inv.serviceWeek] = insDet.deductionAmount;
+        }
+      });
+      return acc;
+    }, {});
+    // Include the deleted installment in the map with its ID
+    weeklyInvoicesMap[installmentId] = weeklyInvoices.reduce((acc, inv) => {
+      const detail = inv.installmentDetail.find((det) => det._id.toString() === installmentId);
+      if (detail && detail.deductionAmount) {
+        acc[inv.serviceWeek] = detail.deductionAmount;
+      }
+      return acc;
+    }, {});
 
     // Step 5: Notify clients
     sendToClients(req.db, { type: 'installmentUpdated' });
 
-    res.json({ message: 'Installment deleted successfully and WeeklyInvoices updated.' });
+    res.json({
+      message: 'Installment deleted successfully and WeeklyInvoices updated.',
+      installments: affectedInstallments,
+      weeklyInvoicesMap
+    });
   } catch (error) {
     console.error('Error deleting installment:', error);
     res.status(500).json({ message: 'Error deleting installment', error: error.message });
@@ -399,11 +450,24 @@ router.get('/', async (req, res) => {
   const { site } = req.query;
 
   try {
-    const { Installment, Driver } = getModels(req);
+    const { Installment, Driver, WeeklyInvoice } = getModels(req);
 
     // Step 1: Get installments (filtered by site if provided)
     const query = site ? { site } : {};
     const installments = await Installment.find(query);
+    const weeklyInvoices = await WeeklyInvoice.find({ installments: { $in: installments.map((ins) => ins._id) } })
+
+    const weeklyInvoicesMap = weeklyInvoices.reduce((acc, inv) => {
+      inv.installmentDetail.forEach((insDet) => {
+        if (!acc[insDet._id]) {
+          acc[insDet._id] = { [inv.serviceWeek]: insDet.deductionAmount }
+        }
+        else
+          acc[insDet._id][inv.serviceWeek] = insDet.deductionAmount;
+
+      });
+      return acc;
+    }, {});
 
     // Step 2: Extract all driverIds
     const driverIds = installments.map(inst => inst.driverId);
@@ -421,7 +485,7 @@ router.get('/', async (req, res) => {
       !disabledDriverIds.has(inst.driverId?.toString())
     );
 
-    res.status(200).json(filteredInstallments);
+    res.status(200).json({ filteredInstallments, weeklyInvoicesMap });
   } catch (error) {
     console.error('Error fetching installments:', error);
     res.status(500).json({ message: 'Error fetching installments', error: error.message });

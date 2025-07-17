@@ -14,6 +14,10 @@ import { FcPlus } from "react-icons/fc";
 import { FaEye } from "react-icons/fa";
 import DocumentViewer from '../../components/DocumentViewer/DocumentViewer'
 import TableFeatures from '../../components/TableFeatures/TableFeatures'
+import Spinner from '../../components/UIElements/Spinner'
+import SuccessTick from '../../components/UIElements/SuccessTick'
+import TrashBin from '../../components/UIElements/TrashBin'
+import { FcInfo } from 'react-icons/fc';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -31,12 +35,15 @@ const Instalments = () => {
         installmentDocument: null,
     }
     const [newInstalment, setNewInstalment] = useState(clearInstalment);
+    const [invoicesInstallmentMap, setInvoicesInstallmentMap] = useState({})
     const [instalments, setInstalments] = useState([])
     const [isUploadingFile, setIsUploadingFile] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [documentView, setDocumentView] = useState(null)
     const installmentFileRef = useRef(null)
+    const [toastOpen, setToastOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
 
 
     const columns = {
@@ -72,7 +79,8 @@ const Instalments = () => {
         const fetchinstalments = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/api/installments`);
-                setInstalments(response.data);
+                setInstalments(response.data.filteredInstallments);
+                setInvoicesInstallmentMap(response.data.weeklyInvoicesMap);
             } catch (error) {
                 console.error('Error fetching installments:', error);
             }
@@ -103,6 +111,7 @@ const Instalments = () => {
         e.preventDefault();
 
         try {
+            setLoading(true)
             const driverDetail = driversBySite[newInstalment.site].filter(
                 (driver) => driver._id == newInstalment.driverId
             );
@@ -137,22 +146,102 @@ const Instalments = () => {
 
             // Append additional fields after all others
             data.append('signed', false);
-
             const response = await axios.post(`${API_BASE_URL}/api/installments`, data);
-            setInstalments([...instalments, response.data.installment]);
+            const affectedInstallment = response.data.installments.map((ins) => ins._id)
+            setInvoicesInstallmentMap(prevMap => {
+                const updated = { ...prevMap }
+                const removedInstallments = affectedInstallment.filter((instaId) => !Object.keys(response.data.weeklyInvoicesMap).includes(instaId))
+                removedInstallments.map((rinsta) =>
+                    updated[rinsta] = {}
+                )
+                Object.entries(response.data.weeklyInvoicesMap).forEach(([instaId, values]) => {
+                    updated[instaId] = values
+                });
+                return updated
+            }
+            )
+            setInstalments(prevInstalments => {
+                const updated = [...prevInstalments];
+
+                response.data.installments.forEach(newInst => {
+                    const index = updated.findIndex(inst => inst._id === newInst._id);
+                    if (index !== -1) {
+                        // Replace existing installment
+                        updated[index] = newInst;
+                    } else {
+                        // Append new installment
+                        updated.push(newInst);
+                    }
+                });
+
+                return updated;
+            });
             setNewInstalment(clearInstalment);
             installmentFileRef.current.value = '';
             setSearchTerm('');
+            setToastOpen({
+                content: (
+                    <>
+                        <SuccessTick width={20} height={20} />
+                        <p className="text-sm font-bold text-green-500">Instalment added successfully</p>
+                    </>
+                ),
+            });
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
-            console.error('Error adding deduction:', error);
+            console.error('Error adding installment:', error);
+            setToastOpen({
+                content: (
+                    <>
+                        <p className="flex gap-1 text-sm font-bold text-red-600">
+                            <i className="flex items-center fi fi-ss-triangle-warning"></i>
+                            {error?.response?.data?.message || 'Failed to add deduction'}
+                        </p>
+                    </>
+                ),
+            });
+            setTimeout(() => setToastOpen(null), 3000);
+        }
+        finally {
+            setLoading(false)
         }
     };
 
 
     const handleDeleteInstallment = async (id) => {
         try {
-            await axios.delete(`${API_BASE_URL}/api/installments/${id}`);
-            setInstalments(instalments.filter(insta => insta._id !== id));
+            const response = await axios.delete(`${API_BASE_URL}/api/installments/${id}`);
+            setInstalments(prevInstalments => {
+                // 1. Remove the one with matching `_id`
+                const filtered = prevInstalments.filter(insta => insta._id !== id);
+
+                // 2. Replace or append installments from response
+                response.data.installments.forEach(newInst => {
+                    const index = filtered.findIndex(inst => inst._id === newInst._id);
+                    if (index !== -1) {
+                        filtered[index] = newInst; // Update existing
+                    } else {
+                        filtered.push(newInst); // Append new
+                    }
+                });
+
+                return filtered;
+            });
+            setInvoicesInstallmentMap(prevMap => {
+                const updated = { ...prevMap }
+                Object.entries(response.data.weeklyInvoicesMap).forEach(([instaId, values]) => {
+                    updated[instaId] = values
+                });
+                return updated
+            }
+            )
+            setToastOpen({
+                content: <>
+                    <TrashBin width={25} height={25} />
+                    <p className='text-sm font-bold text-red-500'>Instalment deleted successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         } catch (error) {
             console.error('Error deleting deduction:', error);
         }
@@ -236,13 +325,23 @@ const Instalments = () => {
 
     return (
         <div className='flex flex-col relative h-full w-full p-4 overflow-hidden'>
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-4 justify-around items-center'>
+                    {toastOpen?.content}
+                </div>
+            </div>
+            <div className={`${loading ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
+                </div>
+            </div>
             <div className='flex flex-col w-full h-full'>
                 <div><h2 className='flex text-xl mb-3 font-bold dark:text-white'>Instalments</h2></div>
                 <div className='flex-1 flex gap-3 overflow-auto'>
                     {/* Add new instalment section */}
                     <div className='h-full flex-1 flex-[2] flex flex-col w-full bg-white dark:bg-dark border border-neutral-300 dark:border-dark-3 rounded-lg'>
                         <div className='relative overflow-auto flex-1 flex flex-col'>
-                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
+                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3.5 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
                                 <h3>Add new instalment</h3>
                             </div>
                             <div className='p-4 pb-8 flex flex-col gap-3'>
@@ -416,7 +515,7 @@ const Instalments = () => {
 
                                 <button
                                     onClick={handleAddInstalment}
-                                    disabled={Object.values(errors).some((error) => error)}
+                                    disabled={Object.values(errors).some((error) => error) || loading}
                                     className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
                                 >
                                     Add
@@ -427,7 +526,7 @@ const Instalments = () => {
 
                     {/* Instalments list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full py-1.5 px-2 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Instalments list</h3>
                             <TableFeatures
                                 columns={columns}
@@ -445,6 +544,7 @@ const Instalments = () => {
                                             <th>{col}</th>
                                         ))}
                                         <th>Balance</th>
+                                        <th>Info</th>
                                         <th>Document</th>
                                         <th>Options</th>
                                     </tr>
@@ -468,6 +568,31 @@ const Instalments = () => {
                                             {/* <td>{instalment.tenure} week{instalment.tenure > 1 && 's'}</td> */}
                                             <td className={instalment.installmentPending > 0 ? 'text-red-500' : 'text-green-500'}>
                                                 £ {instalment.installmentPending}
+                                            </td>
+                                            <td>
+                                                {Object.entries(invoicesInstallmentMap[instalment._id] || {}).length > 0 ? (
+                                                    <div className='flex justify-center group relative self-center rounded-lg cursor-pointer '>
+                                                        <div className='absolute top-5 right-3 z-3 hidden group-hover:block bg-white  border border-neutral-200 rounded-lg  max-h-[15rem] overflow-auto'>
+                                                            <table className='table-general'>
+                                                                <thead>
+                                                                    {Object.entries(invoicesInstallmentMap[instalment._id]).length > 0 > 0 && <tr style={{ position: 'sticky', top: '1px', fontWeight: 'bold', borderBottom: '1px solid black', backgroundColor: 'white' }}>
+                                                                        <td className='!min-w-30'>Week</td>
+                                                                        <td className='!min-w-30 whitespace-nowrap'>Deducted Amount</td>
+
+                                                                    </tr>}
+                                                                </thead>
+                                                                <tbody>
+                                                                    {Object.entries(invoicesInstallmentMap[instalment._id]).length > 0 ? Object.entries(invoicesInstallmentMap[instalment._id]).sort(([weekA], [weekB]) => weekA.localeCompare(weekB)).map(([week, rate]) => (
+                                                                        <tr>
+                                                                            <td className='!min-w-30'>{week}</td>
+                                                                            <td className='!min-w-30'>£ {rate}</td>
+                                                                        </tr>
+                                                                    )) : <tr><td colSpan={3}>--No Changes recorded--</td></tr>}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <i className="text-blue-500 flex items-center text-[1.3rem] fi fi-sr-info"></i>
+                                                    </div>) : <div className='flex justify-center'><i class="flex items-center text-gray-400 text-[1.3rem]  fi fi-sr-info"></i></div>}
                                             </td>
                                             <td>
                                                 <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
@@ -559,8 +684,9 @@ const Instalments = () => {
                                             </td>
                                             <td>
                                                 <button
+                                                    disabled={loading}
                                                     onClick={() => handleDeleteInstallment(instalment._id)}
-                                                    className="p-2 rounded-md hover:bg-neutral-200 text-red-400 transition-colors"
+                                                    className="p-2 rounded-md hover:bg-neutral-200 text-red-400 transition-colors disabled:text-gray-400"
                                                     title="Delete installment"
                                                 >
                                                     <MdOutlineDelete size={17} />
