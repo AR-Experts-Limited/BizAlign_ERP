@@ -283,6 +283,7 @@ router.post('/', async (req, res) => {
         additionalChargesTotal += rateAdjustment;
       }
 
+
       weeklyBaseTotal = round2(weeklyBaseTotal + additionalChargesTotal);
       weeklyVatTotal = round2(weeklyVatTotal);
       const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
@@ -431,7 +432,8 @@ router.put('/', async (req, res) => {
 
     const negativeInvoices = [];
     const rateCardUpdates = [];
-    const dayInvoiceUpdates = [];
+    const updatedDayInvoiceTotals = new Map();
+    const dayInvoiceUpdateMap = new Map(); // Map to aggregate DayInvoice updates
 
     // Fetch all RateCards for the serviceWeek to apply mileage update temporarily
     const allRateCards = await RateCard.find({ serviceWeek: { $in: serviceWeek } }).lean();
@@ -494,9 +496,13 @@ router.put('/', async (req, res) => {
       .populate('rateCardIdforAdditional')
       .lean();
 
-    // Validate DayInvoices and calculate updated totals
-    const updatedDayInvoiceTotals = new Map();
+    // Process DayInvoices and aggregate updates
     for (const invoice of dayInvoices) {
+      const invoiceId = invoice._id.toString();
+      let update = dayInvoiceUpdateMap.get(invoiceId) || { $set: {} };
+      let newTotal = invoice.total; // Start with existing total
+
+      // Process mainService if present
       if (invoice.rateCardIdforMain) {
         const rc = tempRateCardMap.get(`${invoice.rateCardIdforMain._id.toString()}-${invoice.serviceWeek}`) || invoice.rateCardIdforMain;
 
@@ -508,11 +514,12 @@ router.put('/', async (req, res) => {
         const newMileage = round2(rc.mileage);
         const newCalcMileage = round2(invoice.miles * newMileage);
 
-        const total = round2(
-          invoice.total
-          - round2(invoice.serviceRateforMain)
-          - round2(invoice.byodRate)
-          - round2(invoice.calculatedMileage)
+        // Adjust total by removing old values and adding new ones
+        newTotal = round2(
+          newTotal
+          - round2(invoice.serviceRateforMain || 0)
+          - round2(invoice.byodRate || 0)
+          - round2(invoice.calculatedMileage || 0)
           - oldIncentiveRate
           + oldDeductionTotal
           + round2(rc.serviceRate)
@@ -522,34 +529,21 @@ router.put('/', async (req, res) => {
           - newDeductionTotal
         );
 
-        if (total < 0) {
-          negativeInvoices.push({
-            driverName: invoice.driverName || 'Unknown Driver',
-            date: invoice.date,
-            type: 'DayInvoice',
-          });
-        } else {
-          const updateOp = {
-            filter: { _id: invoice._id },
-            update: {
-              $set: {
-                serviceRateforMain: round2(rc.serviceRate),
-                byodRate: round2(rc.byodRate),
-                mileage: newMileage,
-                calculatedMileage: newCalcMileage,
-                total,
-              },
-            },
-          };
-          dayInvoiceUpdates.push(updateOp);
-          updatedDayInvoiceTotals.set(invoice._id.toString(), { total, driverId: invoice.driverId?.toString(), serviceWeek: invoice.serviceWeek });
-        }
+        // Update fields for mainService
+        update.$set = {
+          ...update.$set,
+          serviceRateforMain: round2(rc.serviceRate),
+          byodRate: round2(rc.byodRate),
+          mileage: newMileage,
+          calculatedMileage: newCalcMileage,
+        };
       }
 
-      if (invoice.rateCardIdforAdditional && invoice.additionalServiceDetails) {
+      // Process additionalService if present
+      if (invoice.rateCardIdforAdditional && invoice.additionalServiceDetails?.service) {
         const rc = tempRateCardMap.get(`${invoice.rateCardIdforAdditional._id.toString()}-${invoice.serviceWeek}`) || invoice.rateCardIdforAdditional;
-
         const addDetail = invoice.additionalServiceDetails;
+
         const oldIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
         const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, d) => sum + round2(d.rate), 0) || 0;
         const newIncentiveRate = oldIncentiveRate;
@@ -558,8 +552,9 @@ router.put('/', async (req, res) => {
         const newMileage = round2(rc.mileage);
         const newCalcMileage = round2(addDetail.miles * newMileage);
 
-        const total = round2(
-          invoice.total
+        // Adjust total by removing old additional service values and adding new ones
+        newTotal = round2(
+          newTotal
           - round2(addDetail.serviceRate || 0)
           - round2(addDetail.byodRate || 0)
           - round2(addDetail.calculatedMileage || 0)
@@ -572,29 +567,35 @@ router.put('/', async (req, res) => {
           - newDeductionTotal
         );
 
-        if (total < 0) {
-          negativeInvoices.push({
-            driverName: invoice?.driverName || 'Unknown Driver',
-            date: invoice.date,
-            type: 'DayInvoice',
-          });
-        } else {
-          const updateOp = {
-            filter: { _id: invoice._id },
-            update: {
-              $set: {
-                'additionalServiceDetails.serviceRate': round2(rc.serviceRate),
-                'additionalServiceDetails.byodRate': round2(rc.byodRate),
-                'additionalServiceDetails.mileage': newMileage,
-                'additionalServiceDetails.calculatedMileage': newCalcMileage,
-                serviceRateforAdditional: round2(rc.serviceRate + rc.byodRate + newCalcMileage + newIncentiveRate),
-                total,
-              },
-            },
-          };
-          dayInvoiceUpdates.push(updateOp);
-          updatedDayInvoiceTotals.set(invoice._id.toString(), { total, driverId: invoice.driverId?.toString(), serviceWeek: invoice.serviceWeek });
-        }
+        // Update fields for additionalService
+        update.$set = {
+          ...update.$set,
+          'additionalServiceDetails.serviceRate': round2(rc.serviceRate),
+          'additionalServiceDetails.byodRate': round2(rc.byodRate),
+          'additionalServiceDetails.mileage': newMileage,
+          'additionalServiceDetails.calculatedMileage': newCalcMileage,
+          serviceRateforAdditional: round2(rc.serviceRate + rc.byodRate + newCalcMileage + newIncentiveRate),
+        };
+      }
+
+      // Set the final total
+      update.$set.total = newTotal;
+
+      // Check for negative total
+      if (newTotal < 0) {
+        negativeInvoices.push({
+          driverName: invoice.driverName || 'Unknown Driver',
+          date: invoice.date,
+          type: 'DayInvoice',
+        });
+      } else {
+        // Store the update and total information
+        dayInvoiceUpdateMap.set(invoiceId, update);
+        updatedDayInvoiceTotals.set(invoiceId, {
+          total: newTotal,
+          driverId: invoice.driverId?.toString(),
+          serviceWeek: invoice.serviceWeek,
+        });
       }
     }
 
@@ -606,6 +607,14 @@ router.put('/', async (req, res) => {
         type: 'DailyInvoice',
       });
     }
+
+    // Convert aggregated updates to array for bulkWrite
+    const dayInvoiceUpdates = Array.from(dayInvoiceUpdateMap.entries()).map(([invoiceId, update]) => ({
+      updateOne: {
+        filter: { _id: invoiceId },
+        update,
+      },
+    }));
 
     console.timeEnd('Phase 1: Validate RateCards and DayInvoices');
 
@@ -745,7 +754,7 @@ router.put('/', async (req, res) => {
     }
 
     if (dayInvoiceUpdates.length) {
-      const chunks = chunkArray(dayInvoiceUpdates.map(op => ({ updateOne: op })), CHUNK_SIZE);
+      const chunks = chunkArray(dayInvoiceUpdates, CHUNK_SIZE);
       await parallelBulkWrite(chunks, MAX_CONCURRENCY);
     }
 
