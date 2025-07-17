@@ -23,7 +23,8 @@ router.post('/', async (req, res) => {
         if (req.body.type === 'additionalService') {
             const existingApproval = await Approval.findOne({
                 type: 'additionalService',
-                'reqData.dayInvoiceId': req.body.reqData.dayInvoiceId
+                'reqData.dayInvoiceId': req.body.reqData.dayInvoiceId,
+                approvalStatus: 'pending'
             });
 
             // If an existing approval is found, delete it
