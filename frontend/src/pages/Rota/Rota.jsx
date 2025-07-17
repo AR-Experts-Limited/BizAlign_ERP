@@ -996,7 +996,7 @@ const Rota = () => {
                                                                 dayInvoice: {
                                                                     ...prev.dayInvoice,
                                                                     serviceRateforAdditional: 0,
-                                                                    total: prev.dayInvoice.total - prev.dayInvoice.serviceRateforAdditional,
+                                                                    total: parseFloat((prev.dayInvoice.total - prev.dayInvoice.serviceRateforAdditional).toFixed(2)),
                                                                     additionalServiceApproval: 'Request'
                                                                 }
                                                             }))}
