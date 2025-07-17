@@ -17,6 +17,9 @@ import { compareServiceStrings } from './similarity'
 import { fetchRatecards } from '../../features/ratecards/ratecardSlice';
 import { fetchServices } from '../../features/services/serviceSlice';
 import { getIncentiveDetails } from '../Rota/supportFunctions';
+import SuccessTick from '../../components/UIElements/SuccessTick'
+import TrashBin from '../../components/UIElements/TrashBin'
+import Spinner from '../../components/UIElements/Spinner'
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -46,7 +49,7 @@ const ManageSummary = () => {
     const [currentInvoice, setCurrentInvoice] = useState(null)
     const [selectedInvoices, setSelectedInvoices] = useState([]);
     const [loading, setLoading] = useState(false)
-
+    const [processing, setProcessing] = useState(false)
     const originalMilesRef = useRef(null);
     const originalServiceRef = useRef(null);
     const events = useSelector((state) => state.sse.events);
@@ -56,7 +59,7 @@ const ManageSummary = () => {
     const { list: ratecards, ratecardStatus } = useSelector((state) => state.ratecards);
     const [visionIds, setVisionIds] = useState([])
     const [visionTracker, setVisionTracker] = useState('')
-
+    const [toastOpen, setToastOpen] = useState(false)
 
     const state = { rangeType, rangeOptions, selectedRangeIndex, days, selectedSite, searchDriver, driversList, standbydriversList };
     const setters = { setRangeType, setRangeOptions, setSelectedRangeIndex, setDays, setSelectedSite, setSearchDriver, setDriversList, setStandbydriversList };
@@ -357,7 +360,14 @@ const ManageSummary = () => {
             setCurrentInvoice(null)
 
         } catch (error) {
+            setCurrentInvoice(null)
             console.error("Failed to update invoice:", error);
+            setToastOpen({
+                content: <>
+                    <p className='flex gap-1 text-sm font-bold text-red-600'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.response?.data?.message}</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
     };
 
@@ -431,22 +441,93 @@ const ManageSummary = () => {
     }
 
     const handleServiceTypeChange = async (e) => {
-        if (e.target.value !== originalServiceRef.current) {
-            const isMatchingService = services.find((service) => compareServiceStrings(service.title, e.target.value).isSimilar)
-            const matchingRatecard = isMatchingService ? ratecards.find((rc) => rc.serviceTitle === isMatchingService.title && rc.serviceWeek === currentInvoice?.invoice.serviceWeek && rc.vehicleType === currentInvoice?.invoice.driverVehicleType) : null
-            const incentives = matchingRatecard ? await getIncentiveDetails(isMatchingService.title, currentInvoice?.invoice?.site, currentInvoice?.invoice.date) : []
-            const oldIncentiveRate = currentInvoice?.invoice?.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0
-            const newIncentiveRate = incentives?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0
+        const selectedService = e.target.value;
+        const originalService = originalServiceRef.current;
 
-            setCurrentInvoice(prev => ({ ...prev, matchingRatecard, invoice: { ...prev.invoice, incentiveDetailforMain: incentives, mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService, total: parseFloat((prev.invoice.total - oldIncentiveRate + newIncentiveRate).toFixed(2)) }, restrictEdit: (!isMatchingService || !matchingRatecard) && originalServiceRef.current !== e.target.value }))
+        if (selectedService === originalService) {
+            setCurrentInvoice(prev => ({
+                ...prev,
+                invoice: { ...prev.invoice, mainService: selectedService },
+                restrictEdit: false
+            }));
+            return;
         }
-        else {
-            setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, mainService: e.target.value }, restrictEdit: null }))
+
+        const invoice = currentInvoice?.invoice;
+        const isMatchingService = services.find(service =>
+            compareServiceStrings(service.title, selectedService).isSimilar
+        );
+
+        const matchingRatecard = isMatchingService
+            ? ratecards.find(rc =>
+                rc.serviceTitle === isMatchingService.title &&
+                rc.serviceWeek === invoice?.serviceWeek &&
+                rc.vehicleType === invoice?.driverVehicleType
+            )
+            : null;
+
+        const incentives = matchingRatecard
+            ? await getIncentiveDetails(isMatchingService.title, invoice?.site, invoice?.date)
+            : [];
+
+        const oldIncentiveRate = invoice?.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0;
+        const newIncentiveRate = incentives?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0;
+
+        const deductionTotal = invoice?.deductionDetail?.reduce((sum, ded) => sum + Number(ded.rate || 0), 0) || 0;
+
+        const potentialTotal = matchingRatecard
+            ? matchingRatecard.serviceRate +
+            matchingRatecard.byodRate +
+            (invoice?.miles * matchingRatecard.mileage) +
+            newIncentiveRate -
+            deductionTotal
+            : invoice?.total;
+
+        let restrictEdit = false;
+
+        if (potentialTotal < 0) {
+            restrictEdit = 'Cannot allow edit: The invoice total would become negative';
+        } else if (!isMatchingService || !matchingRatecard) {
+            restrictEdit = 'Ratecard unavailable for selected service, week and vehicle type';
         }
+
+        setCurrentInvoice(prev => ({
+            ...prev,
+            matchingRatecard,
+            invoice: {
+                ...prev.invoice,
+                mainService: isMatchingService ? isMatchingService.title : prev.invoice.mainService,
+                incentiveDetailforMain: incentives,
+                total: parseFloat((prev.invoice.total - oldIncentiveRate + newIncentiveRate).toFixed(2)),
+            },
+            restrictEdit
+        }));
+    };
+
+
+    const handleMilesChange = (e) => {
+        const newMiles = e.target.value
+        let restrictEdit = false
+        const potentialTotal = currentInvoice?.invoice.total - (currentInvoice?.invoice.calculatedMileage) + (currentInvoice?.invoice.mileage * newMiles)
+        if (potentialTotal < 0) {
+            restrictEdit = 'Cannot allow edit: The invoice total would become negative'
+        }
+        setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, miles: newMiles }, restrictEdit }))
     }
+
 
     return (
         <>
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-4 justify-around items-center'>
+                    {toastOpen?.content}
+                </div>
+            </div>
+            <div className={`${processing ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-50 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
+                </div>
+            </div>
             <TableStructure title={'Manage Summary'}
                 state={state}
                 setters={setters}
@@ -515,7 +596,7 @@ const ManageSummary = () => {
                                                     }`}
                                             >
                                                 {currentInvoice?.invoice.approvalStatus == 'Under Edit' && originalMilesRef.current !== currentInvoice?.matchedCsv["Total Distance Allowance"] ?
-                                                    <InputGroup type='dropdown' onChange={(e) => setCurrentInvoice(prev => ({ ...prev, invoice: { ...prev.invoice, miles: e.target.value } }))}>
+                                                    <InputGroup type='dropdown' onChange={(e) => handleMilesChange(e)}>
                                                         <option value={originalMilesRef.current}>{originalMilesRef.current}</option>
                                                         {currentInvoice?.matchedCsv["Total Distance Allowance"] && <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>}
                                                     </InputGroup> :
@@ -527,7 +608,7 @@ const ManageSummary = () => {
                                 </table>
 
                             </div>
-                            {currentInvoice?.restrictEdit && <div className='flex justify-end'><div className='text-center w-fit bg-red-300/50 px-2 py-1 text-sm rounded-md border border-red-500 text-red-500'> Ratecard unavailable for selected service, week and vehicle type</div></div>}
+                            {currentInvoice?.restrictEdit && <div className='flex justify-end'><div className='text-center w-fit bg-red-300/50 px-2 py-1 text-sm rounded-md border border-red-500 text-red-500'>{currentInvoice?.restrictEdit}</div></div>}
                             {(() => {
                                 const stages = [
                                     "Access Requested",
