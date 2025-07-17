@@ -110,7 +110,7 @@ const hasAdminPrivileges = (role) => ['super-admin', 'Admin'].includes(role);
  */
 const getApprovalStatus = (currentStatus, isAdmin) => {
     if (isAdmin) return 'Approved';
-    if (currentStatus === '')
+    if (currentStatus === '' || currentStatus === 'Approved')
         return 'Request'
     else if (currentStatus === 'Request')
         return 'Requested'
@@ -879,6 +879,7 @@ const Rota = () => {
                                     type="number"
                                     min={0}
                                     step="any"
+                                    disabled={rotaDetail?.dayInvoice.additionalServiceApproval === 'Requested'}
                                     value={rotaDetail?.dayInvoice.miles > 0 ? rotaDetail?.dayInvoice.miles : ''}
                                     onChange={(e) => {
                                         makeTotal(e.target.value);
@@ -955,6 +956,7 @@ const Rota = () => {
                                     <InputGroup
                                         type="dropdown"
                                         label="Services with Ratecard available"
+                                        disabled={!['', 'Request'].includes(rotaDetail.dayInvoice?.additionalServiceApproval)}
                                         value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service || ''}
                                         onChange={(e) => handleAdditionalService(e.target.value)}
                                     >
@@ -1030,7 +1032,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Service Rate"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
                                                         type="number"
                                                         min={0}
                                                         name="serviceRate"
@@ -1047,7 +1049,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Byod Rate"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
                                                         type="number"
                                                         min={0}
                                                         name="byodRate"
@@ -1064,7 +1066,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Mileage per mile"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
                                                         type="number"
                                                         min={0}
                                                         name="mileage"
@@ -1093,7 +1095,7 @@ const Rota = () => {
                                                         label="Miles driven"
                                                         type="number"
                                                         min={0}
-                                                        disabled={(rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request' && !hasAdminPrivileges(userDetails.role))}
+                                                        disabled={(rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
                                                         value={rotaDetail?.dayInvoice?.additionalServiceDetails?.miles > 0 ? rotaDetail?.dayInvoice?.additionalServiceDetails?.miles : ''}
                                                         onChange={(e) => {
                                                             handleAdditionalServiceFieldChange('miles', e.target.value);
@@ -1166,14 +1168,15 @@ const Rota = () => {
                             {rotaDetail?.existingInvoice ? (
                                 <>
                                     <button
-                                        className="px-2 h-fit py-1 bg-red-500 rounded-md text-white hover:bg-red-600"
+                                        disabled={rotaDetail?.dayInvoice.additionalServiceApproval === 'Requested'}
+                                        className="px-2 h-fit py-1 bg-red-500 rounded-md text-white hover:bg-red-600 disabled:bg-gray-300"
                                         onClick={handleDeleteInvoice}
                                     >
                                         Delete
                                     </button>
                                     <button
                                         name="edit"
-                                        disabled={rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0}
+                                        disabled={(rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0) || rotaDetail?.dayInvoice.additionalServiceApproval === 'Requested'}
                                         onClick={handleSubmitInvoice}
                                         className="px-2 h-fit py-1 bg-amber-500 rounded-md text-white hover:bg-amber-600 disabled:bg-gray-300"
                                     >
