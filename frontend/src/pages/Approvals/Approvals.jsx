@@ -55,7 +55,8 @@ const Approvals = () => {
                         serviceRateforAdditional: (
                             additionalServiceDetails.serviceRate +
                             additionalServiceDetails.byodRate +
-                            additionalServiceDetails.calculatedMileage
+                            additionalServiceDetails.calculatedMileage +
+                            (dayInvoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
                         ),
                         total: parseFloat(
                             dayInvoice.total +
