@@ -289,7 +289,7 @@ router.post('/', async (req, res) => {
 
       // Create shallow copies of installments for calculations
       const installmentCopies = (weeklyInvoice.installments || []).map(inst => ({
-        ...inst.toObject(),
+        ...inst,
         installmentPending: round2(inst.installmentPending)
       }));
 
@@ -779,7 +779,7 @@ router.put('/', async (req, res) => {
       const weeklyTotalBeforeInstallments = round2(weeklyBaseTotal + weeklyVatTotal);
 
       const installmentCopies = (weeklyInvoice.installments || []).map(inst => ({
-        ...inst.toObject(),
+        ...inst,
         installmentPending: round2(inst.installmentPending)
       }));
 
