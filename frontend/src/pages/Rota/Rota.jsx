@@ -394,7 +394,7 @@ const Rota = () => {
                     ...prev.dayInvoice,
                     rateCardIdforAdditional,
                     incentiveDetailforAdditional: incentiveDetailforAdditional,
-                    additionalServiceApproval: additionalService ? getApprovalStatus('', isAdmin) : '',
+                    additionalServiceApproval: additionalService ? 'Request' : '',
                     serviceRateforAdditional: isAdmin ? newAdditionalServiceTotal : 0,
                     total: isAdmin || prev.dayInvoice.additionalServiceApproval === 'Approved'
                         ? Number((prev.dayInvoice.total - prevAdditionalServiceTotal + newAdditionalServiceTotal).toFixed(2))
@@ -956,7 +956,7 @@ const Rota = () => {
                                     <InputGroup
                                         type="dropdown"
                                         label="Services with Ratecard available"
-                                        disabled={!['', 'Request'].includes(rotaDetail.dayInvoice?.additionalServiceApproval)}
+                                        disabled={((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
                                         value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service || ''}
                                         onChange={(e) => handleAdditionalService(e.target.value)}
                                     >
@@ -982,7 +982,7 @@ const Rota = () => {
 
                                     {rotaDetail?.dayInvoice?.additionalServiceDetails && (
                                         <div className='flex flex-col gap-3 mt-3'>
-                                            {(!hasAdminPrivileges(userDetails.role) || rotaDetail?.dayInvoice?.additionalServiceApproval !== 'Approved') && (
+                                            {(!hasAdminPrivileges(userDetails.role) || rotaDetail?.dayInvoice?.additionalServiceApproval === 'Requested') && (
                                                 <div className='flex justify-start gap-2 items-center'>
                                                     <div
                                                         className={`text-sm w-fit my-4 px-2 py-1 rounded border ${getApprovalStatusStyles(rotaDetail.dayInvoice.additionalServiceApproval)}`}
@@ -1032,7 +1032,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Service Rate"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || ((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
                                                         type="number"
                                                         min={0}
                                                         name="serviceRate"
@@ -1049,7 +1049,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Byod Rate"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || ((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
                                                         type="number"
                                                         min={0}
                                                         name="byodRate"
@@ -1066,7 +1066,7 @@ const Rota = () => {
                                                         icon={<FaPoundSign className="text-neutral-300" size={20} />}
                                                         iconPosition="left"
                                                         label="Mileage per mile"
-                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || (rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
+                                                        disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || ((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
                                                         type="number"
                                                         min={0}
                                                         name="mileage"
@@ -1095,7 +1095,7 @@ const Rota = () => {
                                                         label="Miles driven"
                                                         type="number"
                                                         min={0}
-                                                        disabled={(rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request')}
+                                                        disabled={((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
                                                         value={rotaDetail?.dayInvoice?.additionalServiceDetails?.miles > 0 ? rotaDetail?.dayInvoice?.additionalServiceDetails?.miles : ''}
                                                         onChange={(e) => {
                                                             handleAdditionalServiceFieldChange('miles', e.target.value);
