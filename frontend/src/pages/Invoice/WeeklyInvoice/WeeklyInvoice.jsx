@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { setSendingInvoice, setSelectedInvoices, incrementSentCount, resetSentCount, clearSendingInvoice } from '../../../features/invoice/invoiceSlice';
 import { fetchSites } from '../../../features/sites/siteSlice';
 import moment from 'moment';
 import { FaChevronLeft, FaChevronRight, FaPoundSign } from 'react-icons/fa';
@@ -30,8 +31,8 @@ moment.updateLocale('en', {
 
 const WeeklyInvoice = () => {
     const dispatch = useDispatch();
-    const sentCountRef = useRef(0);
-    const stopSendingRef = useRef(false);
+    // const sentCountRef = useRef(0);
+    // const stopSendingRef = useRef(false);
     const [isFilterOpen, setIsFilterOpen] = useState(true)
 
     const { userDetails } = useSelector((state) => state.auth);
@@ -49,8 +50,10 @@ const WeeklyInvoice = () => {
     const [invoices, setInvoices] = useState([]);
     const [groupedInvoices, setGroupedInvoices] = useState([]);
     const [currentInvoice, setCurrentInvoice] = useState(null);
-    const [sendingInvoice, setSendingInvoice] = useState(null);
-    const [selectedInvoices, setSelectedInvoices] = useState([])
+    const { sendingInvoice, selectedInvoices, sentCount } = useSelector((state) => state.invoices);
+    const [sendingOneInvoice, setSendingOneInvoice] = useState(false)
+    const stopSendingRef = useRef(false);
+    // const [selectedInvoices, setSelectedInvoices] = useState([])
     const [changed, setChanged] = useState(false);
 
 
@@ -331,16 +334,16 @@ const WeeklyInvoice = () => {
                                     onClick={(e) => {
                                         if (sendingInvoice) return
                                         if (e.metaKey || e.ctrlKey) {
-                                            setSelectedInvoices(prev =>
-                                                prev.includes(key)
-                                                    ? prev.filter(k => k !== key)
-                                                    : [...prev, key]
-                                            );
+                                            dispatch(setSelectedInvoices(
+                                                selectedInvoices.includes(key)
+                                                    ? selectedInvoices.filter(k => k !== key)
+                                                    : [...selectedInvoices, key]
+                                            ));
                                         }
                                         else if (selectedInvoices.some((k) => k === key)) {
-                                            setSelectedInvoices(prev =>
-                                                prev.filter(k => k !== key)
-                                            );
+                                            dispatch(setSelectedInvoices(
+                                                selectedInvoices.filter(k => k !== key)
+                                            ));
                                         }
                                         else {
                                             handleShowDetails(invoice)
@@ -493,19 +496,17 @@ const WeeklyInvoice = () => {
                                                     const ids = selectedInvoices.map((si) => groupedInvoices[si]._id)
                                                     if (!ids.includes(invoice._id)) continue
                                                 }
-                                                setSendingInvoice(invoice._id);
+                                                dispatch(setSendingInvoice(invoice._id));
                                                 const instalments = await getInstallmentDetails(invoice.driverId._id);
                                                 const updatedInvoice = { ...invoice, instalments };
                                                 await generatePDF(updatedInvoice, 'sendAllInvoices');
-                                                sentCountRef.current += 1;
+                                                dispatch(incrementSentCount());
                                             }
                                         } catch (error) {
                                             console.error("Error sending invoices:", error);
                                             alert('Error sending invoice');
                                         } finally {
-                                            setSendingInvoice(null);
-                                            sentCountRef.current = 0;
-                                            stopSendingRef.current = false;
+                                            dispatch(clearSendingInvoice());
                                         }
                                     }}
                                 >
@@ -514,15 +515,25 @@ const WeeklyInvoice = () => {
                                     ) : (
                                         <i className="fi fi-sr-paper-plane flex items-center text-[0.6rem]"></i>
                                     )}
-                                    {sendingInvoice ? `Sent ${sentCountRef.current}/${selectedInvoices.length > 0 ? selectedInvoices.length : Object.values(groupedInvoices).length}` : `Send ${selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}`}
+                                    {sendingInvoice ? `Sent ${sentCount}/${selectedInvoices.length > 0 ? selectedInvoices.length : Object.values(groupedInvoices).length}` : `Send ${selectedInvoices.length === 0 || selectedInvoices.length === Object.values(groupedInvoices).length ? `All (${Object.values(groupedInvoices).length})` : `Selected (${selectedInvoices.length})`}`}
                                 </button>
-                                {sendingInvoice && <button className='text-xs bg-red-600 text-white rounded-md px-2 py-1' onClick={() => { stopSendingRef.current = true; setSendingInvoice('stop') }}>{sendingInvoice === 'stop' ? 'Stopping..' : 'Stop'}</button>
-                                }
+                                {sendingInvoice && (
+                                    <button
+                                        className="text-xs bg-red-600 text-white rounded-md px-2 py-1"
+                                        onClick={() => {
+                                            stopSendingRef.current = true;
+                                            dispatch(setSendingInvoice('stop')); // Update sendingInvoice in Redux
+                                        }}
+                                    >
+                                        {sendingInvoice === 'stop' ? 'Stopping..' : 'Stop'}
+                                    </button>
+                                )}
+
                                 {
                                     selectedInvoices.length > 0 && !sendingInvoice &&
-                                    <button className='text-xs bg-red-600 text-white rounded-md px-2 py-1' onClick={() => setSelectedInvoices([])}>Clear</button>
+                                    <button className='text-xs bg-red-600 text-white rounded-md px-2 py-1' onClick={() => dispatch(setSelectedInvoices([]))}>Clear</button>
                                 }
-                                {selectedInvoices.length !== Object.values(groupedInvoices).length && <button disabled={sendingInvoice} onClick={() => setSelectedInvoices(Object.values(groupedInvoices).map((ginv) => `${ginv.driverId._id}_${ginv.serviceWeek}`))} className='text-xs bg-primary-600 text-white rounded-md px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Select All</button>}
+                                {selectedInvoices.length !== Object.values(groupedInvoices).length && <button disabled={sendingInvoice} onClick={() => dispatch(setSelectedInvoices(Object.values(groupedInvoices).map((ginv) => `${ginv.driverId._id}_${ginv.serviceWeek}`)))} className='text-xs bg-primary-600 text-white rounded-md px-2 py-1 disabled:bg-gray-300 disabled:text-white'>Select All</button>}
                             </div>
                         </div>
                     </div>
@@ -556,22 +567,22 @@ const WeeklyInvoice = () => {
                                                     <button
                                                         disabled={Object.values(groupedInvoices).filter(ginv => ginv.driverId._id === driver._id).length === 0}
                                                         onClick={() =>
-                                                            setSelectedInvoices(prev => {
+                                                            dispatch(setSelectedInvoices((() => {
                                                                 const newSelections = Object.values(groupedInvoices)
                                                                     .filter(ginv => ginv.driverId._id === driver._id)
                                                                     .map(ginv => `${driver._id}_${ginv.serviceWeek}`);
 
-                                                                const allSelected = newSelections.every(id => prev.includes(id));
+                                                                const allSelected = newSelections.every(id => selectedInvoices.includes(id));
 
                                                                 if (allSelected) {
                                                                     // Remove all
-                                                                    return prev.filter(id => !newSelections.includes(id));
+                                                                    return selectedInvoices.filter(id => !newSelections.includes(id));
                                                                 } else {
                                                                     // Add missing
-                                                                    const merged = new Set([...prev, ...newSelections]);
+                                                                    const merged = new Set([...selectedInvoices, ...newSelections]);
                                                                     return Array.from(merged);
                                                                 }
-                                                            })
+                                                            })()))
                                                         }
                                                         className={`h-8 w-8 rounded-full p-2 bg-gray-100 shadow border border-gray-200 disabled:!text-gray-300 ${Object.values(groupedInvoices)
                                                             .filter(ginv => ginv.driverId._id === driver._id)
@@ -1198,11 +1209,11 @@ const WeeklyInvoice = () => {
                                 disabled={changed || !currentInvoice?.invoice.allCompleted}
                                 className="flex gap-2 items-center text-sm bg-amber-400/50 text-amber-600 rounded px-2 py-1 disabled:bg-gray-300 disabled:text-white"
                                 onClick={() => {
-                                    setSendingInvoice(true);
-                                    generatePDF(currentInvoice.invoice, 'sentInvoice').then(() => setSendingInvoice(false));
+                                    setSendingOneInvoice(true);
+                                    generatePDF(currentInvoice.invoice, 'sentInvoice').then(() => setSendingOneInvoice(false));
                                 }}
                             >
-                                {sendingInvoice ? (
+                                {sendingOneInvoice ? (
                                     <div className="w-3 h-3 border-3 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
                                 ) : (
                                     <i className="fi fi-sr-paper-plane flex items-center"></i>
@@ -1243,27 +1254,28 @@ const WeeklyInvoice = () => {
                 </div>
                 <div className="border-t border-neutral-300 flex px-2 md:px-6 py-2 justify-end gap-2 items-center">
                     <button
-                        className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600"
+                        disabled={sendingOneInvoice}
+                        className="px-2 py-1 h-fit bg-gray-500 rounded-md text-white hover:bg-gray-600 disabled:bg-gray-300"
                         onClick={() => { setCurrentInvoice(null); setChanged(false); }}
                     >
                         Close
                     </button>
                     <button
-                        disabled={!changed}
+                        disabled={!changed || sendingOneInvoice}
                         className="px-2 py-1 h-fit bg-amber-500 rounded-md text-white hover:bg-amber-600 disabled:bg-gray-300"
                         onClick={() => handleUpdateInvoice(currentInvoice)}
                     >
                         Update
                     </button>
                     <button
-                        disabled={changed || !currentInvoice?.invoice.allCompleted}
+                        disabled={changed || !currentInvoice?.invoice.allCompleted || sendingOneInvoice}
                         onClick={() => generatePDF(currentInvoice.invoice, 'print')}
                         className="px-2 h-fit py-1 bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                     >
                         Print Weekly Invoice
                     </button>
                 </div>
-            </Modal>
+            </Modal >
         </div >
     );
 };

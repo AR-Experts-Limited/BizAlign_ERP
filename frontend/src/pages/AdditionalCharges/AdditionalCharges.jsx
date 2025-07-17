@@ -291,7 +291,7 @@ const AdditionalCharges = () => {
                     {/* Add new charge section */}
                     <div className='h-full flex-1 flex-[2] flex flex-col w-full bg-white dark:bg-dark border border-neutral-300 dark:border-dark-3 rounded-lg'>
                         <div className='relative overflow-auto flex-1 flex flex-col'>
-                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
+                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3.5 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
                                 <h3>Add new charge</h3>
                             </div>
                             <div className='p-4 pb-8 flex flex-col gap-3'>
@@ -505,7 +505,7 @@ const AdditionalCharges = () => {
 
                     {/* Additional charges list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full px-2 py-1.5 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Additional Charges list</h3>
                             <TableFeatures
                                 columns={columns}

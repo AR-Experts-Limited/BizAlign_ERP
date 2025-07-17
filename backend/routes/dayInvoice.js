@@ -517,6 +517,7 @@ router.put('/:invoiceId', async (req, res) => {
           rateCardIdforAdditional,
           incentiveDetailforAdditional,
           total: updatedBaseTotal,
+          csvData: null,
           invoiceUpdatedOn: new Date(),
           approvalStatus: 'Access Requested'
         },

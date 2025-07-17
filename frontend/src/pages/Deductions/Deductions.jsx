@@ -129,6 +129,7 @@ const Deductions = () => {
         e.preventDefault();
 
         try {
+            setLoading(true)
             const driverDetail = driversBySite[newDeduction.site].filter(
                 (driver) => driver._id == newDeduction.driverId
             );
@@ -190,11 +191,15 @@ const Deductions = () => {
             });
             setTimeout(() => setToastOpen(null), 3000);
         }
+        finally {
+            setLoading(false)
+        }
     };
 
 
     const handleDeleteDeduction = async (id) => {
         try {
+            setLoading(true)
             await axios.delete(`${API_BASE_URL}/api/deductions/${id}`);
             setDeductions(deductions.filter(ded => ded._id !== id));
 
@@ -208,6 +213,9 @@ const Deductions = () => {
 
         } catch (error) {
             console.error('Error deleting deduction:', error);
+        }
+        finally {
+            setLoading(false)
         }
     };
 
@@ -305,7 +313,7 @@ const Deductions = () => {
                     {/* Add new deduction section */}
                     <div className='h-full flex-1 flex-[2] flex flex-col w-full bg-white dark:bg-dark border border-neutral-300 dark:border-dark-3 rounded-lg'>
                         <div className='relative overflow-auto flex-1 flex flex-col'>
-                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
+                            <div className='sticky top-0 z-5 rounded-t-lg w-full p-3.5 bg-white/30 dark:bg-dark/30 backdrop-blur-md border-b dark:border-dark-3 border-neutral-200 dark:text-white'>
                                 <h3>Add new deduction</h3>
 
                             </div>
@@ -491,7 +499,7 @@ const Deductions = () => {
 
                                 <button
                                     onClick={handleAddDeduction}
-                                    disabled={Object.values(errors).some((error) => error)}
+                                    disabled={Object.values(errors).some((error) => error) || loading}
                                     className="ml-auto border w-fit h-fit border-primary-500 bg-primary-500 text-white rounded-md py-1 px-2 hover:text-primary-500 hover:bg-white disabled:bg-gray-200 disabled:border-gray-200 disabled:hover:text-white"
                                 >
                                     Add
@@ -502,7 +510,7 @@ const Deductions = () => {
 
                     {/* Deductions list section */}
                     <div className='relative flex-1 flex-[5] flex flex-col w-full h-full bg-white dark:bg-dark dark:border-dark-3  border border-neutral-300 rounded-lg'>
-                        <div className='flex justify-between items-center rounded-t-lg w-full p-3 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
+                        <div className='flex justify-between items-center rounded-t-lg w-full py-1.5 px-2 bg-white dark:bg-dark dark:border-dark-3 border-b border-neutral-200 dark:text-white'>
                             <h3>Deductions list</h3>
                             <TableFeatures
                                 columns={columns}
@@ -549,8 +557,10 @@ const Deductions = () => {
                                                         <br />
                                                         ({moment(deduction.date).format('GGGG-[W]ww')})
                                                     </td>
-                                                else
-                                                    return <td>{deduction[col]}</td>
+                                                if (col === 'rate')
+                                                    return <td>£ {deduction.rate}</td>
+
+                                                return <td>{deduction[col]}</td>
                                             })}
                                             <td>
                                                 <div className="flex flex-col justify-center items-center gap-1 min-w-[100px]">
