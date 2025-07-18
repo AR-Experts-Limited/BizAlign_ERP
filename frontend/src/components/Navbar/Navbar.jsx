@@ -84,9 +84,9 @@ const Navbar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
 
                     <div id="userOptions" className={` flex flex-col absolute top-9 md:top-12 right-0 bg-white/80 shadow-lg backdrop-blur-sm rounded-lg border-2 border-neutral-200 transition-all duration-300 origin-top-right transform ${userOptionsOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
                         <div className="flex flex-col p-1 md:p-2 ">
-                            <button onClick={() => navigate('/my-profile')} className={`hover:bg-zinc-300/70 rounded-md p-2 text-xs md:text-sm w-full flex  items-center gap-2`}>
+                            {/* <button onClick={() => navigate('/my-profile')} className={`hover:bg-zinc-300/70 rounded-md p-2 text-xs md:text-sm w-full flex  items-center gap-2`}>
                                 <FiUsers size={15} /> View Profile
-                            </button>
+                            </button> */}
                             <button onClick={() => navigate('/update-password')} className={`hover:bg-zinc-300/70 rounded-md p-2 text-xs md:text-sm w-full flex  items-center gap-2`}>
                                 <FiLock size={15} /> Update Password
                             </button>

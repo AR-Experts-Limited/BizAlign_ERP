@@ -1075,6 +1075,29 @@ const WeeklyInvoice = () => {
                                                 £{currentInvoice?.invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0).toFixed(2)}
                                             </td>
                                         </tr>
+                                        <tr>
+                                            <td
+                                                colSpan={
+                                                    6 +
+                                                    (currentInvoice?.invoice.invoices.some(
+                                                        (invoice) => invoice.incentiveDetailforMain?.length > 0 || invoice.incentiveDetailforAdditional?.length > 0) ? 1 : 0) +
+                                                    (currentInvoice?.invoice.invoices.some(
+                                                        (invoice) => invoice.deductionDetail?.length > 0) ? 1 : 0) +
+                                                    (currentInvoice?.invoice.invoices.some(
+                                                        (invoice) =>
+                                                            invoice.additionalServiceDetails?.service || invoice.additionalServiceApproval === 'Requested'
+                                                    )
+                                                        ? 2
+                                                        : 0)
+                                                }
+                                            ></td>
+                                            <td className="text-sm font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                Total:
+                                            </td>
+                                            <td colSpan={2} className="text-sm text-right font-medium text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
+                                                £{(currentInvoice?.invoice.invoices.reduce((sum, inv) => inv.total + sum || 0, 0) + (currentInvoice?.invoice.vatTotal)).toFixed(2)}
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>

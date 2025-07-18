@@ -956,7 +956,7 @@ const Rota = () => {
                                     <InputGroup
                                         type="dropdown"
                                         label="Services with Ratecard available"
-                                        disabled={((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
+                                        disabled={rotaDetail.dayInvoice?.additionalServiceDetails?.service && (((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested')}
                                         value={rotaDetail?.dayInvoice?.additionalServiceDetails?.service || ''}
                                         onChange={(e) => handleAdditionalService(e.target.value)}
                                     >

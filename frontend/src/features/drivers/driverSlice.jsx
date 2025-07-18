@@ -20,7 +20,7 @@ export const addDriver = createAsyncThunk('drivers/addDriver', async (driver) =>
 
 export const updateDriver = createAsyncThunk(
     'drivers/updateDriver',
-    async (driver, { getState }) => {
+    async (driver, { getState, rejectWithValue }) => {
         const id = driver.get('_id');
         const state = getState();
 
@@ -28,18 +28,22 @@ export const updateDriver = createAsyncThunk(
         const allDrivers = Object.values(state.drivers.bySite).flat();
         const existingDriver = allDrivers.find((d) => d._id === id);
         const previousSiteSelection = existingDriver?.siteSelection;
+        try {
+            const response = await axios.put(
+                `${API_BASE_URL}/api/drivers/newupdate/${id}`,
+                driver,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
 
-        const response = await axios.put(
-            `${API_BASE_URL}/api/drivers/newupdate/${id}`,
-            driver,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }
-        );
-
-        return { updatedDriver: response.data, previousSiteSelection };
+            return { updatedDriver: response.data, previousSiteSelection };
+        }
+        catch (err) {
+            return rejectWithValue(err || { message: 'An unexpected error occurred' });
+        }
     }
 );
 
