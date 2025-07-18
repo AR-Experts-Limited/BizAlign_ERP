@@ -7,6 +7,7 @@ const router = express.Router();
 const s3 = require('./aws');
 const moment = require('moment')
 const { sendToClients } = require('../utils/sseService');
+const mongoose = require('mongoose')
 
 // Multer S3 configuration
 const upload = multer({
@@ -947,6 +948,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
       const newVehicleType = getDriverTypeForDate(updatedDriver, invDate);
 
       const mainRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.mainService, updatedDriver);
+      console.log('checkpoint for main:', mainRateCard)
       if (!mainRateCard) continue;
 
       const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
@@ -975,6 +977,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
             $set: {
               driverVehicleType: newVehicleType,
               serviceRateforMain: round2(mainRateCard.serviceRate || 0),
+              rateCardIdforMain: new mongoose.Types.ObjectId(mainRateCard._id),
               byodRate: round2(mainRateCard.byodRate || 0),
               mileage: round2(mainRateCard.mileage || 0),
               calculatedMileage: round2(invoice.miles * (mainRateCard.mileage || 0)),
@@ -985,7 +988,8 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
       });
 
       let additionalRateCard = null;
-      if (invoice.additionalServiceDetails?.service && invoice.additionalServiceApproval === 'Approved') {
+      if (invoice.additionalServiceDetails?.service) {
+
         additionalRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.additionalServiceDetails.service, updatedDriver);
         if (additionalRateCard) {
           const oldAdditionalIncentiveRate = round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
@@ -1011,13 +1015,14 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
                   'additionalServiceDetails.byodRate': round2(additionalRateCard.byodRate || 0),
                   'additionalServiceDetails.mileage': round2(additionalRateCard.mileage || 0),
                   'additionalServiceDetails.calculatedMileage': round2(invoice.additionalServiceDetails.miles * (additionalRateCard.mileage || 0)),
-                  serviceRateforAdditional: round2(
+                  rateCardIdforAdditional: new mongoose.Types.ObjectId(additionalRateCard._id),
+                  serviceRateforAdditional: invoice.additionalServiceApproval === 'Approved' ? round2(
                     (additionalRateCard.serviceRate || 0) +
                     (additionalRateCard.byodRate || 0) +
                     (invoice.additionalServiceDetails.miles * (additionalRateCard.mileage || 0)) +
                     round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
-                  ),
-                  total: newAdditionalTotal,
+                  ) : 0,
+                  total: invoice.additionalServiceApproval === 'Approved' ? newAdditionalTotal : newTotal,
                 },
               },
             },

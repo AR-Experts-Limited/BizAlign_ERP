@@ -517,7 +517,7 @@ const Rota = () => {
                     type: "additionalService",
                     reqData: {
                         dayInvoiceId: response.data._id,
-                        additionalServiceDetails: rotaDetail.dayInvoice.additionalServiceDetails,
+                        // additionalServiceDetails: rotaDetail.dayInvoice.additionalServiceDetails,
                         details: `Additional Service addition requested for: \n${response.data.driverName} for ${response.data.site} on ${new Date(response.data.date).toLocaleDateString()} by ${userDetails.userName}`
                     },
                 });
