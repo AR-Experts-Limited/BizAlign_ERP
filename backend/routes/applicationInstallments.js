@@ -32,141 +32,117 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.patch('/:id/signed', async (req, res) => {
+
+router.patch('/:id/signed', upload.none(), async (req, res) => {
     const Installment = req.db.model('Installment', require('../models/installments').schema);
     try {
         const { signed, typedName, signature } = req.body;
 
-        // Validate input
+        // Validate required inputs
         if (signed === undefined || !typedName || !signature) {
             return res.status(400).json({ message: 'Missing required fields: signed, typedName, and signature.' });
         }
 
-        // Fetch the existing installment record
-        const existingInstallment = await Installment.findById(req.params.id);
-        if (!existingInstallment) {
-            return res.status(404).json({ message: 'Installment not found.' });
-        }
+        // Fetch existing installment
+        const existing = await Installment.findById(req.params.id);
+        if (!existing) return res.status(404).json({ message: 'Installment not found.' });
 
-        // 1. Load the template PDF from S3 as Page 1
-        const templateUrl = 'https://rainacrm.s3.us-east-1.amazonaws.com/templates/template_installments.pdf'; // Replace with the actual S3 URL
-        const templateResponse = await axios.get(templateUrl, { responseType: 'arraybuffer' });
-        const templateBytes = Buffer.from(templateResponse.data, 'binary');
-        const pdfDoc = await PDFDocument.load(templateBytes);
-
+        // Load and parse the PDF template from S3
+        const templateUrl = 'https://rainacrm.s3.us-east-1.amazonaws.com/templates/template_installments.pdf';
+        const templateRes = await axios.get(templateUrl, { responseType: 'arraybuffer' });
+        const pdfDoc = await PDFDocument.load(templateRes.data);
         const form = pdfDoc.getForm();
         const page1 = pdfDoc.getPages()[0];
 
-        // Fill form fields
-        form.getTextField('driverName').setText(existingInstallment.driverName);
-        form.getTextField('installmentType').setText(existingInstallment.installmentType);
-        form.getTextField('installmentRate').setText(`£${existingInstallment.installmentRate}`);
-        form.getTextField('tenure').setText(`${existingInstallment.tenure} Weeks`);
-        //form.getTextField('installmentPending').setText(`£${existingInstallment.installmentPending}`);
-        form.getTextField('spreadRate').setText(`£${existingInstallment.spreadRate}`);
-        form.getTextField('site').setText(existingInstallment.site);
-        form.getTextField('addedOn').setText(new Date(existingInstallment.addedBy.addedOn).toLocaleDateString());
+        // Populate form fields
+        form.getTextField('driverName').setText(existing.driverName);
+        form.getTextField('installmentType').setText(existing.installmentType);
+        form.getTextField('installmentRate').setText(`£${existing.installmentRate}`);
+        form.getTextField('tenure').setText(`${existing.tenure} Weeks`);
+        form.getTextField('spreadRate').setText(`£${existing.spreadRate}`);
+        form.getTextField('site').setText(existing.site);
+        form.getTextField('addedOn').setText(new Date(existing.addedBy.addedOn).toLocaleDateString());
         form.getTextField('signature').setText(typedName);
 
-        // Embed and draw the signature image
-        const signatureResponse = await axios.get(signature, { responseType: 'arraybuffer' });
-        const signaturePng = await pdfDoc.embedPng(signatureResponse.data);
-        page1.drawImage(signaturePng, {
-            x: 350,
-            y: 290,
-            width: 60,
-            height: 60,
-        });
+        // Embed signer signature image
+        const sigRes = await axios.get(signature, { responseType: 'arraybuffer' });
+        const sigImage = await pdfDoc.embedPng(sigRes.data);
+        page1.drawImage(sigImage, { x: 350, y: 290, width: 60, height: 60 });
 
-        // Flatten the form to make it non-editable
+        // Make the filled form non-editable
         form.flatten();
 
-
-        // 2. Conditionally handle second page
-        if (existingInstallment.installmentDocument) {
+        // --- Handle second page attachments (image or PDF) ---
+        if (existing.installmentDocument) {
             try {
-                const rawUrl = existingInstallment.installmentDocument;
-                const fileExtension = rawUrl.split('.').pop().toLowerCase();
-                const pageWidth = 595.28;
-                const pageHeight = 841.89;
-
-                let documentUrl = rawUrl;
-                if (!documentUrl.startsWith('http')) {
-                    documentUrl = `https://rainacrm.s3.us-east-1.amazonaws.com/${documentUrl}`;
+                let url = existing.installmentDocument;
+                if (!url.startsWith('http')) {
+                    url = `https://rainacrm.s3.us-east-1.amazonaws.com/${url}`;
                 }
+                const ext = url.split('.').pop().toLowerCase();
+                const pageWidth = 595.28, pageHeight = 841.89;
 
-                if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
-                    const billImageResponse = await axios.get(documentUrl, { responseType: 'arraybuffer' });
-                    const billImageBuffer = Buffer.from(billImageResponse.data, 'binary');
+                if (['jpg', 'jpeg', 'png'].includes(ext)) {
+                    // Embed image as a new page
+                    const imgRes = await axios.get(url, { responseType: 'arraybuffer' });
+                    const imgBuf = imgRes.data;
+                    const img = ext === 'png'
+                        ? await pdfDoc.embedPng(imgBuf)
+                        : await pdfDoc.embedJpg(imgBuf);
 
-                    let billImage;
-                    if (fileExtension === 'png') {
-                        billImage = await pdfDoc.embedPng(billImageBuffer);
-                    } else {
-                        billImage = await pdfDoc.embedJpg(billImageBuffer);
-                    }
-
-                    const { width: imgWidth, height: imgHeight } = billImage.scale(1);
-                    const scaleFactor = Math.min(pageWidth / imgWidth, pageHeight / imgHeight, 1);
-                    const finalWidth = imgWidth * scaleFactor;
-                    const finalHeight = imgHeight * scaleFactor;
-                    const xPosition = (pageWidth - finalWidth) / 2;
-                    const yPosition = (pageHeight - finalHeight) / 2;
+                    const { width: iw, height: ih } = img.scale(1);
+                    const scale = Math.min(pageWidth / iw, pageHeight / ih, 1);
+                    const w = iw * scale, h = ih * scale;
+                    const x = (pageWidth - w) / 2, y = (pageHeight - h) / 2;
 
                     const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
-                    page2.drawImage(billImage, {
-                        x: xPosition,
-                        y: yPosition,
-                        width: finalWidth,
-                        height: finalHeight,
-                    });
+                    page2.drawImage(img, { x, y, width: w, height: h });
+                } else if (ext === 'pdf') {
+                    // Copy pages from the attached PDF
+                    const attachRes = await axios.get(url, { responseType: 'arraybuffer' });
+                    const attachDoc = await PDFDocument.load(attachRes.data);
+                    const pages = await pdfDoc.copyPages(attachDoc, attachDoc.getPageIndices());
+                    pages.forEach(p => pdfDoc.addPage(p));
                 } else {
+                    // Fallback: render a clickable link
                     const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
-                    page2.drawText(`Link to attached document:`, {
-                        x: 50,
-                        y: pageHeight - 100,
-                        size: 16,
-                    });
-
-                    const wrappedUrl = documentUrl.match(/.{1,90}/g) || [documentUrl];
-                    wrappedUrl.forEach((line, idx) => {
-                        page2.drawText(line, {
-                            x: 50,
-                            y: pageHeight - 130 - (idx * 18),
-                            size: 12,
-                            color: rgb(0, 0, 1),
-                        });
+                    page2.drawText('Link to attached document:', { x: 50, y: pageHeight - 100, size: 16 });
+                    const lines = url.match(/.{1,90}/g) || [url];
+                    lines.forEach((ln, i) => {
+                        page2.drawText(ln, { x: 50, y: pageHeight - 130 - i * 18, size: 12, color: rgb(0, 0, 1) });
                     });
                 }
-            } catch (imageError) {
-                console.warn('Error handling installmentDocument:', imageError.message);
+            } catch (attachErr) {
+                console.warn('Attachment merge failed:', attachErr.message);
             }
         }
 
-        // 3. Save the merged PDF and upload to S3
-        const finalPdfBytes = await pdfDoc.save();
-        const fileName = `${existingInstallment.user_ID}_${Date.now()}_final_installment`;
-        const s3Result = await uploadPdfToS3(req.db.db.databaseName, Buffer.from(finalPdfBytes), existingInstallment.user_ID, 'installment-forms', fileName);
+        // Save merged PDF and upload to S3
+        const outputBytes = await pdfDoc.save();
+        const fileKey = `${existing.user_ID}_${Date.now()}_final_installment`;
+        const s3 = await uploadPdfToS3(
+            req.db.db.databaseName,
+            Buffer.from(outputBytes),
+            existing.user_ID,
+            'installment-forms',
+            fileKey
+        );
 
-        // 4. Update the installmentDocument URL in the database
-        existingInstallment.signed = signed; // Use boolean for signed
-        existingInstallment.signature = typedName;
-        existingInstallment.installmentDocument = s3Result.url;
-        const updatedInstallment = await existingInstallment.save();
-        sendToClients(
-            req.db, {
-            type: 'installmentUpdated', // Custom event to signal data update
-        });
+        // Persist new URL and signed flag
+        existing.signed = signed;
+        existing.installmentDocument = s3.url;
+        const saved = await existing.save();
 
-        res.json({
-            message: 'Installment signed and final PDF generated successfully.',
-            installment: updatedInstallment,
-        });
-    } catch (error) {
-        console.error('Error generating signed PDF with bill image:', error);
-        res.status(500).json({ message: 'Error generating final installment PDF.', error });
+        // Notify clients via SSE
+        sendToClients(req.db, { type: 'installmentUpdated' });
+
+        res.json({ message: 'Installment signed and PDF generated.', installment: saved });
+    } catch (err) {
+        console.error('Signing install error:', err);
+        res.status(500).json({ message: 'Failed to generate final installment PDF.', error: err.message });
     }
 });
+
 
 // GET count of unsigned installments for a specific user - For App
 router.get('/unsigned/:user_ID', async (req, res) => {

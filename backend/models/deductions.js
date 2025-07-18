@@ -13,6 +13,7 @@ const DeductionSchema = new mongoose.Schema({
     addedBy: { type: Object },
     signed: { type: Boolean, required: true },
     week: { type: String },
+    vehicleRegPlate: { type: String },
 });
 
 const Deduction = mongoose.model('Deduction', DeductionSchema);

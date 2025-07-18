@@ -125,7 +125,7 @@ router.post('/', upload.any(), async (req, res) => {
       date,
       signed,
       deductionDocument: doc,
-      addedBy,
+      addedBy: JSON.parse(addedBy),
       week,
     });
     await newDeduction.save();
