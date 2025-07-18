@@ -61,7 +61,7 @@ const Sidebar = ({ sidebarIsOpen, setSidebarIsOpen }) => {
         { path: "/planner", name: "Schedule Planner", icon: <i className="fi fi-rr-calendar-clock text-[1.5rem]"></i> },
         { path: "/live-operations", name: "Live Operations", icon: <BiStation className="text-[1.5rem]" /> },
         { path: "/rota", name: "Rota", icon: <i className="fi fi-rr-payroll-calendar text-[1.5rem]"></i> },
-        { path: "/working-hours", name: "Working Hours", icon: <i className="fi fi-rr-time-half-past text-[1.5rem]"></i> },
+        // { path: "/working-hours", name: "Working Hours", icon: <i className="fi fi-rr-time-half-past text-[1.5rem]"></i> },
         { path: "/installments", name: "Installments", icon: <i className="fi fi-rr-money-check-edit text-[1.5rem]"></i> },
         { path: "/deductions", name: "Deductions", icon: <i className="fi fi-rs-cheap-dollar text-[1.5rem]"></i> },
         { path: "/incentives", name: "Incentives", icon: <i className="fi fi-rr-handshake-deal-loan text-[1.5rem]"></i> },

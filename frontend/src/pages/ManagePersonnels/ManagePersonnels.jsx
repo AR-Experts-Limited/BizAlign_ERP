@@ -6,6 +6,7 @@ import PersonnelForm from './PersonnelForm/PersonnelForm';
 import { fetchSites } from '../../features/sites/siteSlice';
 import TableFeatures from '../../components/TableFeatures/TableFeatures';
 import { useCallback } from 'react';
+import Spinner from '../../components/UIElements/Spinner';
 
 const ManagePersonnels = () => {
     const [personnelMode, setPersonnelMode] = useState('view')
@@ -53,6 +54,7 @@ const ManagePersonnels = () => {
     const colList = { 'First Name': 'firstName', 'Last Name': 'lastName', 'Vehicle Size': 'vehicleSize', 'Transport Id': 'transportId', 'Site': 'siteSelection' }
     const [columns, setColumns] = useState(colList)
     const [toastOpen, setToastOpen] = useState(null)
+    const [processing, setProcessing] = useState(false)
 
     useEffect(() => {
         setDriversList(Object.values(driversBySite).flat())
@@ -122,9 +124,14 @@ const ManagePersonnels = () => {
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5'>
 
-            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all duration-200 border border-stone-200  fixed flex justify-center items-center top-4 left-1/2 -translate-x-1/2 bg-stone-50/30 dark:bg-dark/20 px-3 py-2 rounded-xl shadow-lg`}>
+            <div className={`${toastOpen ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all duration-200 border border-stone-200  fixed flex justify-center items-center top-4 z-800 left-1/2 -translate-x-1/2 bg-stone-50/30 dark:bg-dark/20 px-3 py-2 rounded-xl shadow-lg`}>
                 <div className='flex gap-2 items-center'>
                     {toastOpen?.content}
+                </div>
+            </div>
+            <div className={`${processing ? 'opacity-100 translate-y-16' : 'opacity-0'} transition-all ease-in duration-200 border border-stone-200 fixed flex justify-center items-center z-800 backdrop-blur-sm top-4 left-1/2 -translate-x-1/2 bg-stone-400/20 dark:bg-dark/20 p-3 rounded-lg shadow-lg`}>
+                <div className='flex gap-2 text-gray-500 justify-around items-center'>
+                    <Spinner /> Processing...
                 </div>
             </div>
 
@@ -150,6 +157,7 @@ const ManagePersonnels = () => {
                         setPersonnelMode={setPersonnelMode}
                         sites={sites}
                         setToastOpen={setToastOpen}
+                        setProcessing={setProcessing}
                         driversList={driversList}
                     />}
             </div>

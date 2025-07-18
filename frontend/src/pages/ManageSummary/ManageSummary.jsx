@@ -152,7 +152,7 @@ const ManageSummary = () => {
 
                 map[mapKey] = {
                     invoice,
-                    matchedCsv: matchedCsv ? { ...matchedCsv, similarity } : null,
+                    matchedCsv: invoice.additionalServiceApproval !== 'Requested' && matchedCsv ? { ...matchedCsv, similarity } : null,
                 };
 
                 if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
@@ -412,7 +412,7 @@ const ManageSummary = () => {
                                                 originalServiceRef.current = invoiceMap[key]?.invoice?.mainService
                                             }
                                         }}
-                                        className={`relative z-6 w-full h-full flex flex gap-2  items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
+                                        className={`relative z-6 w-full h-full flex flex-col   items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
                                         ${visionTracker?.invoice?._id === invoice?._id && 'bg-yellow-100'}
                                         ${disabledSelection && '!text-gray-300 !pointers-event-none'}
                                             ${!matchedCsv
@@ -420,16 +420,20 @@ const ManageSummary = () => {
                                                 : selectedInvoices.includes(key)
                                                     ? 'border-2 border-primary-700'
                                                     : 'border-gray-300 dark:border-dark-5  cursor-pointer'} 
-                                             rounded-md text-sm p-2 `}
+                                             rounded-md text-sm p-2 
+                                             ${invoice?.additionalServiceApproval === 'Requested' && 'border-[1.2px] !border-amber-800'}    
+                                             `}
                                     >
-                                        <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService} {!invoiceBelongstoSite && <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{invoice?.site}</span>}</div>
+                                        <div className='flex gap-2 items-center'>
+                                            <div className='overflow-auto max-h-[4rem]'>{invoice?.mainService} {!invoiceBelongstoSite && <span className='bg-amber-400/40 rounded text-amber-800 text-[0.7rem] py-0.5 px-1'>{invoice?.site}</span>}</div>
 
-                                        {matchedCsv && invoiceBelongstoSite && (
-                                            <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px]">
-                                                {invoice?.approvalStatus && stageIcons[invoice.approvalStatus]}
-                                            </div>
-                                        )}
-
+                                            {matchedCsv && invoiceBelongstoSite && (
+                                                <div className="h-7 w-7 flex justify-center items-center bg-white border border-stone-200 shadow-sm rounded-full p-[5px]">
+                                                    {invoice?.approvalStatus && stageIcons[invoice.approvalStatus]}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {invoice?.additionalServiceApproval === 'Requested' && <div className='flex justify-center bg-amber-400/40 text-amber-700 px-2 py-1 rounded-full text-[0.7rem]' >waiting for additional service approval</div>}
                                     </div>
                                 </div>
                             </div>

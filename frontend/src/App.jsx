@@ -32,11 +32,12 @@ import WeeklyInvoice from './pages/Invoice/WeeklyInvoice/WeeklyInvoice';
 import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
 import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
-
+import OverdueShiftBubble from './components/OverdueShiftBubble/OverdueShiftBubble';
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(0);
   const [sidebarLock, setSidebarLock] = useState(false);
+  const { userDetails } = useSelector((state) => state.auth);
   const location = useLocation();
   const hideLayout = location.pathname === '/login' || location.pathname === '/';
   const dispatch = useDispatch();
@@ -111,6 +112,7 @@ function App() {
             onMouseLeave={handleMouseLeaveOpener}
           >
           </div>
+          {userDetails?.role === 'OSM' && <OverdueShiftBubble userSite={userDetails?.site} />}
         </>
         )}
         <div className={`flex-1 overflow-auto ${sidebarIsOpen && 'max-sm:blur-xs max-sm:pointer-events-none '}`} >

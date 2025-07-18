@@ -825,6 +825,16 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
     }
   }
 
+  if (negativeInvoices.length > 0) {
+    console.warn('Update rejected due to negative DayInvoice totals:', negativeInvoices);
+    console.timeEnd('Validate Invoices');
+    return res.status(400).json({
+      message: 'Update would cause negative totals for the following DayInvoices',
+      negativeInvoices,
+      type: 'DayInvoice',
+    });
+  }
+
   // Validate WeeklyInvoices using all invoices in weeklyInvoice.invoices
   const affectedServiceWeeks = [...new Set(affectedDayInvoices.map(inv => inv.serviceWeek))];
   const weeklyInvoices = await WeeklyInvoice.find({
@@ -903,7 +913,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
     return res.status(400).json({
       message: 'Update would cause negative totals for the following invoices',
       negativeInvoices,
-      type: negativeInvoices[0].type,
+      type: 'WeeklyInvoice',
     });
   }
 
