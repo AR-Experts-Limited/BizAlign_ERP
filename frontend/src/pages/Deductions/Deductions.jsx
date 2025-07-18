@@ -26,6 +26,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const Deductions = () => {
     const dispatch = useDispatch()
     const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
+    const { userDetails } = useSelector((state) => state.auth);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
     const clearDeduction = {
         driverId: '',
@@ -114,6 +115,7 @@ const Deductions = () => {
     };
 
     const handleFileChange = (e) => {
+        setErrors({ ...errors, deductionDocument: false })
         setNewDeduction({ ...newDeduction, deductionDocument: e.target.files[0] });
     };
 
@@ -139,9 +141,12 @@ const Deductions = () => {
                 ...newDeduction,
                 driverName: `${firstName} ${lastName}`,
                 user_ID,
+                week: moment(newDeduction.date).format('GGGG-[W]ww')
             };
 
             const data = new FormData();
+
+            data.append('addedBy', JSON.stringify({ name: userDetails.userName, email: userDetails.email, role: userDetails.role, addedOn: new Date() }))
 
             // Append non-file fields first
             Object.keys(newDeductionObj).forEach((key) => {

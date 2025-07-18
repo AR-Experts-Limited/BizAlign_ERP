@@ -86,7 +86,7 @@ router.post('/', upload.any(), async (req, res) => {
       installmentType,
       installmentPending: +parseFloat(installmentPending).toFixed(2),
       spreadRate: +parseFloat(spreadRate).toFixed(2),
-      addedBy,
+      addedBy: JSON.parse(addedBy),
       signed,
       installmentDocument: doc,
     });

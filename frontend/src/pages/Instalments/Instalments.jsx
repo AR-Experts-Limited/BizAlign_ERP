@@ -24,6 +24,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const Instalments = () => {
     const dispatch = useDispatch()
     const { bySite: driversBySite, driverStatus } = useSelector((state) => state.drivers);
+    const { userDetails } = useSelector((state) => state.auth);
     const { list: sites, siteStatus } = useSelector((state) => state.sites)
     const clearInstalment = {
         driverId: '',
@@ -103,7 +104,8 @@ const Instalments = () => {
     };
 
     const handleFileChange = (e) => {
-        setNewInstalment({ ...newInstalment, instalmentDocument: e.target.files[0] });
+        setErrors({ ...errors, installmentDocument: false })
+        setNewInstalment({ ...newInstalment, installmentDocument: e.target.files[0] });
     };
 
     const handleAddInstalment = async (e) => {
@@ -127,6 +129,7 @@ const Instalments = () => {
             };
 
             const data = new FormData();
+            data.append('addedBy', JSON.stringify({ name: userDetails.userName, email: userDetails.email, role: userDetails.role, addedOn: new Date() }))
 
             // Append non-file fields first
             Object.keys(newInstallmentObj).forEach((key) => {
