@@ -10,6 +10,8 @@ import Spinner from '../../components/UIElements/Spinner';
 
 const ManagePersonnels = () => {
     const [personnelMode, setPersonnelMode] = useState('view')
+    const [repopulate, setRepopulate] = useState(false)
+
     const dispatch = useDispatch();
     const clearDriver = {
         vehicleRegPlate: '',
@@ -58,6 +60,7 @@ const ManagePersonnels = () => {
 
     useEffect(() => {
         setDriversList(Object.values(driversBySite).flat())
+        setRepopulate(true)
     }, [driversBySite])
 
     useEffect(() => {
@@ -141,7 +144,7 @@ const ManagePersonnels = () => {
                     <div className='text-sm md:text-base'>{personnelMode === 'create' ? 'Add Personnel' : 'Personnels List'}</div>
                     {personnelMode === 'view' && ['Admin', 'super-admin', 'compliance'].includes(userDetails.role) &&
                         <div className='flex h-full flex-col md:flex-row gap-2'>
-                            <div className='justify-self-start md:justify-self-end'><TableFeatures columns={colList} setColumns={setColumns} content={driversList} setContent={setDriversList} /></div>
+                            <div className='justify-self-start md:justify-self-end'><TableFeatures repopulate={repopulate} setRepopulate={setRepopulate} columns={colList} setColumns={setColumns} content={driversList} setContent={setDriversList} /></div>
                             <button onClick={() => setPersonnelMode('create')} className='w-fit h-full self-end text-white bg-green-500 hover:bg-green-600  rounded-lg text-xs md:text-sm px-2 py-1'>Add Personnel</button>
                         </div>
                     }

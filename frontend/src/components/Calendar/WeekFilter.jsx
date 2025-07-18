@@ -191,7 +191,7 @@ function WeekFilter({ type, value, display, onChange }) {
         </div>
         {
           isCalendarOpen && (
-            <div className="absolute top-9 left-0 md:right-0 z-30 mt-1 shadow-lg">
+            <div className="absolute top-9 left-0 md:right-0 z-30 mt-1">
               <Flatpickr
                 ref={flatpickrRef}
                 options={{
