@@ -463,7 +463,7 @@ router.put('/:invoiceId', async (req, res) => {
     const { invoiceId } = req.params;
     const {
       miles, serviceRateforMain, byodRate, calculatedMileage, incentiveDetailforMain, incentiveDetailforAdditional, rateCardIdforAdditional,
-      serviceRateforAdditional, additionalServiceApproval, deductionDetail, driverId, serviceWeek, site, date, additionalServiceDetails, total
+      serviceRateforAdditional, additionalServiceApproval, deductionDetail, driverId, serviceWeek, site, date, additionalServiceDetails, modifiedBy, total
     } = req.body;
 
     if (!invoiceId || !driverId || !serviceWeek || !site) {
@@ -569,6 +569,7 @@ router.put('/:invoiceId', async (req, res) => {
           total: updatedBaseTotal,
           csvData: null,
           invoiceUpdatedOn: new Date(),
+          modifiedBy,
           approvalStatus: 'Access Requested'
         },
       },
