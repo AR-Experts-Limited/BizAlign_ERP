@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Expo } = require('expo-server-sdk');
 const { sendToClients } = require('../utils/sseService');
-
+const moment = require('moment')
 // Helper function to get models from req.db
 const getModels = (req) => ({
   Schedule: req.db.model('Schedule', require('../models/Schedule').schema),
@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
     const newSchedule = new Schedule({
       driverId,
       user_ID,
-      day,
+      date: moment(day).tz('Europe/London').toDate(),
       associatedRateCard,
       service,
       week,
@@ -28,6 +28,7 @@ router.post('/', async (req, res) => {
       addedBy,
       acknowledged,
     });
+
     await newSchedule.save();
 
     if (!["unavailable", "dayoff"].includes(newSchedule.service)) {
