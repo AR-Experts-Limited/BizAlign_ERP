@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
     const newSchedule = new Schedule({
       driverId,
       user_ID,
-      date: moment(day).tz('Europe/London').toDate(),
+      day: moment(day).tz('Europe/London').toDate(),
       associatedRateCard,
       service,
       week,
