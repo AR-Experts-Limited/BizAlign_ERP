@@ -501,8 +501,13 @@ const Rota = () => {
         try {
             const isAdmin = hasAdminPrivileges(userDetails.role);
             let response = '';
+            const userMeta = e.target.name === 'add'
+                ? { addedBy: { userName: userDetails.userName, addedOn: new Date() } }
+                : { modifiedBy: { userName: userDetails.userName, modifiedOn: new Date() } };
+
             const payload = {
                 ...rotaDetail.dayInvoice,
+                ...userMeta,
                 additionalServiceApproval: getApprovalStatus(rotaDetail.dayInvoice.additionalServiceApproval, isAdmin)
             };
 
@@ -826,7 +831,35 @@ const Rota = () => {
                         <h2>Invoice Generation</h2>
                     </div>
 
+
                     <div className="px-5 py-3 flex flex-col gap-3 max-h-[40rem] overflow-auto pb-35">
+
+                        <div className=' w-full p-4 rounded-lg border-[1.5px] border-neutral-300 grid grid-cols-1 md:grid-cols-4 gap-4'>
+                            <div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Personnel Name</p>
+                                <p className="text-base font-medium text-gray-900 dark:text-white">
+                                    {rotaDetail?.dayInvoice.driverName}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Date</p>
+                                <p className="text-base font-medium text-gray-900 dark:text-white">
+                                    {new Date(rotaDetail?.dayInvoice.date).toLocaleDateString()}
+                                </p>
+                            </div>
+                            {rotaDetail?.dayInvoice?.addedBy?.addedOn && (<div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Date Added</p>
+                                <p className="text-base font-medium text-gray-900 dark:text-white">
+                                    {new Date(rotaDetail?.dayInvoice?.addedBy?.addedOn).toLocaleString()}
+                                </p>
+                            </div>)}
+                            {rotaDetail?.dayInvoice?.modifiedBy?.modifiedOn && (<div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Date Modified</p>
+                                <p className="text-base font-medium text-gray-900 dark:text-white">
+                                    {new Date(rotaDetail?.dayInvoice?.modifiedBy?.modifiedOn).toLocaleString()}
+                                </p>
+                            </div>)}
+                        </div>
                         <h1 className="text-xl font-bold border-b border-neutral-300">Main Service</h1>
 
                         {/* Main Service Section */}

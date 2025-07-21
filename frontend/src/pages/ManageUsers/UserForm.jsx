@@ -60,7 +60,7 @@ export const UserForm = ({ clearUser, states, setters, isPrivileged, userHierarc
             return
         try {
             const res = await axios.post(`${API_BASE_URL}/api/auth/signup`, {
-                ...user, password: user.email.split('@')[0], companyId: userDetails.companyId
+                ...user, password: user.email.split('@')[0], companyId: currentUser.companyId
             })
             setAllUsers(prev => [...prev, res.data.user])
             setUser(clearUser)
@@ -73,6 +73,7 @@ export const UserForm = ({ clearUser, states, setters, isPrivileged, userHierarc
             })
         }
         catch (error) {
+            console.error(error)
             setToastOpen({
                 content: <>
                     <TrashBin type={'error'} width={18} height={18} />
