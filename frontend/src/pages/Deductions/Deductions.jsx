@@ -18,6 +18,7 @@ import SuccessTick from '../../components/UIElements/SuccessTick'
 import TrashBin from '../../components/UIElements/TrashBin'
 import moment from 'moment'
 import TableFeatures from '../../components/TableFeatures/TableFeatures'
+import Modal from '../../components/Modal/Modal';
 
 import DatePicker from '../../components/Datepicker/Datepicker';
 
@@ -41,8 +42,9 @@ const Deductions = () => {
     const [newDeduction, setNewDeduction] = useState(clearDeduction);
     const [deductions, setDeductions] = useState([])
     const [isUploadingFile, setIsUploadingFile] = useState({});
-    const [vatValue, setVatValue] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [routeSupportInfoOpen, setRouteSupportInfoOpen] = useState(null)
+
+    const [searchTerm, setSearchTerm] = useState({ originalDriver: '', supportingDriver: '' });
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [documentView, setDocumentView] = useState(null)
     const [toastOpen, setToastOpen] = useState(false)
@@ -108,7 +110,8 @@ const Deductions = () => {
             serviceType: !newDeduction.serviceType,
             rate: !newDeduction.rate || newDeduction.rate <= 0,
             date: !newDeduction.date,
-            deductionDocument: newDeduction?.deductionDocument && !['image/jpeg', 'image/jpg', 'image/png'].includes(newDeduction?.deductionDocument?.type)
+            deductionDocument: newDeduction?.deductionDocument && !['image/jpeg', 'image/jpg', 'image/png'].includes(newDeduction?.deductionDocument?.type),
+            supportingDriver: newDeduction.supportingDriverId === newDeduction.driverId
         };
         setErrors(newErrors);
         return !Object.values(newErrors).some(error => error);
@@ -119,13 +122,13 @@ const Deductions = () => {
         setNewDeduction({ ...newDeduction, deductionDocument: e.target.files[0] });
     };
 
-    const handleVatCheck = (serviceType, driverId) => {
-        if (serviceType === 'Route Support' && driverId) {
-            setVatValue(true);
-        } else {
-            setVatValue(false);
-        }
-    };
+    // const handleVatCheck = (serviceType, driverId) => {
+    //     if (serviceType === 'Route Support' && driverId) {
+    //         setVatValue(true);
+    //     } else {
+    //         setVatValue(false);
+    //     }
+    // };
     const handleAddDeduction = async (e) => {
         if (!validateFields()) return;
         e.preventDefault();
@@ -167,8 +170,39 @@ const Deductions = () => {
             // Additional fields
             data.append('signed', false);
 
-            const response = await axios.post(`${API_BASE_URL}/api/deductions`, data);
-            setDeductions([...deductions, response.data]);
+            let deductionResponse = null;
+            let incentiveResponse = null;
+            let deductionUpdatedResponse = null;
+
+            // Step 1: Create Deduction
+            deductionResponse = await axios.post(`${API_BASE_URL}/api/deductions`, data);
+            const newDeductionData = deductionResponse.data;
+
+            if (newDeductionData.serviceType === 'Route Support') {
+                // Step 2: Create Incentive
+                incentiveResponse = await axios.post(`${API_BASE_URL}/api/incentives`, {
+                    driverId: newDeduction.supportingDriverId,
+                    site: newDeductionData.site,
+                    startDate: newDeductionData.date,
+                    service: 'Route Support',
+                    type: 'Route Support',
+                    rate: newDeductionData.rate,
+                    associatedDeduction: newDeductionData._id,
+                });
+
+                const incentiveId = incentiveResponse.data._id;
+
+                // Step 3: Update Deduction with associatedIncentive
+                deductionUpdatedResponse = await axios.put(`${API_BASE_URL}/api/deductions/${newDeductionData._id}`, {
+                    associatedIncentive: incentiveId,
+                });
+            }
+
+            // Final deduction to use in state: use updated version if available
+            const finalDeduction = deductionUpdatedResponse?.data || newDeductionData;
+
+            // Step 4: Update state
+            setDeductions((prev) => [...prev, finalDeduction]);
             setNewDeduction(clearDeduction);
             setSearchTerm('');
             deductionFileRef.current.value = '';
@@ -206,8 +240,15 @@ const Deductions = () => {
         try {
             setLoading(true)
             await axios.delete(`${API_BASE_URL}/api/deductions/${id}`);
-            setDeductions(deductions.filter(ded => ded._id !== id));
+            const deductionData = deductions.find((ded) => ded._id === id)
 
+            if (deductionData.serviceType === 'Route Support') {
+                await axios.delete(`${API_BASE_URL}/api/incentives/${deductionData.associatedIncentive?._id}`);
+            }
+
+
+            setDeductions(deductions.filter(ded => ded._id !== id));
+            setRouteSupportInfoOpen(false)
             setToastOpen({
                 content: <>
                     <TrashBin width={25} height={25} />
@@ -374,23 +415,23 @@ const Deductions = () => {
 
                                             <input
                                                 type="text"
-                                                value={searchTerm}
+                                                value={searchTerm.originalDriver}
                                                 disabled={newDeduction.site === ''}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                                onFocus={() => setDropdownOpen(true)}
-                                                onBlur={() => setTimeout(() => setDropdownOpen(false), 100)} // delay to allow click
+                                                onChange={(e) => setSearchTerm(prev => ({ ...prev, originalDriver: e.target.value }))}
+                                                onFocus={() => setDropdownOpen('originalDriver')}
+                                                onBlur={() => setTimeout(() => setDropdownOpen(null), 100)} // delay to allow click
                                                 placeholder="-Select Personnel-"
                                                 className={`w-full rounded-lg border-[1.5px] ${errors.driverId ? "border-red animate-pulse" : "border-neutral-300"
                                                     } bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
                                             />
 
-                                            {dropdownOpen && (
+                                            {dropdownOpen === 'originalDriver' && (
                                                 <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
                                                     {(driversBySite[newDeduction.site] || []).filter((driver) => !driver.disabled)
                                                         .filter((driver) =>
                                                             `${driver.firstName} ${driver.lastName}`
                                                                 .toLowerCase()
-                                                                .includes(searchTerm.toLowerCase())
+                                                                .includes(searchTerm.originalDriver.toLowerCase())
                                                         )
                                                         .map((driver) => (
                                                             <li
@@ -403,9 +444,9 @@ const Deductions = () => {
                                                                         driverId: driver._id,
                                                                         driverName: fullName,
                                                                     });
-                                                                    setSearchTerm(fullName);
+                                                                    setSearchTerm(prev => ({ ...prev, originalDriver: fullName }));
                                                                     setErrors({ ...errors, driverId: false });
-                                                                    handleVatCheck(newDeduction.serviceType, driver._id);
+                                                                    // handleVatCheck(newDeduction.serviceType, driver._id);
                                                                 }}
                                                             >
                                                                 {driver.firstName} {driver.lastName}
@@ -434,7 +475,6 @@ const Deductions = () => {
                                         onChange={(e) => {
                                             setNewDeduction({ ...newDeduction, serviceType: e.target.value });
                                             setErrors({ ...errors, serviceType: false });
-                                            handleVatCheck(e.target.value, newDeduction.driverId);
                                         }}
                                         error={errors.serviceType}
                                         value={newDeduction.serviceType}
@@ -448,6 +488,69 @@ const Deductions = () => {
                                     </InputGroup>
                                     {errors.serviceType && <p className="text-red-400 text-sm mt-1">* Service type is required</p>}
                                 </div>
+
+                                {/* Route Support Driver */}
+                                {newDeduction.serviceType === 'Route Support' && newDeduction.driverId && (
+                                    <div>
+                                        <div className="relative">
+                                            <label className="text-body-sm font-medium text-black dark:text-white">
+                                                Select Supporting Personnel<span className="ml-1 text-red select-none">*</span>
+                                            </label>
+
+                                            <div className="relative mt-3">
+                                                <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-200 z-10 pointer-events-none" />
+
+                                                <input
+                                                    type="text"
+                                                    value={searchTerm.supportingDriver}
+                                                    onChange={(e) => setSearchTerm(prev => ({ ...prev, supportingDriver: e.target.value }))}
+                                                    onFocus={() => setDropdownOpen('supportingDriver')}
+                                                    onBlur={() => setTimeout(() => setDropdownOpen(null), 100)} // delay to allow click
+                                                    placeholder="-Select Supporting Personnel-"
+                                                    className={`w-full rounded-lg border-[1.5px] ${errors.supportingDriverId ? "border-red animate-pulse" : "border-neutral-300"
+                                                        } bg-transparent outline-none px-12 py-3.5 placeholder:text-dark-6 dark:text-white dark:border-dark-3 dark:bg-dark-2 focus:border-primary-500`}
+                                                />
+
+                                                {dropdownOpen === 'supportingDriver' && (
+                                                    <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-neutral-300 bg-white dark:bg-dark-3 shadow-lg">
+                                                        {(Object.values(driversBySite).flat() || []).filter((driver) => !driver.disabled && !String(newDeduction.driverName).match(`${driver.firstName} ${driver.lastName}`))
+                                                            .filter((driver) =>
+                                                                `${driver.firstName} ${driver.lastName}`
+                                                                    .toLowerCase()
+                                                                    .includes(searchTerm.supportingDriver.toLowerCase())
+                                                            )
+                                                            .map((driver) => (
+                                                                <li
+                                                                    key={driver._id}
+                                                                    className="cursor-pointer px-4 py-2 hover:bg-primary-100/50 dark:hover:bg-dark-2 text-sm"
+                                                                    onMouseDown={() => {
+                                                                        const fullName = `${driver.firstName} ${driver.lastName}`;
+                                                                        setNewDeduction({
+                                                                            ...newDeduction,
+                                                                            supportingDriverId: driver._id,
+                                                                        });
+                                                                        setSearchTerm(prev => ({ ...prev, supportingDriver: fullName }));
+                                                                        setErrors({ ...errors, supportingDriverId: false, supportingDriver: false });
+                                                                    }}
+                                                                >
+                                                                    {driver.firstName} {driver.lastName}
+                                                                </li>
+                                                            ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+
+                                            {errors.supportingDriverId && (
+                                                <p className="text-red-400 text-sm mt-1">* Supporting Personnel is required</p>
+                                            )}
+                                        </div>
+
+                                    </div>
+                                )}
+
+                                {errors.supportingDriver && (
+                                    <p className="flex gap-1 bg-red-200/50 border border-red-500 text-red-500 rounded-md px-2 py-1 text-sm mt-1"><i class="flex items-center fi fi-sr-triangle-warning"></i>Original Driver and Supporting Personnel can't be the same</p>
+                                )}
 
                                 {/* Rate */}
                                 <div>
@@ -470,20 +573,7 @@ const Deductions = () => {
                                     {errors.rate && <p className="text-red-400 text-sm mt-1">* Valid amount is required</p>}
                                 </div>
 
-                                {/* VAT display (conditional) */}
-                                {vatValue && (
-                                    <div>
-                                        <InputGroup
-                                            type="number"
-                                            label="Price Rate + VAT (20%)"
-                                            disabled={true}
-                                            iconPosition="left"
-                                            icon={<FaPoundSign className="text-neutral-300" />}
-                                            value={(newDeduction.rate * 1.2).toFixed(2)}
-                                        />
 
-                                    </div>
-                                )}
 
                                 {/* Document upload */}
                                 <div>
@@ -655,13 +745,39 @@ const Deductions = () => {
                                                 </div>
                                             </td>
                                             <td>
-                                                <button
-                                                    onClick={() => handleDeleteDeduction(deduction._id)}
-                                                    className="p-2 rounded-md hover:bg-neutral-200 text-red-400 transition-colors"
-                                                    title="Delete deduction"
-                                                >
-                                                    <MdOutlineDelete size={17} />
-                                                </button>
+                                                <div className='flex justify-center items-center gap-1'>
+                                                    {deduction.serviceType === 'Route Support' ?
+                                                        <div onClick={() => setRouteSupportInfoOpen(deduction._id)}>
+                                                            <i class="p-2 rounded-md hover:bg-neutral-200 cursor-pointer flex items-center text-blue-400 text-[1.1rem]  fi fi-sr-info"></i>
+                                                            <Modal isOpen={routeSupportInfoOpen === deduction._id}>
+                                                                <div className='p-3 border-b border-neutral-300'>
+                                                                    Associated Incentive
+                                                                </div>
+                                                                <div className='p-6 grid grid-cols-[2fr_5fr] gap-2'>
+                                                                    <div className='font-bold'>Driver Name:</div>
+                                                                    <div>{deduction?.driverName}</div>
+                                                                    <div className='font-bold'>Incentive Id:</div>
+                                                                    <div>#{String(deduction?.associatedIncentive?._id).slice(-4)}</div>
+                                                                    <div className='font-bold'>User ID:</div>
+                                                                    <div>{deduction?.user_ID}</div>
+                                                                    <div className='font-bold'>Date:</div>
+                                                                    <div>{new Date(deduction.date).toLocaleDateString()}</div>
+
+                                                                    <div className='flex gap-1 mt-4 col-span-2 bg-amber-400/40 px-2 py-1 rounded border border-amber-800 text-amber-800 text-sm'><i class="flex items-center fi fi-sr-triangle-warning"></i>Deleting this deduction will also delete the associated incentive</div>
+                                                                </div>
+                                                                <div className='flex gap-2 justify-end border-t border-neutral-200 p-3'>
+                                                                    <button onClick={() => setRouteSupportInfoOpen(null)} className='rounded bg-gray-500 text-white px-2 py-1 text-xs'>Close</button>
+                                                                    <button onClick={() => handleDeleteDeduction(deduction._id)} className='rounded bg-red-500 text-white px-2 py-1 text-xs'>Delete</button>
+                                                                </div>
+                                                            </Modal>
+                                                        </div>
+                                                        : <button
+                                                            onClick={() => handleDeleteDeduction(deduction._id)}
+                                                            className="justify-self-end p-2 rounded-md hover:bg-neutral-200 text-red-400"
+                                                        >
+                                                            <MdOutlineDelete size={17} />
+                                                        </button>}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

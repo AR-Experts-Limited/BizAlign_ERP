@@ -2,6 +2,7 @@ import React from "react";
 import { useSelector } from 'react-redux';
 
 const TotalBreakdown = ({
+    mainService,
     miles,
     mileage,
     calculatedMileage,
@@ -44,31 +45,46 @@ const TotalBreakdown = ({
                 Daily Invoice Breakdown
             </h2>
             <div className="space-y-3 text-base text-gray-800  dark:text-white">
-                <div className="grid grid-cols-[7fr_1fr_1fr]">
-                    <span >Base Service Rate:</span>
-                    <span>£</span>
-                    <span className="text-right">{serviceRateforMain}</span>
-                </div>
-                <div className="grid grid-cols-[7fr_1fr_1fr]">
-                    <span>BYOD Rate:</span>
-                    <span>£</span>
-                    <span className="text-right">{byodRate}</span>
-                </div>
-                <div className="grid grid-cols-[7fr_1fr_1fr]">
-                    <span>Calculated Mileage:</span>
-                    <span>£</span>
-                    <span className="text-right">{calculatedMileage}</span>
-                </div>
-                {additionalServiceDetails && (additionalServiceApproval === 'Approved' || ['super-admin', 'Admin'].includes(userDetails.role)) && <div className="grid grid-cols-[7fr_1fr_1fr]">
-                    <span>Additional Services:</span>
-                    <span>£</span>
-                    <span className="text-right">{additionalServiceTotal}</span>
-                </div>}
-                {(incentiveDetailforMain?.length > 0 || incentiveDetailforAdditional?.length > 0) &&
+                {mainService === 'Route Support' ?
+                    <div className="grid grid-cols-[7fr_1fr_1fr]">
+                        <span>Route Support Rate:</span>
+                        <span>£</span>
+                        <span className="text-right">{Number(totalIncentiveforMain || 0)}</span>
+                    </div>
+                    :
+                    <>
+                        <div className="grid grid-cols-[7fr_1fr_1fr]">
+                            <span >Base Service Rate:</span>
+                            <span>£</span>
+                            <span className="text-right">{serviceRateforMain}</span>
+                        </div>
+                        <div className="grid grid-cols-[7fr_1fr_1fr]">
+                            <span>BYOD Rate:</span>
+                            <span>£</span>
+                            <span className="text-right">{byodRate}</span>
+                        </div>
+                        <div className="grid grid-cols-[7fr_1fr_1fr]">
+                            <span>Calculated Mileage:</span>
+                            <span>£</span>
+                            <span className="text-right">{calculatedMileage}</span>
+                        </div>
+                    </>}
+                {additionalServiceDetails?.service === 'Route Support' ?
+                    <div className="grid grid-cols-[7fr_1fr_1fr]">
+                        <span>Route Support Rate:</span>
+                        <span>£</span>
+                        <span className="text-right">{Number(totalIncentiveforAdditional || 0)}</span>
+                    </div>
+                    : additionalServiceDetails && (additionalServiceApproval === 'Approved' || ['super-admin', 'Admin'].includes(userDetails.role)) && <div className="grid grid-cols-[7fr_1fr_1fr]">
+                        <span>Additional Services:</span>
+                        <span>£</span>
+                        <span className="text-right">{additionalServiceTotal}</span>
+                    </div>}
+                {(incentiveDetailforMain?.length > 0 || incentiveDetailforAdditional?.length > 0) && !additionalServiceDetails?.service === 'Route Support' &&
                     <div className="grid grid-cols-[6fr_1fr_1fr] text-green-600">
                         <span>Incentives:</span>
                         <span>+£</span>
-                        <span className="text-right">{Number(totalIncentiveforMain || 0) + (additionalServiceApproval === 'Approved' ? Number(totalIncentiveforAdditional || 0) : 0)}</span>
+                        <span className="text-right">{Number(totalIncentiveforMain || 0) + ((additionalServiceApproval === 'Approved') ? Number(totalIncentiveforAdditional || 0) : 0)}</span>
                     </div>}
 
                 {deductionDetail?.length > 0 && <div className="grid grid-cols-[6fr_1fr_1fr] text-red-600">

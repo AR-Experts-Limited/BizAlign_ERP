@@ -18,7 +18,7 @@ const getModels = (req) => ({
 router.get('/', async (req, res) => {
   const Incentive = req.db.model('Incentive', require('../models/Incentive').schema);
   try {
-    const incentives = await Incentive.find();
+    const incentives = await Incentive.find().populate('associatedDeduction');
     res.status(200).json(incentives);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching incentives.' });
@@ -27,9 +27,15 @@ router.get('/', async (req, res) => {
 
 router.get('/driver', async (req, res) => {
   const Incentive = req.db.model('Incentive', require('../models/Incentive').schema);
-  const { service, site, date } = req.query
+  const { service, site, date, driverId } = req.query
   try {
-    const incentiveDetail = await Incentive.find({ service, site, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
+    const query = {
+      service, site, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) }
+    }
+    if (service === 'Route Support') {
+      query.driverId = driverId;
+    }
+    const incentiveDetail = await Incentive.find(query)
     res.status(200).json(incentiveDetail)
   }
   catch (error) {
@@ -39,7 +45,7 @@ router.get('/driver', async (req, res) => {
 
 // // Add a new Service
 router.post('/', async (req, res) => {
-  const { service, site, startDate, endDate, type, rate, addedBy } = req.body;
+  const { service, driverId, site, startDate, endDate, type, rate, associatedDeduction, addedBy } = req.body;
 
   try {
     const { Incentive, DayInvoice, WeeklyInvoice, Installment, Driver } = getModels(req);
@@ -50,12 +56,14 @@ router.post('/', async (req, res) => {
 
     // Step 1: Create and save Incentive
     const newIncentive = new Incentive({
+      driverId: service === 'Route Support' ? driverId : null,
       service,
       site,
       startDate,
-      endDate,
+      endDate: service === 'Route Support' ? startDate : endDate,
       type,
       rate: +parseFloat(rate).toFixed(2),
+      associatedDeduction,
       addedBy,
     });
     await newIncentive.save();
@@ -64,14 +72,24 @@ router.post('/', async (req, res) => {
     // const startDate = moment(month, 'YYYY-MM').startOf('month').toDate();
     // const endOfMonth = moment(month, 'YYYY-MM').endOf('month').toDate();
 
-    const dayInvoices = await DayInvoice.find({
+    const query = {
       date: {
         $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $lte: new Date(service === 'Route Support' ? startDate : endDate),
       },
       site,
-      $or: [{ mainService: service }, { 'additionalServiceDetails.service': service }],
-    });
+      $or: [
+        { mainService: service },
+        { 'additionalServiceDetails.service': service },
+      ],
+    };
+
+    // Only include driverId if service is 'Route Support'
+    if (service === 'Route Support') {
+      query.driverId = driverId;
+    }
+
+    const dayInvoices = await DayInvoice.find(query);
 
 
     const affectedWeeklyInvoices = new Set();
@@ -92,7 +110,7 @@ router.post('/', async (req, res) => {
               type: newIncentive.type,
               rate: newIncentive.rate,
               startDate: String(newIncentive.startDate),
-              endDate: String(newIncentive.endDate),
+              endDate: String(service === 'Route Support' ? newIncentive.startDate : newIncentive.endDate),
             },
           },
           $set: {
@@ -114,7 +132,7 @@ router.post('/', async (req, res) => {
               type: newIncentive.type,
               rate: newIncentive.rate,
               startDate: String(newIncentive.startDate),
-              endDate: String(newIncentive.endDate),
+              endDate: String(service === 'Route Support' ? newIncentive.startDate : newIncentive.endDate),
             },
           },
           $set: {

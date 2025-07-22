@@ -472,9 +472,12 @@ const SchedulePlanner = () => {
                                             addScheduleData?.driver
                                         )) {
                                             return (
-                                                <option key={service._id} value={service.title}>
-                                                    {service.title}
-                                                </option>
+                                                <>
+                                                    <option value='Route Support'>Route Support</option>
+                                                    <option key={service._id} value={service.title}>
+                                                        {service.title}
+                                                    </option>
+                                                </>
                                             );
                                         }
                                         return null;
