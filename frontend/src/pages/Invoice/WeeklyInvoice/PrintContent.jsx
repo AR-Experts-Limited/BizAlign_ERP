@@ -134,7 +134,7 @@ export const PrintableContent = React.forwardRef(({ invoice, driverDetails, site
                                                         {item.additionalServiceApproval === 'Requested' ? (
                                                             <div className="bg-[#FEE2E2] text-[#EF4444] text-[10px] px-2 py-1 rounded">Waiting for approval</div>
                                                         ) : (
-                                                            item.additionalServiceDetails?.service || '-'
+                                                            item.additionalServiceDetails?.service === 'Route Support' ? `${item.incentiveDetailforAdditional[0]?.routeSupportService} (Route Support )` : `${item.additionalServiceDetails?.service || '-'} `
                                                         )}
                                                     </td>
                                                     <td className="text-[10px] font-medium text-[#16A34A] p-2 border border-[#E5E7EB]">

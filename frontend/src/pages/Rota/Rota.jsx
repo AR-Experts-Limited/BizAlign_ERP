@@ -305,6 +305,12 @@ const Rota = () => {
             (sum, inc) => sum + Number(inc.rate || 0),
             0
         );
+
+        const totalDeductions = deductions?.reduce(
+            (sum, ded) => sum + Number(ded.rate || 0),
+            0
+        );
+
         if (invoice) {
             setRotaDetail({
                 dayInvoice: { driver, ...invoice },
@@ -314,6 +320,7 @@ const Rota = () => {
             });
             return;
         }
+
         const dayInvoice = {
             driver,
             driverId: _id,
@@ -334,7 +341,8 @@ const Rota = () => {
             deductionDetail: deductions,
             rateCardIdforMain: rateCard?._id,
             incentiveDetailforMain: incentives,
-            total: service === 'Route Support' ? totalIncentiveforMain : 0,
+            approvalStatus: "Access Requested",
+            total: service === 'Route Support' ? Number((totalIncentiveforMain - totalDeductions).toFixed(2)) : 0,
         };
 
         setRotaDetail({
@@ -961,7 +969,10 @@ const Rota = () => {
                                         />
                                     </div>))}
                             </InputWrapper>
-                        ) : (rotaDetail?.dayInvoice?.mainService === 'Route Support' && <div className='bg-amber-400/30 px-2 py-1 rounded border border-amber-700 text-amber-700 w-fit'>Awaiting Route Support assignment</div>)}
+                        ) : (rotaDetail?.dayInvoice?.mainService === 'Route Support' &&
+                            <div className='border-2 border-neutral-300 rounded-lg p-5 flex justify-center items-center'>
+                                <div className='bg-rose-300/30 px-2 py-1 rounded border border-rose-700 text-rose-700 w-fit'>Awaiting Route Support assignment</div>
+                            </div>)}
 
                         {/* Deductions Section */}
                         {rotaDetail?.deductions?.length > 0 && (
@@ -1069,7 +1080,10 @@ const Rota = () => {
                                                             />
                                                         </div>))}
                                                 </InputWrapper>
-                                            ) : (rotaDetail?.dayInvoice?.additionalServiceDetails?.service === 'Route Support' && <div className='bg-amber-400/30 px-2 py-1 rounded border border-amber-700 text-amber-700 w-fit'>Awaiting Route Support assignment</div>)}
+                                            ) : (rotaDetail?.dayInvoice?.additionalServiceDetails?.service === 'Route Support' &&
+                                                <div className='border-2 border-neutral-300 rounded-lg p-5 flex justify-center items-center'>
+                                                    <div className='bg-rose-300/30 px-2 py-1 rounded border border-rose-700 text-rose-700 w-fit'>Awaiting Route Support assignment</div>
+                                                </div>)}
 
 
                                             {rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Route Support' &&
@@ -1235,7 +1249,7 @@ const Rota = () => {
                                 <button
                                     className="px-2 py-1 h-fit bg-primary-500 rounded-md text-white hover:bg-primary-600 disabled:bg-gray-300"
                                     name="add"
-                                    disabled={rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0}
+                                    disabled={(rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0) || rotaDetail?.dayInvoice.mainService === 'Route Support' && rotaDetail?.dayInvoice.incentiveDetailforMain.length === 0 || rotaDetail?.dayInvoice.additionalServiceDetails?.service === 'Route Support' && rotaDetail?.dayInvoice.incentiveDetailforAdditional.length === 0}
                                     onClick={handleSubmitInvoice}
                                 >
                                     Initiate Invoice Request

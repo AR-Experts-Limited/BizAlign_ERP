@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const incentiveSchema = new mongoose.Schema({
   site: String,
   driverId: String,
+  routeSupportService: String,
   service: String,
   startDate: Date,
   endDate: Date,

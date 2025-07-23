@@ -12,6 +12,7 @@ const getModels = (req) => ({
   WeeklyInvoice: req.db.model('WeeklyInvoice', require('../models/weeklyInvoice').schema),
   Installment: req.db.model('Installment', require('../models/installments').schema),
   Incentive: req.db.model('Incentive', require('../models/Incentive').schema),
+  Schedule: req.db.model('Schedule', require('../models/Schedule.js').schema)
 });
 
 // Get all Services
@@ -45,17 +46,23 @@ router.get('/driver', async (req, res) => {
 
 // // Add a new Service
 router.post('/', async (req, res) => {
-  const { service, driverId, site, startDate, endDate, type, rate, associatedDeduction, addedBy } = req.body;
+  const { service, driverId, receivingDriverId, site, startDate, endDate, type, rate, associatedDeduction, addedBy } = req.body;
 
   try {
-    const { Incentive, DayInvoice, WeeklyInvoice, Installment, Driver } = getModels(req);
+    const { Incentive, DayInvoice, WeeklyInvoice, Installment, Driver, Schedule } = getModels(req);
 
     // if (!moment(month, 'YYYY-MM', true).isValid()) {
     //   return res.status(400).json({ message: 'Invalid month format. Use YYYY-MM' });
     // }
 
+    let schedule = null
+    if (service === 'Route Support') {
+      schedule = await Schedule.find({ driverId: receivingDriverId, day: new Date(startDate) })
+      console.log(schedule)
+    }
     // Step 1: Create and save Incentive
     const newIncentive = new Incentive({
+      routeSupportService: service === 'Route Support' ? schedule[0]?.service : null,
       driverId: service === 'Route Support' ? driverId : null,
       service,
       site,

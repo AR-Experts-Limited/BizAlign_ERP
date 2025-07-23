@@ -188,6 +188,7 @@ const Deductions = () => {
                     type: 'Route Support',
                     rate: newDeductionData.rate,
                     associatedDeduction: newDeductionData._id,
+                    receivingDriverId: newDeductionObj.driverId
                 });
 
                 const incentiveId = incentiveResponse.data._id;

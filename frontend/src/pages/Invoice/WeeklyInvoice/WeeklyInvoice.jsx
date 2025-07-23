@@ -973,7 +973,7 @@ const WeeklyInvoice = () => {
                                                             {new Date(invoice.date).toLocaleDateString('en-UK')}
                                                         </td>
                                                         <td className="text-sm font-medium text-gray-900 dark:text-white px-2 py-2 border border-gray-200 dark:border-dark-5">
-                                                            {invoice.mainService} {invoice.site !== currentInvoice?.invoice?.driverId?.siteSelection ? `(${invoice.site})` : ''}
+                                                            {invoice.mainService === 'Route Support' ? `${invoice.incentiveDetailforMain[0]?.routeSupportService} (Route Support )` : `${invoice.mainService}  ${invoice.site !== currentInvoice?.invoice?.driverId?.siteSelection ? `(${invoice.site})` : ''}`}
                                                         </td>
                                                         <td className="text-sm font-medium text-green-600 dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                             £{invoice.serviceRateforMain}
@@ -998,13 +998,14 @@ const WeeklyInvoice = () => {
                                                                         {invoice.additionalServiceApproval === 'Requested' ? (
                                                                             <div className="bg-red-200/40 text-red-400 text-xs px-2 py-1 rounded">Waiting for approval</div>
                                                                         ) : (
-                                                                            invoice.additionalServiceDetails?.service || '-'
+                                                                            invoice.additionalServiceDetails?.service === 'Route Support' ? `${invoice.incentiveDetailforAdditional[0]?.routeSupportService} (Route Support )` : `${invoice.additionalServiceDetails?.service || '-'} `
                                                                         )}
                                                                     </td>
                                                                     <td className="text-sm font-medium dark:text-white px-4 py-2 border border-gray-200 dark:border-dark-5">
                                                                         {invoice.additionalServiceApproval === 'Requested' ? (
                                                                             <div className="bg-red-200/40 text-red-400 text-xs px-2 py-1 rounded">Waiting for approval</div>
                                                                         ) : (
+
                                                                             invoice.serviceRateforAdditional ? (
                                                                                 <p className="text-sm font-medium text-green-600">
                                                                                     £{(Number(invoice.serviceRateforAdditional) - Number(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)).toFixed(2)}
