@@ -4,7 +4,7 @@ module.exports = async (req, res, next) => {
     try {
         const origin = req.headers['origin'];
         let subdomain = "";
-        let dbName = "BizAlignDevDB"; // Default DB
+        let dbName = "crm_app"; // Default DB
 
         if (origin) {
             const originUrl = new URL(origin);
@@ -15,7 +15,7 @@ module.exports = async (req, res, next) => {
             } else if (hostParts.length > 2) {
                 subdomain = hostParts[0];
                 if (!isNaN(subdomain)) {
-                    dbName = "BizAlignDevDB"
+                    dbName = "crm_app"
                 }
                 else {
                     dbName = `crm_${subdomain}`;
