@@ -31,13 +31,19 @@ router.get('/driver', async (req, res) => {
   const { service, site, date, driverId } = req.query
   try {
     const query = {
-      service, site, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) }
-    }
+      service,
+      startDate: { $lte: new Date(date) },
+      endDate: { $gte: new Date(date) },
+    };
+
     if (service === 'Route Support') {
       query.driverId = driverId;
+    } else {
+      query.site = site;
     }
-    const incentiveDetail = await Incentive.find(query)
-    res.status(200).json(incentiveDetail)
+
+    const incentiveDetail = await Incentive.find(query);
+    res.status(200).json(incentiveDetail);
   }
   catch (error) {
     res.status(500).json({ message: "error fetching driver's incentive details" })
@@ -58,7 +64,6 @@ router.post('/', async (req, res) => {
     let schedule = null
     if (service === 'Route Support') {
       schedule = await Schedule.find({ driverId: receivingDriverId, day: new Date(startDate) })
-      console.log(schedule)
     }
     // Step 1: Create and save Incentive
     const newIncentive = new Incentive({
