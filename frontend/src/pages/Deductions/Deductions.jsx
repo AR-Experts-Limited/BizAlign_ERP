@@ -37,6 +37,7 @@ const Deductions = () => {
         site: '',
         serviceType: '',
         deductionDocument: null,
+        supportingDriver: '',
         signed: false,
     }
     const [newDeduction, setNewDeduction] = useState(clearDeduction);
@@ -205,7 +206,7 @@ const Deductions = () => {
             // Step 4: Update state
             setDeductions((prev) => [...prev, finalDeduction]);
             setNewDeduction(clearDeduction);
-            setSearchTerm('');
+            setSearchTerm({ originalDriver: '', supportingDriver: '' });
             deductionFileRef.current.value = '';
 
             setToastOpen({
