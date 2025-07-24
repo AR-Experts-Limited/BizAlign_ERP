@@ -981,14 +981,16 @@ const Rota = () => {
                                 {rotaDetail?.deductions?.map((ded) => (
                                     <div key={ded._id} className="flex items-center gap-5 justify-between">
                                         <div className="flex-1 grid grid-cols-[1fr_8fr_8fr] space-x-3">
-                                            <div className='flex items-center justify-center mt-6'><input className='h-[50%] w-4 accent-primary-400 rounded focus:ring-primary-400' type="checkbox" checked={rotaDetail?.dayInvoice.deductionDetail?.find((prevded) => prevded._id === ded._id)} disabled={!['super-admin', 'Admin'].includes(userDetails?.role)} onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: [...prev.dayInvoice.deductionDetail, ded], total: +parseFloat(prev.dayInvoice.total - ded.rate).toFixed(2) } }))
-                                                } else {
-                                                    setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: prev.dayInvoice.deductionDetail.filter((prevded) => prevded._id !== ded._id), total: +parseFloat(prev.dayInvoice.total + ded.rate).toFixed(2) } }))
-                                                }
+                                            <div className='flex items-center justify-center mt-6'>
+                                                <input className='h-[50%] w-4 accent-primary-400 rounded focus:ring-primary-400' type="checkbox" checked={rotaDetail?.dayInvoice.deductionDetail?.find((prevded) => prevded._id === ded._id)} disabled={!['super-admin', 'Admin'].includes(userDetails?.role) || ded.serviceType === 'Route Support'} onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: [...prev.dayInvoice.deductionDetail, ded], total: +parseFloat(prev.dayInvoice.total - ded.rate).toFixed(2) } }))
+                                                    } else {
+                                                        setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, deductionDetail: prev.dayInvoice.deductionDetail.filter((prevded) => prevded._id !== ded._id), total: +parseFloat(prev.dayInvoice.total + ded.rate).toFixed(2) } }))
+                                                    }
 
-                                            }} /></div>
+                                                }} />
+                                            </div>
                                             <InputGroup disabled={true} label="Deduction Type" value={ded.serviceType} />
                                             <InputGroup disabled={true} icon={<FaPoundSign className="text-neutral-300" size={20} />} iconPosition="left" label="Deduction amount" value={ded.rate} />
                                         </div>
@@ -1238,7 +1240,7 @@ const Rota = () => {
                                     </button>
                                     <button
                                         name="edit"
-                                        disabled={(rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0) || rotaDetail?.dayInvoice.additionalServiceApproval === 'Requested'}
+                                        disabled={(rotaDetail?.dayInvoice.miles > 0 && rotaDetail?.dayInvoice.total < 0) || rotaDetail?.dayInvoice.additionalServiceApproval === 'Requested' || rotaDetail?.dayInvoice.mainService === 'Route Support' && rotaDetail?.dayInvoice.incentiveDetailforMain.length === 0 || (rotaDetail?.dayInvoice.additionalServiceDetails?.service === 'Route Support' && rotaDetail?.dayInvoice.incentiveDetailforAdditional.length === 0)}
                                         onClick={handleSubmitInvoice}
                                         className="px-2 h-fit py-1 bg-amber-500 rounded-md text-white hover:bg-amber-600 disabled:bg-gray-300"
                                     >

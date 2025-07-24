@@ -80,13 +80,18 @@ const TotalBreakdown = ({
                         <span>£</span>
                         <span className="text-right">{additionalServiceTotal}</span>
                     </div>}
-                {(incentiveDetailforMain?.length > 0 || incentiveDetailforAdditional?.length > 0) && !additionalServiceDetails?.service === 'Route Support' &&
+                {(incentiveDetailforMain?.length > 0) &&
                     <div className="grid grid-cols-[6fr_1fr_1fr] text-green-600">
-                        <span>Incentives:</span>
+                        <span>Incentives for Main:</span>
                         <span>+£</span>
-                        <span className="text-right">{Number(totalIncentiveforMain || 0) + ((additionalServiceApproval === 'Approved') ? Number(totalIncentiveforAdditional || 0) : 0)}</span>
+                        <span className="text-right">{Number(totalIncentiveforMain || 0)}</span>
                     </div>}
-
+                {(incentiveDetailforAdditional?.length > 0) && additionalServiceDetails?.service !== 'Route Support' &&
+                    <div className="grid grid-cols-[6fr_1fr_1fr] text-green-600">
+                        <span>Incentives for Additional:</span>
+                        <span>+£</span>
+                        <span className="text-right">{((additionalServiceApproval === 'Approved' || ['super-admin', 'Admin'].includes(userDetails.role)) ? Number(totalIncentiveforAdditional || 0) : 0)}</span>
+                    </div>}
                 {deductionDetail?.length > 0 && <div className="grid grid-cols-[6fr_1fr_1fr] text-red-600">
                     <span>Other Deductions:</span>
                     <span>-£</span>
