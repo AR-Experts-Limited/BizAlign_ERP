@@ -949,7 +949,7 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
 
       const mainRateCard = await rateCardFinder(RateCard, invDate, serviceWeek, invoice.mainService, updatedDriver);
       console.log('checkpoint for main:', mainRateCard)
-      if (!mainRateCard) continue;
+      if (!mainRateCard && invoice.mainService !== 'Route Support') continue;
 
       const oldIncentiveRate = round2(invoice.incentiveDetailforMain?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0);
       const oldDeductionTotal = invoice.deductionDetail?.reduce((sum, ded) => sum + round2(ded.rate), 0) || 0;
@@ -963,9 +963,9 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
         - round2(invoice.calculatedMileage || 0)
         - oldIncentiveRate
         + oldDeductionTotal
-        + round2(mainRateCard.serviceRate || 0)
-        + round2(mainRateCard.byodRate || 0)
-        + round2(invoice.miles * (mainRateCard.mileage || 0))
+        + round2(mainRateCard?.serviceRate || 0)
+        + round2(mainRateCard?.byodRate || 0)
+        + round2(invoice?.miles * (mainRateCard?.mileage || 0))
         + newIncentiveRate
         - newDeductionTotal
       );
@@ -976,11 +976,11 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
           update: {
             $set: {
               driverVehicleType: newVehicleType,
-              serviceRateforMain: round2(mainRateCard.serviceRate || 0),
-              rateCardIdforMain: new mongoose.Types.ObjectId(mainRateCard._id),
-              byodRate: round2(mainRateCard.byodRate || 0),
-              mileage: round2(mainRateCard.mileage || 0),
-              calculatedMileage: round2(invoice.miles * (mainRateCard.mileage || 0)),
+              serviceRateforMain: round2(mainRateCard?.serviceRate || 0),
+              rateCardIdforMain: mainRateCard?._id ? new mongoose.Types.ObjectId(mainRateCard._id) : null,
+              byodRate: round2(mainRateCard?.byodRate || 0),
+              mileage: round2(mainRateCard?.mileage || 0),
+              calculatedMileage: round2(invoice.miles * (mainRateCard?.mileage || 0)),
               total: newTotal,
             },
           },
@@ -1000,9 +1000,9 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
             - round2(invoice.additionalServiceDetails.byodRate || 0)
             - round2(invoice.additionalServiceDetails.calculatedMileage || 0)
             - oldAdditionalIncentiveRate
-            + round2(additionalRateCard.serviceRate || 0)
-            + round2(additionalRateCard.byodRate || 0)
-            + round2(invoice.additionalServiceDetails.miles * (additionalRateCard.mileage || 0))
+            + round2(additionalRateCard?.serviceRate || 0)
+            + round2(additionalRateCard?.byodRate || 0)
+            + round2(invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0))
             + round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
           );
 
@@ -1011,15 +1011,15 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
               filter: { _id: invoice._id },
               update: {
                 $set: {
-                  'additionalServiceDetails.serviceRate': round2(additionalRateCard.serviceRate || 0),
-                  'additionalServiceDetails.byodRate': round2(additionalRateCard.byodRate || 0),
-                  'additionalServiceDetails.mileage': round2(additionalRateCard.mileage || 0),
-                  'additionalServiceDetails.calculatedMileage': round2(invoice.additionalServiceDetails.miles * (additionalRateCard.mileage || 0)),
-                  rateCardIdforAdditional: new mongoose.Types.ObjectId(additionalRateCard._id),
+                  'additionalServiceDetails.serviceRate': round2(additionalRateCard?.serviceRate || 0),
+                  'additionalServiceDetails.byodRate': round2(additionalRateCard?.byodRate || 0),
+                  'additionalServiceDetails.mileage': round2(additionalRateCard?.mileage || 0),
+                  'additionalServiceDetails.calculatedMileage': round2(invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)),
+                  rateCardIdforAdditional: additionalRateCard?._id ? new mongoose.Types.ObjectId(additionalRateCard._id) : null,
                   serviceRateforAdditional: invoice.additionalServiceApproval === 'Approved' ? round2(
-                    (additionalRateCard.serviceRate || 0) +
-                    (additionalRateCard.byodRate || 0) +
-                    (invoice.additionalServiceDetails.miles * (additionalRateCard.mileage || 0)) +
+                    (additionalRateCard?.serviceRate || 0) +
+                    (additionalRateCard?.byodRate || 0) +
+                    (invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)) +
                     round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
                   ) : 0,
                   total: invoice.additionalServiceApproval === 'Approved' ? newAdditionalTotal : newTotal,
@@ -1030,14 +1030,14 @@ router.put('/newupdate/:id', upload.any(), asyncHandler(async (req, res) => {
 
           // Update total for weekly calculation to include additional service
           invBaseTotal = round2(
-            (mainRateCard.serviceRate || 0) +
-            (mainRateCard.byodRate || 0) +
-            (invoice.miles * (mainRateCard.mileage || 0)) +
+            (mainRateCard?.serviceRate || 0) +
+            (mainRateCard?.byodRate || 0) +
+            (invoice.miles * (mainRateCard?.mileage || 0)) +
             newIncentiveRate -
             newDeductionTotal +
-            (additionalRateCard.serviceRate || 0) +
-            (additionalRateCard.byodRate || 0) +
-            (invoice.additionalServiceDetails.miles * (additionalRateCard.mileage || 0)) +
+            (additionalRateCard?.serviceRate || 0) +
+            (additionalRateCard?.byodRate || 0) +
+            (invoice.additionalServiceDetails.miles * (additionalRateCard?.mileage || 0)) +
             round2(invoice.incentiveDetailforAdditional?.reduce((sum, inc) => sum + Number(inc.rate || 0), 0) || 0)
           );
         } else {
