@@ -141,12 +141,19 @@ const Approvals = () => {
                                                         <div className="absolute top-4 mb-1 left-1/2 -translate-x-1/2 w-64 bg-white border border-neutral-200 rounded shadow-lg px-4 py-2 text-xs z-10 hidden group-hover:block">
                                                             <table className="w-full text-left">
                                                                 <tbody>
-                                                                    {approval.reqData.dayInvoiceId?.driverVehicleType && <tr><th>Vehicle Type:</th><td className='!border-none'>{approval.reqData.dayInvoiceId?.driverVehicleType}</td></tr>}
-                                                                    <tr><th>Service:</th><td className='!border-none'>{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.service : approval.reqData.additionalServiceDetails?.service}</td></tr>
-                                                                    <tr><th>Service Rate:</th><td className='!border-none'>£{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.serviceRate : approval.reqData.additionalServiceDetails?.serviceRate}</td></tr>
-                                                                    <tr><th>Byod rate:</th><td className='!border-none'>£{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.byodRate : approval.reqData.additionalServiceDetails?.byodRate}</td></tr>
-                                                                    <tr><th>Miles Driven:</th><td className='!border-none'>{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.miles : approval.reqData.additionalServiceDetails?.miles}</td></tr>
-                                                                    <tr><th>Calculated Mileage:</th><td className='!border-none'>£{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.calculatedMileage : approval.reqData.additionalServiceDetails?.calculatedMileage}</td></tr>
+                                                                    {approval.reqData?.dayInvoiceId?.additionalServiceDetails.service !== 'Route Support' ? <>
+                                                                        {approval.reqData.dayInvoiceId?.driverVehicleType && <tr><th>Vehicle Type:</th><td className='!border-none'>{approval.reqData.dayInvoiceId?.driverVehicleType}</td></tr>}
+                                                                        <tr><th>Service:</th><td className='!border-none'>{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.service : approval.reqData.additionalServiceDetails?.service}</td></tr>
+                                                                        <tr><th>Service Rate:</th><td className='!border-none'>£{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.serviceRate : approval.reqData.additionalServiceDetails?.serviceRate}</td></tr>
+                                                                        <tr><th>Byod rate:</th><td className='!border-none'>£{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.byodRate : approval.reqData.additionalServiceDetails?.byodRate}</td></tr>
+                                                                        <tr><th>Miles Driven:</th><td className='!border-none'>{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.miles : approval.reqData.additionalServiceDetails?.miles}</td></tr>
+                                                                        <tr><th>Calculated Mileage:</th><td className='!border-none'>£{approval.approvalStatus === 'pending' ? approval.reqData.dayInvoiceId?.additionalServiceDetails?.calculatedMileage : approval.reqData.additionalServiceDetails?.calculatedMileage}</td></tr>
+                                                                    </>
+                                                                        : <>
+                                                                            <tr><th>Route Support Rate:</th><td className='!border-none'>£{approval.reqData.dayInvoiceId?.incentiveDetailforAdditional[0].rate}</td></tr>
+                                                                            <tr><th>Supported Service:</th><td className='!border-none'>{approval.reqData.dayInvoiceId?.incentiveDetailforAdditional[0].routeSupportService}</td></tr>
+                                                                        </>
+                                                                    }
                                                                 </tbody>
                                                             </table>
                                                         </div>

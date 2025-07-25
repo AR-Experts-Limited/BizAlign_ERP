@@ -463,6 +463,7 @@ const SchedulePlanner = () => {
                                     disabled={addScheduleData?.service === "Voluntary-Day-off" || addScheduleData?.service === 'standby'}
                                     type='dropdown' onChange={(e) => setAddScheduleData(prev => ({ ...prev, service: e.target.value }))}  >
                                     <option value=''>-Select Service-</option>
+                                    <option value='Route Support'>Route Support</option>
                                     {services.map((service) => {
                                         if (rateCardFinder(
                                             addScheduleData?.date,
@@ -472,9 +473,11 @@ const SchedulePlanner = () => {
                                             addScheduleData?.driver
                                         )) {
                                             return (
-                                                <option key={service._id} value={service.title}>
-                                                    {service.title}
-                                                </option>
+                                                <>
+                                                    <option key={service._id} value={service.title}>
+                                                        {service.title}
+                                                    </option>
+                                                </>
                                             );
                                         }
                                         return null;

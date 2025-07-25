@@ -2,10 +2,13 @@ const mongoose = require('mongoose');
 
 const incentiveSchema = new mongoose.Schema({
   site: String,
+  driverId: String,
+  routeSupportService: String,
   service: String,
   startDate: Date,
   endDate: Date,
   type: String,
+  associatedDeduction: { type: mongoose.Schema.Types.ObjectId, ref: 'Deduction' },
   rate: Number,
   addedBy: Object,
 });

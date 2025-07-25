@@ -129,7 +129,7 @@ const ManageSummary = () => {
                 const invoiceTransporterName = String(
                     driversList.find((driver) => driver._id === invoice.driverId)?.transporterName?.trim()
                 ).toLowerCase();
-                const invoiceService = invoice.mainService?.trim();
+                const invoiceService = invoice.mainService === 'Route Support' ? invoice.incentiveDetailforMain[0]?.routeSupportService : invoice.mainService?.trim();
 
                 const existingCsvData = invoice.csvData || null;
                 let matchedCsv = null;
@@ -157,7 +157,7 @@ const ManageSummary = () => {
 
                 if (matchedCsv && invoice.approvalStatus === 'Access Requested') {
                     const match =
-                        Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance']) &&
+                        (invoice.mainService === 'Route Support' ? true : Number(invoice?.miles) === Number(matchedCsv?.['Total Distance Allowance'])) &&
                         similarity.isSimilar;
                     if (match) {
                         let invoiceMatch = { ...invoice, approvalStatus: 'Under Approval' };
@@ -409,7 +409,7 @@ const ManageSummary = () => {
                                             else {
                                                 setCurrentInvoice({ ...invoiceMap[key] });
                                                 originalMilesRef.current = invoiceMap[key]?.invoice?.miles
-                                                originalServiceRef.current = invoiceMap[key]?.invoice?.mainService
+                                                originalServiceRef.current = invoiceMap[key]?.invoice?.mainService === 'Route Support' ? invoiceMap[key]?.invoice?.incentiveDetailforMain[0]?.routeSupportService : invoiceMap[key]?.invoice?.mainService
                                             }
                                         }}
                                         className={`relative z-6 w-full h-full flex flex-col   items-center justify-center overflow-auto dark:bg-dark-4 dark:text-white bg-gray-100 border 
@@ -447,6 +447,26 @@ const ManageSummary = () => {
     const handleServiceTypeChange = async (e) => {
         const selectedService = e.target.value;
         const originalService = originalServiceRef.current;
+
+        if (currentInvoice?.invoice?.mainService === 'Route Support') {
+            setCurrentInvoice(prev => {
+                const updatedIncentiveDetail = [...prev.invoice.incentiveDetailforMain];
+                updatedIncentiveDetail[0] = {
+                    ...updatedIncentiveDetail[0],
+                    routeSupportService: selectedService
+                };
+
+                return {
+                    ...prev,
+                    invoice: {
+                        ...prev.invoice,
+                        incentiveDetailforMain: updatedIncentiveDetail
+                    },
+                    restrictEdit: false
+                };
+            });
+            return;
+        }
 
         if (selectedService === originalService) {
             setCurrentInvoice(prev => ({
@@ -550,7 +570,8 @@ const ManageSummary = () => {
             <Modal isOpen={currentInvoice} onHide={() => setCurrentInvoice(null)}>
                 {(() => {
                     const misMatchMiles = (Number(currentInvoice?.invoice?.miles)) !== Number(currentInvoice?.matchedCsv?.['Total Distance Allowance']) ? true : false
-                    const misMatchServiceType = currentInvoice && !compareServiceStrings(currentInvoice?.invoice?.mainService, currentInvoice?.matchedCsv?.['Service Type'])?.isSimilar
+                    const misMatchServiceType = currentInvoice &&
+                        !compareServiceStrings(currentInvoice?.invoice?.mainService === 'Route Support' ? currentInvoice?.invoice?.incentiveDetailforMain[0]?.routeSupportService : currentInvoice?.invoice?.mainService, currentInvoice?.matchedCsv?.['Service Type'])?.isSimilar
 
                     return (<>
                         <h2 className="text-lg px-4 py-2 border-b border-neutral-300">Invoice Comparison</h2>
@@ -584,30 +605,31 @@ const ManageSummary = () => {
                                                         <option value={originalServiceRef.current}>{originalServiceRef.current}</option>
                                                         {currentInvoice?.matchedCsv['Service Type']?.trim() !== '-' && <option value={currentInvoice?.matchedCsv['Service Type']?.trim()}>{currentInvoice?.matchedCsv['Service Type']?.trim()}</option>}
                                                     </InputGroup> :
-                                                    currentInvoice?.invoice?.mainService}
+                                                    currentInvoice?.invoice?.mainService === 'Route Support' ? `${currentInvoice?.invoice?.incentiveDetailforMain[0]?.routeSupportService} (Route Support)` : currentInvoice?.invoice?.mainService}
                                             </td>
                                         </tr>
-                                        <tr className="border-b border-gray-200">
-                                            <td className="px-4 py-2 font-medium text-gray-700">Miles / Distance</td>
-                                            <td
-                                                className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
-                                                    }`}
-                                            >
-                                                {currentInvoice?.matchedCsv["Total Distance Allowance"] || 'N/A'}
-                                            </td>
-                                            <td
-                                                className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
-                                                    }`}
-                                            >
-                                                {currentInvoice?.invoice.approvalStatus == 'Under Edit' && originalMilesRef.current !== currentInvoice?.matchedCsv["Total Distance Allowance"] ?
-                                                    <InputGroup type='dropdown' onChange={(e) => handleMilesChange(e)}>
-                                                        <option value={originalMilesRef.current}>{originalMilesRef.current}</option>
-                                                        {currentInvoice?.matchedCsv["Total Distance Allowance"] && <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>}
-                                                    </InputGroup> :
-                                                    currentInvoice?.invoice?.miles}
-                                            </td>
+                                        {currentInvoice?.invoice.mainService !== 'Route Support' &&
+                                            <tr className="border-b border-gray-200">
+                                                <td className="px-4 py-2 font-medium text-gray-700">Miles / Distance</td>
+                                                <td
+                                                    className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
+                                                        }`}
+                                                >
+                                                    {currentInvoice?.matchedCsv["Total Distance Allowance"] || 'N/A'}
+                                                </td>
+                                                <td
+                                                    className={`px-4 py-2 ${misMatchMiles ? 'text-red-500' : 'text-green-600'
+                                                        }`}
+                                                >
+                                                    {currentInvoice?.invoice.approvalStatus == 'Under Edit' && originalMilesRef.current !== currentInvoice?.matchedCsv["Total Distance Allowance"] ?
+                                                        <InputGroup type='dropdown' onChange={(e) => handleMilesChange(e)}>
+                                                            <option value={originalMilesRef.current}>{originalMilesRef.current}</option>
+                                                            {currentInvoice?.matchedCsv["Total Distance Allowance"] && <option value={currentInvoice?.matchedCsv["Total Distance Allowance"]}>{currentInvoice?.matchedCsv["Total Distance Allowance"]}</option>}
+                                                        </InputGroup> :
+                                                        currentInvoice?.invoice?.miles}
+                                                </td>
 
-                                        </tr>
+                                            </tr>}
                                     </tbody>
                                 </table>
 

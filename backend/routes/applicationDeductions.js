@@ -229,16 +229,17 @@ router.patch('/:id/signed', async (req, res) => {
 
 // GET the latest invoice for a given user_ID
 router.get('/invoices', async (req, res) => {
+  const WeeklyInvoice = req.db.model(
+    'WeeklyInvoice',
+    require('../models/weeklyInvoice').schema
+  );
   const { user_ID } = req.query;
 
   if (!user_ID) {
     return res.status(400).json({ message: 'user_ID is required.' });
   }
 
-  const WeeklyInvoice = req.db.model(
-    'WeeklyInvoice',
-    require('../models/weeklyInvoice').schema
-  );
+
 
   try {
     const [latest] = await WeeklyInvoice.aggregate([
@@ -257,7 +258,7 @@ router.get('/invoices', async (req, res) => {
 
 
     if (!latest) {
-      return res.status(404).json({
+      return res.status(200).json({
         invoices: [],
         message: 'No invoices found.'
       });
@@ -271,7 +272,7 @@ router.get('/invoices', async (req, res) => {
       }
     ];
 
-    // 6) Send it back
+    // Send it back
     return res.status(200).json({ invoices });
   } catch (error) {
     console.error('Error fetching latest invoice:', error);

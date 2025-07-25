@@ -22,6 +22,7 @@ import Spinner from '../../components/UIElements/Spinner';
 import TrashBin from '../../components/UIElements/TrashBin';
 import DatePicker from '../../components/Datepicker/Datepicker';
 import TableFeatures from '../../components/TableFeatures/TableFeatures'
+import Modal from '../../components/Modal/Modal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -41,6 +42,7 @@ const Incentives = () => {
         rate: 0,
     }
     const [newIncentive, setNewIncentive] = useState(clearIncentive);
+    const [routeSupportInfoOpen, setRouteSupportInfoOpen] = useState(null)
 
     const [incentives, setIncentives] = useState([]);
     const [errors, setErrors] = useState({
@@ -167,8 +169,13 @@ const Incentives = () => {
         try {
             setLoading(true)
             await axios.delete(`${API_BASE_URL}/api/incentives/${id}`);
-            setLoading(false)
 
+            const incentiveData = incentives.find((inc) => inc._id === id)
+            if (incentiveData.service === 'Route Support') {
+                await axios.delete(`${API_BASE_URL}/api/deductions/${incentiveData.associatedDeduction?._id}`);
+            }
+
+            setRouteSupportInfoOpen(false)
             setIncentives(incentives.filter(incentive => incentive._id !== id));
             setToastOpen({
                 content: <>
@@ -202,23 +209,11 @@ const Incentives = () => {
                 </>
             })
         }
+        finally {
+            setLoading(false)
+        }
     };
 
-    const handleMonthChange = ([date]) => {
-        const monthStr = moment(date).format('YYYY-MM')
-        const monthNum = monthStr.slice(-2);
-
-        let type = 'Normal';
-        if (['07', '08', '09'].includes(monthNum)) type = 'Prime';
-        if (['10', '11', '12'].includes(monthNum)) type = 'Peak';
-
-        setNewIncentive(prev => ({
-            ...prev,
-            month: monthStr,
-            type
-        }));
-        setErrors({ ...errors, month: false });
-    };
 
     const maxEndDate = useMemo(() => {
         if (!newIncentive.startDate) return null;
@@ -422,7 +417,7 @@ const Incentives = () => {
                                 </thead>
                                 <tbody>
                                     {incentives.map((incentive) => (
-                                        <tr key={incentive._id}>
+                                        <tr key={incentive._id} className={incentive.service === 'Route Support' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
                                             <td>{String(incentive._id).slice(-4)}</td>
                                             {Object.values(displayColumns).map((col) => {
                                                 if (['startDate', 'endDate'].includes(col))
@@ -439,12 +434,39 @@ const Incentives = () => {
                                         </td> 
                                         <td>{new Date(incentive.addedBy?.addedOn).toLocaleString()}</td>*/}
                                             <td>
-                                                <button
-                                                    onClick={() => handleDeleteIncentive(incentive._id)}
-                                                    className="p-2 rounded-md hover:bg-neutral-200 text-red-400"
-                                                >
-                                                    <MdOutlineDelete size={17} />
-                                                </button>
+                                                <div className='flex justify-center items-center gap-1'>
+                                                    {incentive.type === 'Route Support' ?
+                                                        <div onClick={() => setRouteSupportInfoOpen(incentive._id)}>
+                                                            <i class="cursor-pointer flex items-center text-blue-400 text-[1.1rem]  fi fi-sr-info"></i>
+                                                            <Modal isOpen={routeSupportInfoOpen === incentive._id}>
+                                                                <div className='p-3 border-b border-neutral-300'>
+                                                                    Associated Deduction
+                                                                </div>
+                                                                <div className='p-6 grid grid-cols-[2fr_5fr] gap-2'>
+                                                                    <div className='font-bold'>Driver Name:</div>
+                                                                    <div>{incentive?.associatedDeduction?.driverName}</div>
+                                                                    <div className='font-bold'>Deduction Id:</div>
+                                                                    <div>#{String(incentive?.associatedDeduction?._id).slice(-4)}</div>
+                                                                    <div className='font-bold'>User ID:</div>
+                                                                    <div>{incentive?.associatedDeduction?.user_ID}</div>
+                                                                    <div className='font-bold'>Date:</div>
+                                                                    <div>{new Date(incentive?.associatedDeduction?.date).toLocaleDateString()}</div>
+
+                                                                    <div className='flex gap-1 mt-4 col-span-2 bg-amber-400/40 px-2 py-1 rounded border border-amber-800 text-amber-800 text-sm'><i class="flex items-center fi fi-sr-triangle-warning"></i>Deleting this incentive will also delete the associated deduction</div>
+                                                                </div>
+                                                                <div className='flex gap-2 justify-end border-t border-neutral-200 p-3'>
+                                                                    <button onClick={() => setRouteSupportInfoOpen(null)} className='rounded bg-gray-500 text-white px-2 py-1 text-xs'>Close</button>
+                                                                    <button onClick={() => handleDeleteIncentive(incentive._id)} className='rounded bg-red-500 text-white px-2 py-1 text-xs'>Delete</button>
+                                                                </div>
+                                                            </Modal>
+                                                        </div>
+                                                        : <button
+                                                            onClick={() => handleDeleteIncentive(incentive._id)}
+                                                            className="justify-self-end p-2 rounded-md hover:bg-neutral-200 text-red-400"
+                                                        >
+                                                            <MdOutlineDelete size={17} />
+                                                        </button>}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -454,7 +476,7 @@ const Incentives = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -43,6 +43,7 @@ const appdriversRoutes = require('./routes/applicationDrivers');//App
 const appScheduleRoutes = require('./routes/applicationSchedule');//App
 const appDeductionRoutes = require('./routes/applicationDeductions');//App
 const appInstallmentsRoutes = require('./routes/applicationInstallments');//App
+const appAdditionalChargesRoutes = require('./routes/applicationAdditionalCharges');//App
 const appAvailabilityRoutes = require('./routes/applicationAvailability');//App
 const appAuth = require('./routes/applicationAuth');//App
 const applicationLocationRoutes = require('./routes/applicationLocationRoutes');//App
@@ -122,6 +123,7 @@ app.use('/api/appNotifications', appNotifications);//AppWeb
 app.use('/api/location', applicationLocationRoutes);//App
 app.use('/api/appUnsignedDocs', appUnsignedDocs);//App
 app.use('/api/appInstallments', appInstallmentsRoutes);//App
+app.use('/api/appAdditionalCharges', appAdditionalChargesRoutes);//App
 app.use('/api', appVersionRoutes);
 
 

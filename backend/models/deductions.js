@@ -14,6 +14,7 @@ const DeductionSchema = new mongoose.Schema({
     signed: { type: Boolean, required: true },
     week: { type: String },
     vehicleRegPlate: { type: String },
+    associatedIncentive: { type: mongoose.Schema.Types.ObjectId, ref: 'Incentive' }
 });
 
 const Deduction = mongoose.model('Deduction', DeductionSchema);

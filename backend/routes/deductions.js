@@ -303,6 +303,35 @@ router.post('/', upload.any(), async (req, res) => {
   }
 });
 
+// PUT route to update associatedIncentive for a Deduction
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { associatedIncentive } = req.body;
+
+  try {
+    const { Deduction } = getModels(req);
+
+    const updatedDeduction = await Deduction.findByIdAndUpdate(
+      id,
+      { $set: { associatedIncentive } },
+      { new: true }
+    );
+
+    if (!updatedDeduction) {
+      return res.status(404).json({ message: 'Deduction not found' });
+    }
+
+    // Optionally notify frontend
+    sendToClients(req.db, { type: 'deductionUpdated' });
+
+    res.status(200).json(updatedDeduction);
+  } catch (error) {
+    console.error('Error updating deduction:', error);
+    res.status(500).json({ message: 'Error updating deduction', error: error.message });
+  }
+});
+
+
 router.delete('/:id', async (req, res) => {
   try {
     const { Deduction, DayInvoice, WeeklyInvoice, Installment, Driver, User, Notification } = getModels(req);
@@ -504,7 +533,7 @@ router.get('/', async (req, res) => {
 
     // Step 1: Fetch all deductions (optionally filtered by site)
     const query = site ? { site } : {};
-    const deductions = await Deduction.find(query);
+    const deductions = await Deduction.find(query).populate('associatedIncentive');
 
     // Step 2: Get all driverIds from those deductions
     const driverIds = deductions.map(d => d.driverId);
