@@ -80,7 +80,7 @@ const TotalBreakdown = ({
                         <span>£</span>
                         <span className="text-right">{additionalServiceTotal}</span>
                     </div>}
-                {(incentiveDetailforMain?.length > 0) &&
+                {(incentiveDetailforMain?.length > 0) && additionalServiceDetails?.service !== 'Route Support' &&
                     <div className="grid grid-cols-[6fr_1fr_1fr] text-green-600">
                         <span>Incentives for Main:</span>
                         <span>+£</span>
