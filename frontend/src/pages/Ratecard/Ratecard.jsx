@@ -92,20 +92,46 @@ const Ratecard = () => {
     const handleAddRateCard = async ({ rateCard, newService, newServiceInfo, existingWeeks }) => {
         setLoading(true)
         setConfirmModal(null)
-        await dispatch(addRatecard({ rateCard, existingWeeks }))
-        setLoading(false)
-
-        setRateCard(clearRateCard)
-        if (newService) {
-            dispatch(addService({ title: newServiceInfo.title, hours: newServiceInfo.totalHours }))
+        try {
+            await dispatch(addRatecard({ rateCard, existingWeeks })).unwrap()
+            setRateCard(clearRateCard)
+            if (newService) {
+                dispatch(addService({ title: newServiceInfo.title, hours: newServiceInfo.totalHours }))
+            }
+            setToastOpen({
+                content: <>
+                    <SuccessTick width={20} height={20} />
+                    <p className='text-sm font-bold text-green-500'>{rateCard.serviceWeek.length > 1 ? 'Rate cards ' : 'Rate card '}added successfully</p>
+                </>
+            })
+            setTimeout(() => setToastOpen(null), 3000);
         }
-        setToastOpen({
-            content: <>
-                <SuccessTick width={20} height={20} />
-                <p className='text-sm font-bold text-green-500'>{rateCard.serviceWeek.length > 1 ? 'Rate cards ' : 'Rate card '}added successfully</p>
-            </>
-        })
-        setTimeout(() => setToastOpen(null), 3000);
+        catch (error) {
+            console.log(error?.negativeInvoices)
+            setToastOpen({
+                content: <>
+                    <div className='flex gap-3 items-center'>
+                        <p className='flex gap-1 text-sm font-bold text-red-600 whitespace-nowrap'><i class="flex items-center fi fi-ss-triangle-warning"></i>{error?.message}</p>
+                        <div className="flex gap-2 mt-2">
+                            <button
+                                className="px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs whitespace-nowrap"
+                                onClick={() => downloadCSV(error?.type, error?.negativeInvoices)}
+                            >
+                                Download CSV
+                            </button>
+                            <button
+                                className="px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 text-xs"
+                                onClick={() => setToastOpen(null)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </>
+            })
+        } finally {
+            setLoading(false);
+        }
     }
 
     const onUpdateSelect = (ratecard) => {

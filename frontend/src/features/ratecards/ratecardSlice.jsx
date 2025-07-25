@@ -9,9 +9,14 @@ export const fetchRatecards = createAsyncThunk('Ratecards/fetchRatecards', async
     return response.data;
 });
 
-export const addRatecard = createAsyncThunk('Ratecards/addRatecard', async ({ rateCard, existingWeeks }) => {
-    const response = await axios.post(`${API_BASE_URL}/api/ratecards`, { ...rateCard, existingWeeks });
-    return response.data;
+export const addRatecard = createAsyncThunk('Ratecards/addRatecard', async ({ rateCard, existingWeeks }, { rejectWithValue }) => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/api/ratecards`, { ...rateCard, existingWeeks });
+        return response.data;
+    }
+    catch (err) {
+        return rejectWithValue(err.response?.data || { message: 'An unexpected error occurred' });
+    }
 });
 
 export const updateRatecard = createAsyncThunk('Ratecards/updateRatecard', async (Ratecard, { rejectWithValue }) => {
