@@ -70,6 +70,7 @@ const Approvals = () => {
 
                 await axios.put(`${API_BASE_URL}/api/approvals`, {
                     id: approval._id,
+                    additionalServiceDetails,
                     decisionTakenBy: `${userDetails.userName}`,
                     approvalStatus: decision
                 });
