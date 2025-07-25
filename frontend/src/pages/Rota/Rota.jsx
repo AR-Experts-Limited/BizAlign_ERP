@@ -482,7 +482,7 @@ const Rota = () => {
 
         if (rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Route Support') {
 
-            if (rotaDetail?.dayInvoice?.additionalServiceDetails && Number(rotaDetail?.dayInvoice?.additionalServiceDetails?.miles) === 0) {
+            if (rotaDetail?.dayInvoice?.additionalServiceDetails && Number(rotaDetail?.dayInvoice?.additionalServiceDetails?.miles) === 0 && rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other') {
                 newErrors['milesDrivenAdditional'] = true;
             }
 
@@ -490,12 +490,12 @@ const Rota = () => {
                 if (!rotaDetail?.dayInvoice?.additionalServiceDetails?.serviceRate) {
                     newErrors['serviceRate'] = true;
                 }
-                if (!rotaDetail?.dayInvoice?.additionalServiceDetails?.byodRate) {
-                    newErrors['byodRate'] = true;
-                }
-                if (!rotaDetail?.dayInvoice?.additionalServiceDetails?.mileage) {
-                    newErrors['mileage'] = true;
-                }
+                // if (!rotaDetail?.dayInvoice?.additionalServiceDetails?.byodRate) {
+                //     newErrors['byodRate'] = true;
+                // }
+                // if (!rotaDetail?.dayInvoice?.additionalServiceDetails?.mileage) {
+                //     newErrors['mileage'] = true;
+                // }
             }
         }
         setErrors(newErrors);
@@ -1090,10 +1090,15 @@ const Rota = () => {
 
                                             {rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Route Support' &&
                                                 <>
+                                                    {rotaDetail?.dayInvoice?.additionalServiceDetails?.service === 'Other' &&
+                                                        <div>
+                                                            <InputGroup type="text" label='Service Title - Remarks (optional)' value={rotaDetail?.dayInvoice.additionalServiceDetails?.remarks} onChange={(e) => setRotaDetail(prev => ({ ...prev, dayInvoice: { ...prev.dayInvoice, additionalServiceDetails: { ...prev.dayInvoice.additionalServiceDetails, remarks: e.target.value } } }))} />
+                                                        </div>}
                                                     <InputWrapper title="Ratecard Details" gridCols={4} colspan={3}>
                                                         <div>
                                                             <InputGroup
                                                                 icon={<FaPoundSign className="text-neutral-300" size={20} />}
+                                                                required={true}
                                                                 iconPosition="left"
                                                                 label="Service Rate"
                                                                 disabled={rotaDetail?.dayInvoice?.additionalServiceDetails?.service !== 'Other' || ((rotaDetail.dayInvoice?.additionalServiceApproval !== 'Request') && !hasAdminPrivileges(userDetails?.role)) || rotaDetail.dayInvoice?.additionalServiceApproval === 'Requested'}
@@ -1108,6 +1113,7 @@ const Rota = () => {
                                                                 <p className="text-sm mt-1 text-red-500">*Enter the service rate</p>
                                                             )}
                                                         </div>
+
                                                         <div>
                                                             <InputGroup
                                                                 icon={<FaPoundSign className="text-neutral-300" size={20} />}
@@ -1153,7 +1159,7 @@ const Rota = () => {
                                                     <InputWrapper title="Calculate Mileage" gridCols={2} colspan={3}>
                                                         <div>
                                                             <InputGroup
-                                                                required={true}
+                                                                required={false}
                                                                 error={errors.milesDrivenAdditional}
                                                                 name="milesDriven-additional"
                                                                 label="Miles driven"

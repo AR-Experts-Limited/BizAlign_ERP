@@ -24,7 +24,7 @@ export const verifyOTP = createAsyncThunk(
             const { accessToken, access, role, userId, firstName, lastName, site, siteArray, companyId } = res.data;
             await axios.post(`${API_BASE_URL}/api/sessionTime/login-time`, { userId, user: res.data });
 
-            return { success: true, userDetails: { id: userId, userName: firstName + ' ' + lastName, role, site, siteArray, companyId }, accessToken, access, role };
+            return { success: true, userDetails: { id: userId, userName: firstName + ' ' + lastName, role, email, site, siteArray, companyId }, accessToken, access, role };
         } catch (err) {
             return thunkAPI.rejectWithValue(err.response?.data?.message || 'OTP verification failed');
         }

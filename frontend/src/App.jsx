@@ -33,6 +33,7 @@ import ManageSummary from './pages/ManageSummary/ManageSummary';
 import ApplicationSettings from './pages/ApplicationSettings/ApplicationSettings';
 import AdditionalCharges from './pages/AdditionalCharges/AdditionalCharges';
 import OverdueShiftBubble from './components/OverdueShiftBubble/OverdueShiftBubble';
+import UpdatePassword from './pages/UpdatePassword/UpdatePassword'
 
 function App() {
   const [sidebarIsOpen, setSidebarIsOpen] = useState(0);
@@ -77,7 +78,6 @@ function App() {
     { path: "/print-invoices", name: "Print Invoices", component: WeeklyInvoice },
     { path: "/manage-users", name: "Manage Users", component: ManageUsers },
     { path: "/settings", name: "Application Settings", component: ApplicationSettings },
-
   ];
 
   const handleMouseEnterOpener = () => {
@@ -133,6 +133,8 @@ function App() {
                   }
                 />
               ))}
+              <Route path="/update-password" element={<UpdatePassword />} />
+
               {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
             </Routes>)}
         </div>

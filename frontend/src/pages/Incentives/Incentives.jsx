@@ -168,9 +168,9 @@ const Incentives = () => {
     const handleDeleteIncentive = async (id) => {
         try {
             setLoading(true)
-            await axios.delete(`${API_BASE_URL}/api/incentives/${id}`);
-
             const incentiveData = incentives.find((inc) => inc._id === id)
+
+            await axios.delete(`${API_BASE_URL}/api/incentives/${id}`);
             if (incentiveData.service === 'Route Support') {
                 await axios.delete(`${API_BASE_URL}/api/deductions/${incentiveData.associatedDeduction?._id}`);
             }
@@ -223,6 +223,24 @@ const Incentives = () => {
         max.setDate(start.getDate() + 10); // example: max end date is 30 days after start
         return max;
     }, [newIncentive.startDate]);
+
+    const handleRouteSupportInfoOpen = async (incentive) => {
+        const { _id: incentiveId, driverId, startDate: date } = incentive;
+
+        try {
+            const IncentiveCheck = await axios.get(`${API_BASE_URL}/api/incentives/check-dayinvoice`, {
+                params: { incentiveId, driverId, date }
+            });
+            const DeductionCheck = await axios.get(`${API_BASE_URL}/api/deductions/check-dayinvoice`, {
+                params: { deductionId: incentive.associatedDeduction._id, driverId: incentive.associatedDeduction.driverId, date }
+            });
+            const isLinked = IncentiveCheck.data.isLinked || DeductionCheck.data.isLinked
+            setRouteSupportInfoOpen({ ...incentive, isLinked })
+        } catch (error) {
+            console.error('Error fetching deduction linkage:', error);
+        }
+    };
+
 
     return (
         <div className='w-full h-full flex flex-col p-1.5 md:p-3.5 overflow-auto'>
@@ -436,9 +454,9 @@ const Incentives = () => {
                                             <td>
                                                 <div className='flex justify-center items-center gap-1'>
                                                     {incentive.type === 'Route Support' ?
-                                                        <div onClick={() => setRouteSupportInfoOpen(incentive._id)}>
+                                                        <div onClick={() => handleRouteSupportInfoOpen(incentive)}>
                                                             <i class="cursor-pointer flex items-center text-blue-400 text-[1.1rem]  fi fi-sr-info"></i>
-                                                            <Modal isOpen={routeSupportInfoOpen === incentive._id}>
+                                                            <Modal isOpen={routeSupportInfoOpen?._id === incentive._id}>
                                                                 <div className='p-3 border-b border-neutral-300'>
                                                                     Associated Deduction
                                                                 </div>
@@ -451,12 +469,12 @@ const Incentives = () => {
                                                                     <div>{incentive?.associatedDeduction?.user_ID}</div>
                                                                     <div className='font-bold'>Date:</div>
                                                                     <div>{new Date(incentive?.associatedDeduction?.date).toLocaleDateString()}</div>
-
-                                                                    <div className='flex gap-1 mt-4 col-span-2 bg-amber-400/40 px-2 py-1 rounded border border-amber-800 text-amber-800 text-sm'><i class="flex items-center fi fi-sr-triangle-warning"></i>Deleting this incentive will also delete the associated deduction</div>
+                                                                    {routeSupportInfoOpen?.isLinked && <div className='flex gap-2 mt-4 col-span-2 bg-amber-100 px-2 py-1 rounded border border-amber-800 text-amber-800 text-sm text-left'><i class="flex items-center fi fi-sr-triangle-warning"></i> This route support assignment is linked to an existing Day Invoice.<br /> Please delete the associated Day Invoice before attempting to remove the route support assignment</div>}
+                                                                    <div className='flex gap-1 mt-4 col-span-2 bg-amber-100 px-2 py-1 rounded border border-amber-800 text-amber-800 text-sm'><i class="flex items-center fi fi-sr-triangle-warning"></i>Deleting this incentive will also delete the associated deduction</div>
                                                                 </div>
                                                                 <div className='flex gap-2 justify-end border-t border-neutral-200 p-3'>
                                                                     <button onClick={() => setRouteSupportInfoOpen(null)} className='rounded bg-gray-500 text-white px-2 py-1 text-xs'>Close</button>
-                                                                    <button onClick={() => handleDeleteIncentive(incentive._id)} className='rounded bg-red-500 text-white px-2 py-1 text-xs'>Delete</button>
+                                                                    <button onClick={() => handleDeleteIncentive(incentive._id)} disabled={routeSupportInfoOpen?.isLinked} className='rounded bg-red-500 text-white px-2 py-1 text-xs disabled:bg-gray-300'>Delete</button>
                                                                 </div>
                                                             </Modal>
                                                         </div>

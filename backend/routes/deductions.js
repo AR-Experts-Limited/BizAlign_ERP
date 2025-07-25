@@ -42,6 +42,44 @@ const getModels = (req) => ({
 });
 
 
+// GET route to check if a deduction is linked to any DayInvoice
+router.get('/check-dayinvoice', async (req, res) => {
+  const { deductionId, driverId, date } = req.query;
+
+  try {
+    const { DayInvoice } = getModels(req);
+
+
+    const dayInvoice = await DayInvoice.findOne({
+      driverId,
+      date: new Date(date),
+    }).lean(); // use lean for performance if you don't need Mongoose methods
+
+    if (!dayInvoice) {
+      return res.status(200).json({
+        isLinked: false,
+        message: 'No DayInvoice found for given driver and date',
+      });
+    }
+
+    const isLinked = dayInvoice.deductionDetail?.some(
+      (ded) => ded._id?.toString() === deductionId
+    );
+
+    return res.status(200).json({
+      isLinked,
+      dayInvoiceId: dayInvoice._id,
+      message: isLinked
+        ? 'Deduction is linked to a DayInvoice'
+        : 'Deduction is not linked to the DayInvoice',
+    });
+  } catch (error) {
+    console.error('Error checking deduction link:', error);
+    res.status(500).json({ message: 'Error checking deduction link', error: error.message });
+  }
+});
+
+
 router.post('/', upload.any(), async (req, res) => {
   const { site, driverId, user_ID, driverName, serviceType, rate, date, signed, week } = req.body;
   let { addedBy } = req.body;
