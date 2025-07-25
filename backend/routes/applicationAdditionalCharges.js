@@ -159,6 +159,14 @@ router.patch('/:id/signed', async (req, res) => {
                         width: finalWidth,
                         height: finalHeight,
                     });
+                } else if (fileExtension === 'pdf') {
+                    const attachedPdfResponse = await axios.get(documentUrl, { responseType: 'arraybuffer' });
+                    const attachedPdfDoc = await PDFDocument.load(attachedPdfResponse.data);
+
+                    const pages = await pdfDoc.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
+                    pages.forEach((page) => {
+                        pdfDoc.addPage(page);
+                    });
                 } else {
                     // Add a link instead of image
                     const page2 = pdfDoc.addPage([pageWidth, pageHeight]);

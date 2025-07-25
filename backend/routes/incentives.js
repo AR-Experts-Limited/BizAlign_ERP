@@ -15,6 +15,45 @@ const getModels = (req) => ({
   Schedule: req.db.model('Schedule', require('../models/Schedule.js').schema)
 });
 
+
+// GET route to check if an incentive is linked to any DayInvoice
+router.get('/check-dayinvoice', async (req, res) => {
+  const { incentiveId, driverId, date } = req.query;
+
+  try {
+    const { DayInvoice } = getModels(req);
+
+    const dayInvoice = await DayInvoice.findOne({
+      driverId,
+      date: new Date(date),
+    }).lean();
+
+    if (!dayInvoice) {
+      return res.status(200).json({
+        isLinked: false,
+        message: 'No DayInvoice found for given driver and date',
+      });
+    }
+
+    const isLinked = dayInvoice.incentiveDetailforMain?.some(
+      (inc) => inc._id?.toString() === incentiveId
+    ) || dayInvoice.incentiveDetailforAdditional?.some(
+      (inc) => inc._id?.toString() === incentiveId
+    );
+
+    return res.status(200).json({
+      isLinked,
+      dayInvoiceId: dayInvoice._id,
+      message: isLinked
+        ? 'Incentive is linked to a DayInvoice'
+        : 'Incentive is not linked to the DayInvoice',
+    });
+  } catch (error) {
+    console.error('Error checking incentive link:', error);
+    res.status(500).json({ message: 'Error checking incentive link', error: error.message });
+  }
+});
+
 // Get all Services
 router.get('/', async (req, res) => {
   const Incentive = req.db.model('Incentive', require('../models/Incentive').schema);
